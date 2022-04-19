@@ -208,7 +208,7 @@ static HackerDevice* sort_out_swap_chain_device_mess(
         // has happened:
         hacker_device = prepare_devices_for_dx12_warning(*device);
         if (hacker_device)
-            LogOverlayW(Log_Level::dire, L"3DMigoto does not support DirectX 12\nPlease set the game to use DirectX 11\n");
+            log_overlay_w(Log_Level::dire, L"3DMigoto does not support DirectX 12\nPlease set the game to use DirectX 11\n");
         else
             beep_profile_fail();
     }
@@ -314,11 +314,11 @@ static void force_display_params1(
 
         if (G->SCREEN_WIDTH >= 0)
         {
-            LogOverlay(Log_Level::dire, "*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
+            log_overlay(Log_Level::dire, "*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
         }
         if (G->SCREEN_HEIGHT >= 0)
         {
-            LogOverlay(Log_Level::dire, "*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
+            log_overlay(Log_Level::dire, "*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
         }
     }
 }
