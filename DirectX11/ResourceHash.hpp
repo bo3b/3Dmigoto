@@ -1,7 +1,7 @@
 #pragma once
 
 #include "DrawCallInfo.h"
-#include "util.h"
+#include "util_min.h"
 
 #include <atomic>
 #include <cstdint>
@@ -11,7 +11,7 @@
 #include <set>
 #include <tuple>
 #include <unordered_map>
-#include <vector>
+#include <Windows.h>
 
 // Tracks info about specific resource instances:
 struct ResourceHandleInfo
@@ -107,11 +107,11 @@ struct resource_hash_info
         D3D11_TEXTURE3D_DESC tex3d_desc;
     };
 
-    bool initial_data_used_in_hash;
-    bool hash_contaminated;
-    std::set<UINT> update_contamination;
-    std::set<UINT> map_contamination;
-    std::set<uint32_t> copy_contamination;
+    bool                                  initial_data_used_in_hash;
+    bool                                  hash_contaminated;
+    std::set<UINT>                        update_contamination;
+    std::set<UINT>                        map_contamination;
+    std::set<uint32_t>                    copy_contamination;
     CopySubresourceRegionContaminationMap region_contamination;
 
     resource_hash_info() :
@@ -411,7 +411,7 @@ public:
 };
 bool TextureOverrideLess(const struct texture_override &lhs, const struct texture_override &rhs);
 struct FuzzyMatchResourceDescLess {
-    bool operator() (const std::shared_ptr<FuzzyMatchResourceDesc> &lhs, const std::shared_ptr<FuzzyMatchResourceDesc> &rhs) const;
+    bool operator() (const std::shared_ptr<FuzzyMatchResourceDesc> & lhs, const std::shared_ptr<FuzzyMatchResourceDesc> & rhs) const;
 };
 // This set is sorted because multiple fuzzy texture overrides may match a
 // given resource, but we want to make sure we always process them in the same

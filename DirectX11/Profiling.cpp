@@ -1,9 +1,12 @@
 #include "Profiling.hpp"
 
+#include "CommandList.hpp"
 #include "Globals.h"
 #include "log.h"
 
 #include <algorithm>
+#include <DirectXMath.h>
+#include <unordered_set>
 
 using namespace std;
 
@@ -63,7 +66,7 @@ static const struct D3D11_QUERY_DESC query_timestamp = {
     0,
 };
 
-static std::unordered_set<CommandList*> warned_cto_command_lists;
+static unordered_set<CommandList*> warned_cto_command_lists;
 
 static void cto_warn_post_commands(CommandList *command_list)
 {

@@ -1,8 +1,12 @@
 #pragma once
 
-#include <nvapi.h>
+#include <d3d11.h>
 #include <string>
 #include <unordered_map>
+
+// Only include this after d3d11.h so that the pre-processor
+// define for __d3d11_h__ will be added.
+#include "nvapi.h"
 
 typedef std::unordered_map<NvU32, NVDRS_SETTING> ProfileSettings;
 extern ProfileSettings profile_settings;

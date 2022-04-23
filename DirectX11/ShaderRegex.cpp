@@ -3,6 +3,7 @@
 #include "CommandList.hpp"
 #include "Globals.h" // For ShaderOverride FIXME: This should be in a separate header
 #include "log.h"
+#include "util.h"
 
 #include <algorithm>
 #include <iterator>
