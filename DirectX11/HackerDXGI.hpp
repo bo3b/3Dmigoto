@@ -1,9 +1,6 @@
 #pragma once
 
-#include "HackerContext.hpp"
-#include "HackerDevice.hpp"
-#include "Overlay.hpp"
-
+#include <d3d11_1.h>
 #include <dxgi1_2.h>
 
 // Forward references required because of circular references from the

@@ -16,9 +16,13 @@
 
 #include "D3D11Wrapper.h"
 #include "DLLMainHook.h"
+#include "Globals.h"
+#include "HackerContext.hpp"
+#include "HackerDevice.hpp"
 #include "HackerDXGI.hpp"
+#include "iid.h"
 #include "log.h"
-#include "util.h"
+#include "Overlay.hpp"
 
 #include <d3d11_1.h>
 

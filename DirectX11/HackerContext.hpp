@@ -3,9 +3,9 @@
 #include "CommandList.hpp"
 #include "DrawCallInfo.h"
 #include "Globals.h"
-#include "HackerDevice.hpp"
 
 #include <d3d11_1.h>
+#include <initguid.h>
 
 // {A3046B1E-336B-4D90-9FD6-234BC09B8687}
 DEFINE_GUID(IID_HackerContext, 0xa3046b1e, 0x336b, 0x4d90, 0x9f, 0xd6, 0x23, 0x4b, 0xc0, 0x9b, 0x86, 0x87);
@@ -157,14 +157,7 @@ private:
     template <
         class ID3D11Shader,
         void (__stdcall ID3D11DeviceContext::*OrigSetShader)(ID3D11Shader* pShader, ID3D11ClassInstance* const* ppClassInstances, UINT NumClassInstances)>
-    void STDMETHODCALLTYPE SetShader(
-        ID3D11Shader*               shader,
-        ID3D11ClassInstance* const* class_instances,
-        UINT                        num_class_instances,
-        std::set<UINT64>*           visited_shaders,
-        UINT64                      selected_shader,
-        UINT64*                     current_shader_hash,
-        ID3D11Shader**              current_shader_handle);
+    void STDMETHODCALLTYPE SetShader(ID3D11Shader* shader, ID3D11ClassInstance* const* class_instances, UINT num_class_instances, std::set<UINT64>* visited_shaders, UINT64 selected_shader, UINT64* current_shader_hash, ID3D11Shader** current_shader_handle);
 
     template <
         void (__stdcall ID3D11DeviceContext::*OrigSetShaderResources)(UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView* const* ppShaderResourceViews)>

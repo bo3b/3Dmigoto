@@ -2,30 +2,26 @@
 
 #include "CommandList.hpp"
 #include "DecompileHLSL.h"
-#include "DirectXMath.h"
 #include "DLLMainHook.h"
 #include "Hunting.hpp"
 #include "Lock.h"
 #include "Profiling.hpp"
-#include "ResourceHash.hpp"
+#include "util_min.h"
 
 #include <ctime>
 #include <d3d11_1.h>
+#include <DirectXMath.h>
 #include <map>
 #include <set>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
+
 extern HINSTANCE migoto_handle;
 
-// Resolve circular include dependency between Globals.h ->
-// CommandList.hpp -> HackerContext.hpp -> Globals.h
-class CommandListCommand;
-class CommandList;
-
-
-enum class MarkingMode {
+enum class MarkingMode
+{
     SKIP,
     ORIGINAL,
     PINK,
