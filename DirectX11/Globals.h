@@ -177,7 +177,7 @@ enum class FrameAnalysisOptions {
     DEFRD_CTX_DELAY = 0x00800000,
     DEFRD_CTX_MASK  = 0x00c00000,
     SYMLINK         = 0x01000000,
-    DEPRECATED      = (signed)0x80000000,
+    DEPRECATED      = static_cast<int>(0x80000000),
 };
 SENSIBLE_ENUM(FrameAnalysisOptions);
 static Enum_Name_t<wchar_t *, FrameAnalysisOptions> FrameAnalysisOptionNames[] = {
@@ -746,7 +746,7 @@ static struct tls* get_tls()
 {
     tls* Tls;
 
-    Tls = (tls*)TlsGetValue(tls_idx);
+    Tls = static_cast<tls*>(TlsGetValue(tls_idx));
     if (!Tls)
     {
         Tls = new tls();

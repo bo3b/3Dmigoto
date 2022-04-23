@@ -156,16 +156,16 @@ static std::wstring lookup_enum_bit_names(struct Enum_Name_t<const wchar_t*, T2>
 
     for (; enum_names->name; enum_names++)
     {
-        if ((T2)(val & enum_names->val) == enum_names->val)
+        if (static_cast<T2>(val & enum_names->val) == enum_names->val)
         {
             if (!ret.empty())
                 ret += L' ';
             ret += enum_names->name;
-            remaining = (T2)(remaining & (T2)~enum_names->val);
+            remaining = static_cast<T2>(remaining & static_cast<T2>(~enum_names->val));
         }
     }
 
-    if (remaining != (T2)0)
+    if (remaining != static_cast<T2>(0))
     {
         wchar_t buf[20] {};
         wsprintf(buf, L"%x", remaining);
@@ -187,7 +187,10 @@ static std::wstring lookup_enum_bit_names(struct Enum_Name_t<const wchar_t*, T2>
 // argument, provide a pointer to a pointer in the 'unrecognised' field and the
 // unrecognised option will be returned. Multiple unrecognised options are
 // still considered errors.
-template <class T1, class T2, class T3>
+template <
+    class T1,
+    class T2,
+    class T3>
 static T2 parse_enum_option_string(struct Enum_Name_t<T1, T2>* enum_names, T3 option_string, T1* unrecognised)
 {
     T3 ptr = option_string, cur;
@@ -260,7 +263,7 @@ template <class T1, class T2>
 static T2 parse_enum_option_string_prefix(struct Enum_Name_t<T1, T2>* enum_names, T1 option_string, T1* unrecognised)
 {
     T1     ptr = option_string, cur;
-    T2     ret = (T2)0;
+    T2     ret = static_cast<T2>(0);
     T2     tmp = T2::INVALID;
     size_t len;
 
