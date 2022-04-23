@@ -1,6 +1,7 @@
 #include "Cursor.h"
 
 #include "Globals.h"
+#include "log.h"
 #include "Overlay.hpp"
 
 //////////////////////////// HARDWARE MOUSE CURSOR SUPPRESSION //////////////////////////

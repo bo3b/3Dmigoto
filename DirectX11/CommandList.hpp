@@ -1,16 +1,21 @@
 #pragma once
 
 #include "DrawCallInfo.h"
-#include "nvapi.h"
 #include "ResourceHash.hpp"
-#include "util.h"
+#include "util_min.h"
 
 #include <d3d11_1.h>
 #include <DirectXMath.h>
 #include <forward_list>
-#include <memory>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <Windows.h>
+
+// We include this specifically after d3d11.h so that it can define
+// the __d3d11_h__ preprocessor and pick up extra calls.
+//#include "nvapi.h"
+#include "nvapi.h"
 
 // Used to prevent typos leading to infinite recursion (or at least overflowing
 // the real stack) due to a section running itself or a circular reference. 64
@@ -165,8 +170,8 @@ public:
     {}
 };
 
-extern std::vector<CommandList*> registered_command_lists;
-extern std::unordered_set<CommandList*> command_lists_profiling;
+extern std::vector<CommandList*>               registered_command_lists;
+extern std::unordered_set<CommandList*>        command_lists_profiling;
 extern std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
 
 // Forward declaration to avoid circular reference since Override.hpp includes

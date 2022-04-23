@@ -1,10 +1,15 @@
 #include "IniHandler.h"
 
+#include "CommandList.hpp"
 #include "Cursor.h"
 #include "Globals.h"
-#include "Hunting.hpp"
+#include "HackerContext.hpp"
+#include "HackerDevice.hpp"
+#include "HackerDXGI.hpp"
+#include "Lock.h"
 #include "log.h"
 #include "NVProfile.h"
+#include "Overlay.hpp"
 #include "Override.hpp"
 #include "pcre2.h"
 #include "ShaderRegex.hpp"
@@ -14,10 +19,14 @@
 #include <codecvt>
 #include <fstream>
 #include <iterator>
+#include <map>
 #include <memory>
 #include <sstream>
 #include <string>
 #include <strsafe.h>
+#include <unordered_map>
+#include <unordered_set>
+#include <winnt.h>
 
 #define INI_FILENAME L"d3dx.ini"
 

@@ -1,11 +1,17 @@
-#include "D3D11Wrapper.h"
-#include "IniHandler.h"
-
-#include "../util.h"
-
-// Including this after the above headers so the nvapi.h include will pick up
-// the d3d11.h pre-processor defines to avoid mis-matches with Profiling.hpp:
 #include "NVProfile.h"
+
+#include "D3D11Wrapper.h"
+#include "Globals.h"
+#include "IniHandler.h"
+#include "log.h"
+#include "Overlay.hpp"
+#include "util.h"
+
+#include <d3d11_1.h>
+
+// Including this after the d3d11 header so the nvapi.h include will pick up
+// the d3d11.h pre-processor defines to avoid mis-matches with Profiling.hpp:
+#include "nvapi.h"
 
 #include <fstream>
 #include <unordered_set>
@@ -604,7 +610,7 @@ static bool next_broken_utf16_line(std::ifstream *fp, std::wstring *line)
     return false;
 }
 
-typedef std::unordered_map<wstring, std::unordered_set<unsigned>> internal_setting_map_type;
+typedef std::unordered_map<wstring, unordered_set<unsigned>> internal_setting_map_type;
 internal_setting_map_type internal_setting_map;
 
 // Any settings with the internal flag are specially encoded, so we have to

@@ -1,11 +1,16 @@
 #include "ResourceHash.hpp"
 
+#include "CommandList.hpp"
 #include "Globals.h"
 #include "Hunting.hpp"
+#include "iid.h"
+#include "Lock.h"
 #include "log.h"
 #include "Overlay.hpp"
 #include "Profiling.hpp"
 #include "util.h"
+
+#include <initguid.h>
 
 // DirectXTK headers fail to include their own pre-requisites. We just want
 // GetSurfaceInfo from LoaderHelpers. These are also order dependent.
@@ -1270,8 +1275,7 @@ bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)
 // -----------------------------------------------------------------------------------------------
 
 // {4A40BF2F-6358-470F-BA0A-662E3E2D8CD3}
-DEFINE_GUID(ResourceReleaseTrackerGuid,
-0x4a40bf2f, 0x6358, 0x470f, 0xba, 0xa, 0x66, 0x2e, 0x3e, 0x2d, 0x8c, 0xd3);
+DEFINE_GUID(ResourceReleaseTrackerGuid, 0x4a40bf2f, 0x6358, 0x470f, 0xba, 0xa, 0x66, 0x2e, 0x3e, 0x2d, 0x8c, 0xd3);
 
 ResourceReleaseTracker::ResourceReleaseTracker(ID3D11Resource *resource) :
     resource(resource)

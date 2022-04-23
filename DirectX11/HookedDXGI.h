@@ -1,9 +1,9 @@
 #pragma once
 
-#include "HackerDevice.hpp"
-
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
+
+class HackerDevice;
 
 // -----------------------------------------------------------------------------
 // This class is 'Hooked', instead of 'Hacker', because it's a hook version, instead

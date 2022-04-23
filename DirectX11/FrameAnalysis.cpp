@@ -4,8 +4,10 @@
 
 #include "D3D11Wrapper.h"
 #include "Globals.h"
+#include "HackerDevice.hpp"
 #include "Input.hpp"
-#include "Lock.h"
+#include "log.h"
+#include "util.h"
 
 #include <cstdarg>
 #include <ScreenGrab.h>
@@ -14,6 +16,7 @@
 #include <wincodec.h>
 
 // For windows shortcuts:
+
 #include <ShlGuid.h>
 #include <ShObjIdl.h>
 

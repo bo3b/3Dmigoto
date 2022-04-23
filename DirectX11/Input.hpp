@@ -1,6 +1,9 @@
 #pragma once
 
-#include "HackerDevice.hpp"
+#include <intsafe.h>
+#include <memory>
+#include <vector>
+#include <windows.h>
 
 // The "input" files are a set of objects to handle user input for both gaming 
 // purposes and for tool purposes, like hunting for shaders.
@@ -11,6 +14,10 @@
 // For gameplay purposes, like aiming override, HUD movement, menu adjustments
 // based on keys- the VKInputAction objects are used.
 
+
+// We only need forward declaration here instead of including the
+// HackerDevice.hpp file, which brings in a lot of other includes.
+class HackerDevice;
 
 // -----------------------------------------------------------------------------
 // InputListener defines an abstract interface for receiving key events. Subclass 
@@ -158,9 +165,9 @@ public:
 // Right now these are the only two combinations we need, but feel free to add 
 // more variants as needed.
 
-void RegisterKeyBinding(LPCWSTR iniKey, const wchar_t *keyName,
-        std::shared_ptr<InputListener> listener, int auto_repeat, int down_delay,
-        int up_delay);
+void RegisterKeyBinding(LPCWSTR        iniKey, const wchar_t * keyName,
+        std::shared_ptr<InputListener> listener, int           auto_repeat, int down_delay,
+        int                            up_delay);
 bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR ini_key,
         InputCallback down_cb, InputCallback up_cb, int auto_repeat,
         void *private_data);

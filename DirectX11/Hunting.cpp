@@ -1,24 +1,26 @@
 #include "Hunting.hpp"
 
 #include "D3D11Wrapper.h"
-#include "DecompileHLSL.h"
 #include "FrameAnalysis.hpp"
 #include "Globals.h"
+#include "HackerContext.hpp"
+#include "HackerDevice.hpp"
+#include "HackerDXGI.hpp"
 #include "IniHandler.h"
 #include "Input.hpp"
-#include "Override.hpp"
-#include "Profiling.hpp"
+#include "log.h"
+#include "Overlay.hpp"
 #include "ScreenGrab.h"
 #include "ShaderRegex.hpp"
-#include "util.h"
-#include "wincodec.h"
-
-#include "Assembler/Assembler.h"
 
 #include <codecvt>
+#include <d3d11_1.h>
 #include <d3dcompiler.h>
+#include <map>
+#include <set>
 #include <sstream>
 #include <string>
+#include <wincodec.h>
 
 using namespace std;
 
@@ -216,9 +218,9 @@ static void dump_usage_register(
 }
 
 static void dump_shader_usage_info(
-    HANDLE                              f,
-    std::map<UINT64, shader_info_data>* info_map,
-    char*                               tag)
+    HANDLE                         f,
+    map<UINT64, shader_info_data>* info_map,
+    char*                          tag)
 {
     std::map<UINT64, shader_info_data>::iterator               i;
     std::set<UINT64>::iterator                                 j;

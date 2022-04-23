@@ -1,8 +1,14 @@
 #pragma once
 
+#include "DrawCallInfo.h"
+#include "Globals.h"
 #include "HackerContext.hpp"
 
 #include <d3d11_1.h>
+#include <initguid.h>
+#include <string>
+#include <vector>
+#include <wrl.h>
 
 // {2AEE5B3A-68ED-44E9-AA4D-9EAA6315D72B}
 DEFINE_GUID(IID_FrameAnalysisContext,

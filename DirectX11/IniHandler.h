@@ -1,6 +1,16 @@
 #pragma once
 
-#include "HackerDevice.hpp"
+#include "util_min.h"
+
+#include <d3d11_1.h>
+#include <string>
+#include <vector>
+
+// We include this specifically after d3d11.h so that it can define
+// the __d3d11_h__ preprocessor and pick up extra calls.
+#include "nvapi.h"
+
+class HackerDevice;
 
 NvAPI_Status check_stereo();
 void         flag_config_reload(HackerDevice* device, void* private_data);

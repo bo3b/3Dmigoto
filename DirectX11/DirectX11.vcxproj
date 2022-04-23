@@ -92,6 +92,7 @@
     <ClInclude Include="HookedDevice.h" />
     <ClInclude Include="HookedDXGI.h" />
     <ClInclude Include="Hunting.hpp" />
+    <ClInclude Include="iid.h" />
     <ClInclude Include="IniHandler.h" />
     <ClInclude Include="Input.hpp" />
     <ClInclude Include="lock.h" />
