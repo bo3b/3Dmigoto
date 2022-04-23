@@ -1,9 +1,13 @@
 #pragma once
 
-#include "nvapi.h"
 
+#include <d3d11_1.h>
 #include <string>
 #include <wrl.h>
+
+// We need to have __d3d11_h__ defined before nvapi.h so that it can pick up optional
+// calls in the nvapi.  It is defined by d3d11.h.
+#include "nvapi.h"
 
 namespace Profiling {
     enum class Mode {
@@ -197,7 +201,7 @@ namespace Profiling {
         return NVAPI_PROFILE(::NvAPI_DISP_GetDisplayConfig(pathInfoCount, pathInfo));
     }
 #if defined(_D3D9_H_) || defined(__d3d10_h__) || defined(__d3d11_h__)
-    static inline NvAPI_Status NvAPI_D3D_GetCurrentSLIState(IUnknown *pDevice, NV_GET_CURRENT_SLI_STATE *pSliState)
+    static inline NvAPI_Status NvAPI_D3D_GetCurrentSLIState(IUnknown* pDevice, NV_GET_CURRENT_SLI_STATE* pSliState)
     {
         return NVAPI_PROFILE(::NvAPI_D3D_GetCurrentSLIState(pDevice, pSliState));
     }

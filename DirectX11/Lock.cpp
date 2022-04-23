@@ -1,10 +1,17 @@
 #include "Lock.h"
+
+#include "DLLMainHook.h"
+#include "Globals.h"
 #include "Overlay.hpp"
 
 #include <cinttypes>
+#include <intrin.h>
+#include <log.h>
 #include <Psapi.h>
+#include <set>
 #include <unordered_map>
-#include <vector>
+#include <unordered_set>
+#include <Windows.h>
 
 // This implements a lock dependency checker to detect possible deadlock
 // scenarios even if no deadlock was actually hit. It is inspired by the

@@ -2,18 +2,24 @@
 
 #include "CommonStates.h"
 #include "Effects.h"
-#include "HackerContext.hpp"
-#include "HackerDevice.hpp"
 #include "PrimitiveBatch.h"
 #include "SpriteBatch.h"
 #include "SpriteFont.h"
+#include "util.h"
 #include "VertexTypes.h"
 
 #include <d3d11_1.h>
 #include <memory>
 #include <wrl.h>
 
-class HackerSwapChain;
+// Using forward references for these needed initializer objects. We specifically
+// do not want to include HackerDevice.hpp or HackerContext.hpp here because it
+// sets up annoying and complicated circular dependencies.  For situations where
+// we access objects via pointers, we don't need the #includes, and as a general
+// rule it's better to use forward references to avoid accidental includes that
+// obfuscate definitions and usage.
+class HackerContext;
+class HackerDevice;
 
 const enum class Log_Level
 {

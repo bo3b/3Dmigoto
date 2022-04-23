@@ -1,13 +1,13 @@
 #include "Input.hpp"
 
+#include "Globals.h"
 #include "IniHandler.h"
 #include "log.h"
-#include "util.h"
+#include "Overlay.hpp"
 #include "vkeys.h"
 
 #include <algorithm>
 #include <sstream>
-#include <vector>
 #include <Xinput.h>
 
 using namespace std;

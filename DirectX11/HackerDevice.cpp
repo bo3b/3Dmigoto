@@ -12,26 +12,28 @@
 // version of LOCK_RESOURCE_CREATION_MODE:
 #include "HackerDevice.hpp"
 
-#include "CommandList.hpp"
 #include "D3D11Wrapper.h"
-#include "DecompileHLSL.h"
 #include "FrameAnalysis.hpp"
+#include "Globals.h"
 #include "HackerContext.hpp"
-#include "HackerDXGI.hpp"
 #include "HookedDevice.h"
-#include "Hunting.hpp"
 #include "Lock.h"
 #include "log.h"
-#include "nvapi.h"
-#include "ResourceHash.hpp"
+#include "Overlay.hpp"
 #include "shader.h"
 #include "ShaderRegex.hpp"
-#include "util.h"
-
-#include "Assembler/Assembler.h"
 
 #include <codecvt>
+#include <d3d11_1.h>
 #include <d3dcompiler.h>
+#include <unordered_map>
+
+#include <DirectX11/iid.h>
+
+// We include this specifically after d3d11.h so that it can define
+// the __d3d11_h__ preprocessor and pick up extra calls.
+#include "nvapi.h"
+
 
 using namespace std;
 
@@ -74,7 +76,7 @@ using namespace std;
 // could potentially then call into us), or denying the game from recieving the
 // IDXGIDevice in the first place and hoping that it has a fallback path (it
 // won't).
-typedef std::unordered_map<IUnknown*, HackerDevice*> DeviceMap;
+typedef unordered_map<IUnknown*, HackerDevice*> DeviceMap;
 static DeviceMap                                     device_map;
 
 // This will look up a HackerDevice corresponding to some unknown device object

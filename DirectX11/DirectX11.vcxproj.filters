@@ -105,6 +105,9 @@
     <ClInclude Include="..\util_min.h">
       <Filter>Shared</Filter>
     </ClInclude>
+    <ClInclude Include="iid.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />

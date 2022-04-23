@@ -2,7 +2,10 @@
 
 #include "D3D11Wrapper.h"
 #include "Globals.h"
+#include "HackerDevice.hpp"
 #include "IniHandler.h"
+#include "log.h"
+#include "Overlay.hpp"
 
 #include <algorithm>
 #include <cmath>

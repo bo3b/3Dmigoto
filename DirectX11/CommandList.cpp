@@ -6,10 +6,13 @@
 #include "D3D11Wrapper.h"
 #include "HackerContext.hpp"
 #include "HackerDevice.hpp"
-#include "Hunting.hpp"
+#include "HackerDXGI.hpp"
 #include "IniHandler.h"
+#include "log.h"
+#include "Overlay.hpp"
 #include "Override.hpp"
 #include "Profiling.hpp"
+#include "ResourceHash.hpp"
 
 #include <algorithm>
 #include <d3dcompiler.h>

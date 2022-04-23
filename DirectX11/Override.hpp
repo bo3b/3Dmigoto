@@ -1,10 +1,15 @@
 #pragma once
 
-#include "HackerDevice.hpp"
+#include "CommandList.hpp"
 #include "Input.hpp"
 
 #include <DirectXMath.h>
+#include <map>
 #include <vector>
+
+// We only need forward declaration here instead of including the
+// HackerDevice.hpp file, which brings in a lot of other includes.
+class HackerDevice;
 
 enum class KeyOverrideType {
     INVALID = -1,

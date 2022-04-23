@@ -5,8 +5,7 @@
 
 #pragma once
 
-#include "d3dcompiler.h"
-
+#include <d3dcompiler.h>
 #include <string>
 #include <vector>
 
