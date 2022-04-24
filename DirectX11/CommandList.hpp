@@ -14,7 +14,6 @@
 
 // We include this specifically after d3d11.h so that it can define
 // the __d3d11_h__ preprocessor and pick up extra calls.
-//#include "nvapi.h"
 #include "nvapi.h"
 
 // Used to prevent typos leading to infinite recursion (or at least overflowing
