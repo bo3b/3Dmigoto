@@ -20,10 +20,9 @@
 
 using namespace std;
 
-
 #define MAX_SIMULTANEOUS_NOTICES 10
 
-static bool has_notice = false;
+static bool     has_notice           = false;
 static unsigned notice_cleared_frame = 0;
 
 static class Notices
@@ -43,25 +42,26 @@ public:
     }
 } notices;
 
-struct LogLevelParams {
-    DirectX::XMVECTORF32 colour;
-    DWORD duration;
-    bool hide_in_release;
+struct LogLevelParams
+{
+    DirectX::XMVECTORF32                 colour;
+    DWORD                                duration;
+    bool                                 hide_in_release;
     std::unique_ptr<DirectX::SpriteFont> Overlay::*font;
 };
 
 struct LogLevelParams log_levels[] = {
-    { DirectX::Colors::Red,       20000, false, &Overlay::fontNotifications }, // DIRE
-    { DirectX::Colors::OrangeRed, 10000, false, &Overlay::fontNotifications }, // WARNING
-    { DirectX::Colors::OrangeRed, 10000, false, &Overlay::fontProfiling     }, // WARNING_MONOSPACE
-    { DirectX::Colors::Orange,     5000,  true, &Overlay::fontNotifications }, // NOTICE
-    { DirectX::Colors::LimeGreen,  2000,  true, &Overlay::fontNotifications }, // INFO
+    { DirectX::Colors::Red, 20000, false, &Overlay::fontNotifications },        // DIRE
+    { DirectX::Colors::OrangeRed, 10000, false, &Overlay::fontNotifications },  // WARNING
+    { DirectX::Colors::OrangeRed, 10000, false, &Overlay::fontProfiling },      // WARNING_MONOSPACE
+    { DirectX::Colors::Orange, 5000, true, &Overlay::fontNotifications },       // NOTICE
+    { DirectX::Colors::LimeGreen, 2000, true, &Overlay::fontNotifications },    // INFO
 };
 
 // Side note: Not really stoked with C++ string handling.  There are like 4 or
 // 5 different ways to do things, all partly compatible, none a clear winner in
 // terms of simplicity and clarity.  Generally speaking we'd want to use C++
-// wstring and string, but there are no good output formatters.  Maybe the 
+// wstring and string, but there are no good output formatters.  Maybe the
 // newer iostream based pieces, but we'd still need to convert.
 //
 // The philosophy here and in other files, is to use whatever the API that we
@@ -76,8 +76,10 @@ struct LogLevelParams log_levels[] = {
 // Max expected on-screen string size, used for buffer safe calls.
 const int maxstring = 1024;
 
-
-Overlay::Overlay(HackerDevice *device, HackerContext *context, IDXGISwapChain *swap_chain)
+Overlay::Overlay(
+    HackerDevice*   device,
+    HackerContext*  context,
+    IDXGISwapChain* swap_chain)
 {
     LOG_INFO("Overlay::Overlay created for %p\n", swap_chain);
     LOG_INFO("  on HackerDevice: %p, HackerContext: %p\n", device, context);
@@ -87,12 +89,12 @@ Overlay::Overlay(HackerDevice *device, HackerContext *context, IDXGISwapChain *s
     // callbacks or other problems. We just want to draw here, nothing tricky.
     // The only exception being that we need the HackerDevice in order to
     // draw the current stereoparams.
-    hackerDevice = device;
+    hackerDevice  = device;
     hackerContext = context;
     origSwapChain = swap_chain;
 
     // Must use trampoline context to prevent 3DMigoto hunting its own overlay:
-    origDevice = hackerDevice->GetPassThroughOrigDevice1();
+    origDevice  = hackerDevice->GetPassThroughOrigDevice1();
     origContext = context->GetPassThroughOrigContext1();
 
     // We are actively using the Device and Context, so we need to make
@@ -125,12 +127,10 @@ Overlay::Overlay(HackerDevice *device, HackerContext *context, IDXGISwapChain *s
     // is of particular importance when we are injected into a Windows
     // Store app and may not even be called that ourselves.
     HMODULE handle = NULL;
-    GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS
-            | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-            (LPCWSTR)log_overlay, &handle);
-    HRSRC rc = FindResource(handle, MAKEINTRESOURCE(IDR_COURIERBOLD), MAKEINTRESOURCE(SPRITEFONT));
-    HGLOBAL rcData = LoadResource(handle, rc);
-    DWORD fontSize = SizeofResource(handle, rc);
+    GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)log_overlay, &handle);
+    HRSRC          rc       = FindResource(handle, MAKEINTRESOURCE(IDR_COURIERBOLD), MAKEINTRESOURCE(SPRITEFONT));
+    HGLOBAL        rcData   = LoadResource(handle, rc);
+    DWORD          fontSize = SizeofResource(handle, rc);
     uint8_t const* fontBlob = static_cast<const uint8_t*>(LockResource(rcData));
 
     // We want to use the original device and original context here, because
@@ -144,16 +144,16 @@ Overlay::Overlay(HackerDevice *device, HackerContext *context, IDXGISwapChain *s
     // we want something a little smaller, and variable width. Liberation
     // Sans has essentially the same metrics as Arial,
     // but is not encumbered.
-    rc = FindResource(handle, MAKEINTRESOURCE(IDR_ARIAL), MAKEINTRESOURCE(SPRITEFONT));
-    rcData = LoadResource(handle, rc);
+    rc       = FindResource(handle, MAKEINTRESOURCE(IDR_ARIAL), MAKEINTRESOURCE(SPRITEFONT));
+    rcData   = LoadResource(handle, rc);
     fontSize = SizeofResource(handle, rc);
     fontBlob = static_cast<const uint8_t*>(LockResource(rcData));
     fontNotifications.reset(new DirectX::SpriteFont(origDevice, fontBlob, fontSize));
     fontNotifications->SetDefaultCharacter(L'?');
 
     // Smaller monospaced font for profiling text
-    rc = FindResource(handle, MAKEINTRESOURCE(IDR_COURIERSMALL), MAKEINTRESOURCE(SPRITEFONT));
-    rcData = LoadResource(handle, rc);
+    rc       = FindResource(handle, MAKEINTRESOURCE(IDR_COURIERSMALL), MAKEINTRESOURCE(SPRITEFONT));
+    rcData   = LoadResource(handle, rc);
     fontSize = SizeofResource(handle, rc);
     fontBlob = static_cast<const uint8_t*>(LockResource(rcData));
     fontProfiling.reset(new DirectX::SpriteFont(origDevice, fontBlob, fontSize));
@@ -166,16 +166,13 @@ Overlay::Overlay(HackerDevice *device, HackerContext *context, IDXGISwapChain *s
     states.reset(new DirectX::CommonStates(origDevice));
     effect.reset(new DirectX::BasicEffect(origDevice));
 
-    void const *shaderByteCode;
-    size_t byteCodeLength;
+    void const* shaderByteCode;
+    size_t      byteCodeLength;
 
     effect->SetVertexColorEnabled(true);
     effect->GetVertexShaderBytecode(&shaderByteCode, &byteCodeLength);
 
-    HRESULT hr = origDevice->CreateInputLayout(DirectX::VertexPositionColor::InputElements,
-            DirectX::VertexPositionColor::InputElementCount,
-            shaderByteCode, byteCodeLength,
-            inputLayout.ReleaseAndGetAddressOf());
+    HRESULT hr = origDevice->CreateInputLayout(DirectX::VertexPositionColor::InputElements, DirectX::VertexPositionColor::InputElementCount, shaderByteCode, byteCodeLength, inputLayout.ReleaseAndGetAddressOf());
     if (FAILED(hr))
         throw std::runtime_error("CreateInputLayout failed");
 
@@ -192,7 +189,6 @@ Overlay::~Overlay()
     hackerDevice->Release();
 }
 
-
 // -----------------------------------------------------------------------------
 
 using namespace DirectX::SimpleMath;
@@ -200,16 +196,15 @@ using namespace DirectX::SimpleMath;
 // Expected to be called at DXGI::Present() to be the last thing drawn.
 
 // Notes:
-    //1) Active PS location(probably x / N format)
-    //2) Active VS location(x / N format)
-    //3) Current convergence and separation. (convergence, a must)
-    //4) Error state of reload(syntax errors go red or something)
-    //5) Duplicate Mark(maybe yellow text for location, red if Decompile failed)
+//  1) Active PS location(probably x / N format)
+//  2) Active VS location(x / N format)
+//  3) Current convergence and separation. (convergence, a must)
+//  4) Error state of reload(syntax errors go red or something)
+//  5) Duplicate Mark(maybe yellow text for location, red if Decompile failed)
 
-    //Maybe:
-    //5) Other state, like show_original active.
-    //6) Active toggle override.
-
+//Maybe:
+//  5) Other state, like show_original active.
+//  6) Active toggle override.
 
 // We need to save off everything that DirectTK will clobber and
 // restore it before returning to the application. This is necessary
@@ -306,17 +301,20 @@ void Overlay::RestoreState()
 }
 
 #ifdef NTDDI_WIN10
-#include <d3d11on12.h>
-#include <dxgi1_4.h>
-static ID3D11Texture2D* get_11on12_backbuffer(ID3D11Device *origDevice, IDXGISwapChain *origSwapChain)
+    #include <d3d11on12.h>
+    #include <dxgi1_4.h>
+
+static ID3D11Texture2D* get_11on12_backbuffer(
+    ID3D11Device*   origDevice,
+    IDXGISwapChain* origSwapChain)
 {
-    ID3D12Resource *d3d12_bb = NULL;
-    ID3D11Texture2D *d3d11_bb = NULL;
-    ID3D11On12Device *d3d11on12_dev = NULL;
-    IDXGISwapChain3 *swap_chain_3 = NULL;
-    D3D11_RESOURCE_FLAGS flags = { D3D11_BIND_RENDER_TARGET };
-    UINT bb_idx;
-    HRESULT hr;
+    ID3D12Resource*      d3d12_bb      = NULL;
+    ID3D11Texture2D*     d3d11_bb      = NULL;
+    ID3D11On12Device*    d3d11on12_dev = NULL;
+    IDXGISwapChain3*     swap_chain_3  = NULL;
+    D3D11_RESOURCE_FLAGS flags         = { D3D11_BIND_RENDER_TARGET };
+    UINT                 bb_idx;
+    HRESULT              hr;
 
     if (FAILED(origDevice->QueryInterface(IID_ID3D11On12Device, (void**)&d3d11on12_dev)))
         return NULL;
@@ -386,10 +384,7 @@ static ID3D11Texture2D* get_11on12_backbuffer(ID3D11Device *origDevice, IDXGISwa
     // matters unless they have done something very weird and we need a
     // different barrier altogether, or I haven't considered some subtlty -
     // let's go with RT->PRESENT for now and see how it goes in practice:
-    hr = d3d11on12_dev->CreateWrappedResource(d3d12_bb, &flags,
-            D3D12_RESOURCE_STATE_RENDER_TARGET, /* in "state" */
-            D3D12_RESOURCE_STATE_PRESENT, /* out "state" */
-            IID_ID3D11Texture2D, (void**)&d3d11_bb);
+    hr = d3d11on12_dev->CreateWrappedResource(d3d12_bb, &flags, D3D12_RESOURCE_STATE_RENDER_TARGET, /* in "state" */ D3D12_RESOURCE_STATE_PRESENT, /* out "state" */ IID_ID3D11Texture2D, (void**)&d3d11_bb);
     LOG_DEBUG("  ID3D11Texture2D: %p, result: 0x%x\n", d3d11_bb, hr);
 
 out:
@@ -403,9 +398,11 @@ out:
     return d3d11_bb;
 }
 
-static void flush_d3d11on12(ID3D11Device *origDevice, ID3D11DeviceContext *origContext)
+static void flush_d3d11on12(
+    ID3D11Device*        origDevice,
+    ID3D11DeviceContext* origContext)
 {
-    ID3D11On12Device *d3d11on12_dev = NULL;
+    ID3D11On12Device* d3d11on12_dev = NULL;
 
     if (FAILED(origDevice->QueryInterface(IID_ID3D11On12Device, (void**)&d3d11on12_dev)))
         return;
@@ -432,12 +429,12 @@ static void flush_d3d11on12(ID3D11Device *origDevice, ID3D11DeviceContext *origC
 
 #else
 
-static ID3D11Texture2D* get_11on12_backbuffer(ID3D11Device *origDevice, IDXGISwapChain *origSwapChain)
+static ID3D11Texture2D* get_11on12_backbuffer(ID3D11Device* origDevice, IDXGISwapChain* origSwapChain)
 {
     return NULL;
 }
 
-static void flush_d3d11on12(ID3D11Device *origDevice, ID3D11DeviceContext *origContext)
+static void flush_d3d11on12(ID3D11Device* origDevice, ID3D11DeviceContext* origContext)
 {
 }
 
@@ -448,15 +445,16 @@ static void flush_d3d11on12(ID3D11Device *origDevice, ID3D11DeviceContext *origC
 // For two games we know of (Batman Arkham Knight and Project Cars) we were not
 // getting an overlay, because apparently the rendertarget was left in an odd
 // state.  This adds an init to be certain that the rendertarget is the backbuffer
-// so that the overlay is drawn. 
+// so that the overlay is drawn.
 
 HRESULT Overlay::InitDrawState()
 {
     HRESULT hr;
 
-    ID3D11Texture2D *pBackBuffer;
+    ID3D11Texture2D* pBackBuffer;
     hr = origSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&pBackBuffer);
-    if (FAILED(hr)) {
+    if (FAILED(hr))
+    {
         // The back buffer doesn't support the D3D11 Texture2D
         // interface. Maybe this is DX12 - if we have been built with
         // the Win 10 SDK we can handle that via 11On12:
@@ -472,7 +470,7 @@ HRESULT Overlay::InitDrawState()
     resolution = DirectX::XMUINT2(description.Width, description.Height);
 
     // use the back buffer address to create the render target
-    ID3D11RenderTargetView *backbuffer;
+    ID3D11RenderTargetView* backbuffer;
     hr = origDevice->CreateRenderTargetView(pBackBuffer, NULL, &backbuffer);
 
     pBackBuffer->Release();
@@ -498,17 +496,24 @@ HRESULT Overlay::InitDrawState()
     return S_OK;
 }
 
-void Overlay::DrawRectangle(float x, float y, float w, float h, float r, float g, float b, float opacity)
+void Overlay::DrawRectangle(
+    float x,
+    float y,
+    float w,
+    float h,
+    float r,
+    float g,
+    float b,
+    float opacity)
 {
-    DirectX::XMVECTORF32 colour = {r, g, b, opacity};
+    DirectX::XMVECTORF32 colour = { r, g, b, opacity };
 
     origContext->OMSetBlendState(states->AlphaBlend(), nullptr, 0xFFFFFFFF);
     origContext->OMSetDepthStencilState(states->DepthNone(), 0);
     origContext->RSSetState(states->CullNone());
 
     // Use pixel coordinates to match SpriteBatch:
-    Matrix proj = Matrix::CreateScale(2.0f / resolution.x, -2.0f / resolution.y, 1)
-        * Matrix::CreateTranslation(-1, 1, 0);
+    Matrix proj = Matrix::CreateScale(2.0f / resolution.x, -2.0f / resolution.y, 1) * Matrix::CreateTranslation(-1, 1, 0);
     effect->SetProjection(proj);
 
     // This call will change VS + PS + constant buffer state:
@@ -519,31 +524,39 @@ void Overlay::DrawRectangle(float x, float y, float w, float h, float r, float g
     primitiveBatch->Begin();
 
     // DirectXTK is using 0,1,2 0,2,3, so layout the vectors clockwise:
-    DirectX::VertexPositionColor v1(Vector3(x  , y  , 0), colour);
-    DirectX::VertexPositionColor v2(Vector3(x+w, y  , 0), colour);
-    DirectX::VertexPositionColor v3(Vector3(x+w, y+h, 0), colour);
-    DirectX::VertexPositionColor v4(Vector3(x  , y+h, 0), colour);
+    DirectX::VertexPositionColor v1(Vector3(x, y, 0), colour);
+    DirectX::VertexPositionColor v2(Vector3(x + w, y, 0), colour);
+    DirectX::VertexPositionColor v3(Vector3(x + w, y + h, 0), colour);
+    DirectX::VertexPositionColor v4(Vector3(x, y + h, 0), colour);
 
     primitiveBatch->DrawQuad(v1, v2, v3, v4);
 
     primitiveBatch->End();
 }
 
-void Overlay::DrawOutlinedString(DirectX::SpriteFont *font, wchar_t const *text, DirectX::XMFLOAT2 const &position, DirectX::FXMVECTOR color)
+void Overlay::DrawOutlinedString(
+    DirectX::SpriteFont*     font,
+    wchar_t const*           text,
+    DirectX::XMFLOAT2 const& position,
+    DirectX::FXMVECTOR       color)
 {
     font->DrawString(spriteBatch.get(), text, position + Vector2(-1, 0), DirectX::Colors::Black);
-    font->DrawString(spriteBatch.get(), text, position + Vector2( 1, 0), DirectX::Colors::Black);
-    font->DrawString(spriteBatch.get(), text, position + Vector2( 0,-1), DirectX::Colors::Black);
-    font->DrawString(spriteBatch.get(), text, position + Vector2( 0, 1), DirectX::Colors::Black);
+    font->DrawString(spriteBatch.get(), text, position + Vector2(1, 0), DirectX::Colors::Black);
+    font->DrawString(spriteBatch.get(), text, position + Vector2(0, -1), DirectX::Colors::Black);
+    font->DrawString(spriteBatch.get(), text, position + Vector2(0, 1), DirectX::Colors::Black);
     font->DrawString(spriteBatch.get(), text, position, color);
 }
 
 // -----------------------------------------------------------------------------
 
-// The active shader will show where we are in each list. / 0 / 0 will mean that we are not 
-// actively searching. 
+// The active shader will show where we are in each list. / 0 / 0 will mean that we are not
+// actively searching.
 
-static void AppendShaderText(wchar_t *fullLine, wchar_t *type, int pos, size_t size)
+static void AppendShaderText(
+    wchar_t* fullLine,
+    wchar_t* type,
+    int      pos,
+    size_t   size)
 {
     if (size == 0)
         return;
@@ -559,14 +572,14 @@ static void AppendShaderText(wchar_t *fullLine, wchar_t *type, int pos, size_t s
     wcscat_s(fullLine, maxstring, append);
 }
 
-
 // We also want to show the count of active vertex, pixel, compute, geometry, domain, hull
 // shaders, that are active in the frame.  Any that have a zero count will be stripped, to
 // keep it from being too busy looking.
 
-static void CreateShaderCountString(wchar_t *counts)
+static void CreateShaderCountString(
+    wchar_t* counts)
 {
-    const wchar_t *marking_mode;
+    const wchar_t* marking_mode;
 
     wcscpy_s(counts, maxstring, L"");
     // The order here more or less follows how important these are for
@@ -583,7 +596,7 @@ static void CreateShaderCountString(wchar_t *counts)
         AppendShaderText(counts, L"VB", G->mSelectedVertexBufferPos, G->mVisitedVertexBuffers.size());
     if (G->mSelectedIndexBuffer != -1)
         AppendShaderText(counts, L"IB", G->mSelectedIndexBufferPos, G->mVisitedIndexBuffers.size());
-    if (G->mSelectedRenderTarget != (ID3D11Resource *)-1)
+    if (G->mSelectedRenderTarget != (ID3D11Resource*)-1)
         AppendShaderText(counts, L"RT", G->mSelectedRenderTargetPos, G->mVisitedRenderTargets.size());
 
     marking_mode = lookup_enum_name(MarkingModeNames, G->marking_mode);
@@ -591,14 +604,15 @@ static void CreateShaderCountString(wchar_t *counts)
         wcscat_s(counts, maxstring, marking_mode);
 }
 
-
 // Need to convert from the current selection, mSelectedVertexShader as hash, and
 // find the OriginalShaderInfo that matches.  This is a linear search instead of a
 // hash lookup, because we don't have the ID3D11DeviceChild*.
 
-static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
+static bool FindInfoText(
+    wchar_t* info,
+    UINT64   selectedShader)
 {
-    for (auto &loaded: G->mReloadedShaders)
+    for (auto& loaded : G->mReloadedShaders)
     //for each (pair<ID3D11DeviceChild *, OriginalShaderInfo> loaded in G->mReloadedShaders)
     {
         if ((loaded.second.hash == selectedShader) && !loaded.second.infoText.empty())
@@ -624,21 +638,25 @@ static bool FindInfoText(wchar_t *info, UINT64 selectedShader)
     return false;
 }
 
-
 // This is for a line of text as info about the currently selected shader.
 // The line is pulled out of the header of the HLSL text file, and can be
 // anything. Since there can be multiple shaders selected, VS and PS and HS for
 // example, we'll show one line for each, but only those that are present
 // in ShaderFixes and have something other than a blank line at the top.
 
-void Overlay::DrawShaderInfoLine(char *type, UINT64 selected_shader, float *y, bool shader)
+void Overlay::DrawShaderInfoLine(
+    char*  type,
+    UINT64 selected_shader,
+    float* y,
+    bool   shader)
 {
     wchar_t osdString[maxstring];
     Vector2 strSize;
     Vector2 textPosition;
-    float x = 0;
+    float   x = 0;
 
-    if (shader) {
+    if (shader)
+    {
         if (selected_shader == -1)
             return;
 
@@ -649,7 +667,9 @@ void Overlay::DrawShaderInfoLine(char *type, UINT64 selected_shader, float *y, b
 
         if (!FindInfoText(osdString, selected_shader) && !G->verbose_overlay)
             return;
-    } else {
+    }
+    else
+    {
         if (selected_shader == 0xffffffff || !G->verbose_overlay)
             return;
 
@@ -666,7 +686,8 @@ void Overlay::DrawShaderInfoLine(char *type, UINT64 selected_shader, float *y, b
     DrawOutlinedString(font.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
 }
 
-void Overlay::DrawShaderInfoLines(float *y)
+void Overlay::DrawShaderInfoLines(
+    float* y)
 {
     // Order is the same as the pipeline... Not quite the same as the count
     // summary line, which is sorted by "the order in which we added them"
@@ -683,58 +704,65 @@ void Overlay::DrawShaderInfoLines(float *y)
     DrawShaderInfoLine("PS", G->mSelectedPixelShader, y, true);
     DrawShaderInfoLine("CS", G->mSelectedComputeShader, y, true);
     // FIXME? This one is stored as a handle, not a hash:
-    if (G->mSelectedRenderTarget != (ID3D11Resource *)-1)
+    if (G->mSelectedRenderTarget != (ID3D11Resource*)-1)
         DrawShaderInfoLine("RT", GetOrigResourceHash(G->mSelectedRenderTarget), y, false);
 }
 
-void Overlay::DrawNotices(float *y)
+void Overlay::DrawNotices(
+    float* y)
 {
     std::vector<OverlayNotice>::iterator notice;
-    DWORD time = GetTickCount();
-    Vector2 textPosition;
-    Vector2 strSize;
-    int level, displayed = 0;
+    DWORD                                time = GetTickCount();
+    Vector2                              textPosition;
+    Vector2                              strSize;
+    int                                  level, displayed = 0;
 
     ENTER_CRITICAL_SECTION(&notices.lock);
-
-    has_notice = false;
-    for (level = 0; level < static_cast<int>(Log_Level::num_levels); level++) {
-        if (log_levels[level].hide_in_release && G->hunting == Hunting_Mode::disabled)
-            continue;
-
-        for (notice = notices.notices[level].begin(); notice != notices.notices[level].end() && displayed < MAX_SIMULTANEOUS_NOTICES; ) {
-            if (!notice->timestamp) {
-                // Set the timestamp on the first present call
-                // that we display the message after it was
-                // issued. Means messages won't be missed if
-                // they exceed the maximum we can display
-                // simultaneously, and helps combat messages
-                // disappearing too quickly if there have been
-                // no present calls for a while after they were
-                // issued.
-                notice->timestamp = time;
-            } else if ((time - notice->timestamp) > log_levels[level].duration) {
-                notice = notices.notices[level].erase(notice);
+    {
+        has_notice = false;
+        for (level = 0; level < static_cast<int>(Log_Level::num_levels); level++)
+        {
+            if (log_levels[level].hide_in_release && G->hunting == Hunting_Mode::disabled)
                 continue;
+
+            for (notice = notices.notices[level].begin(); notice != notices.notices[level].end() && displayed < MAX_SIMULTANEOUS_NOTICES;)
+            {
+                if (!notice->timestamp)
+                {
+                    // Set the timestamp on the first present call
+                    // that we display the message after it was
+                    // issued. Means messages won't be missed if
+                    // they exceed the maximum we can display
+                    // simultaneously, and helps combat messages
+                    // disappearing too quickly if there have been
+                    // no present calls for a while after they were
+                    // issued.
+                    notice->timestamp = time;
+                }
+                else if ((time - notice->timestamp) > log_levels[level].duration)
+                {
+                    notice = notices.notices[level].erase(notice);
+                    continue;
+                }
+
+                strSize = (this->*log_levels[level].font)->MeasureString(notice->message.c_str());
+
+                DrawRectangle(0, *y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
+
+                (this->*log_levels[level].font)->DrawString(spriteBatch.get(), notice->message.c_str(), Vector2(0, *y), log_levels[level].colour);
+                *y += strSize.y + 5;
+
+                has_notice = true;
+                notice++;
+                displayed++;
             }
-
-            strSize = (this->*log_levels[level].font)->MeasureString(notice->message.c_str());
-
-            DrawRectangle(0, *y, strSize.x + 3, strSize.y, 0, 0, 0, 0.75);
-
-            (this->*log_levels[level].font)->DrawString(spriteBatch.get(), notice->message.c_str(), Vector2(0, *y), log_levels[level].colour);
-            *y += strSize.y + 5;
-
-            has_notice = true;
-            notice++;
-            displayed++;
         }
     }
-
     LEAVE_CRITICAL_SECTION(&notices.lock);
 }
 
-void Overlay::DrawProfiling(float *y)
+void Overlay::DrawProfiling(
+    float* y)
 {
     Vector2 strSize;
 
@@ -747,16 +775,18 @@ void Overlay::DrawProfiling(float *y)
 }
 
 // Create a string for display on the bottom edge of the screen, that contains the current
-// stereo info of separation and convergence. 
+// stereo info of separation and convergence.
 // Desired format: "Sep:85  Conv:4.5"
 
-static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
+static void CreateStereoInfoString(
+    StereoHandle stereoHandle,
+    wchar_t*     info)
 {
     // Rather than draw graphic bars, this will just be numeric.  Because
     // convergence is essentially an arbitrary number.
 
     float separation, convergence;
-    NvU8 stereo = !!stereoHandle;
+    NvU8  stereo = !!stereoHandle;
     if (stereo)
     {
         nvapi_override();
@@ -778,10 +808,11 @@ static void CreateStereoInfoString(StereoHandle stereoHandle, wchar_t *info)
         swprintf_s(info, maxstring, L"Stereo disabled");
 }
 
-void Overlay::DrawOverlay(void)
+void Overlay::DrawOverlay(
+    void)
 {
     Profiling::State profiling_state;
-    HRESULT hr;
+    HRESULT          hr;
 
     if (G->hunting != Hunting_Mode::enabled && !has_notice && Profiling::mode == Profiling::Mode::NONE)
         return;
@@ -791,7 +822,7 @@ void Overlay::DrawOverlay(void)
 
     // Since some games did not like having us change their drawing state from
     // SpriteBatch, we now save and restore all state information for the GPU
-    // around our drawing.  
+    // around our drawing.
     SaveState();
     {
         hr = InitDrawState();
@@ -803,12 +834,13 @@ void Overlay::DrawOverlay(void)
             wchar_t osdString[maxstring];
             Vector2 strSize;
             Vector2 textPosition;
-            float y = 10.0f;
+            float   y = 10.0f;
 
-            if (G->hunting == Hunting_Mode::enabled) {
+            if (G->hunting == Hunting_Mode::enabled)
+            {
                 // Top of screen
                 CreateShaderCountString(osdString);
-                strSize = font->MeasureString(osdString);
+                strSize      = font->MeasureString(osdString);
                 textPosition = Vector2(float(resolution.x - strSize.x) / 2, y);
                 DrawOutlinedString(font.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
                 y += strSize.y;
@@ -817,7 +849,7 @@ void Overlay::DrawOverlay(void)
 
                 // Bottom of screen
                 CreateStereoInfoString(hackerDevice->stereoHandle, osdString);
-                strSize = font->MeasureString(osdString);
+                strSize      = font->MeasureString(osdString);
                 textPosition = Vector2(float(resolution.x - strSize.x) / 2, float(resolution.y - strSize.y - 10));
                 DrawOutlinedString(font.get(), osdString, textPosition, DirectX::Colors::LimeGreen);
             }
@@ -839,11 +871,11 @@ fail_restore:
         Profiling::end(&profiling_state, &Profiling::overlay_overhead);
 }
 
-OverlayNotice::OverlayNotice(std::wstring message) :
+OverlayNotice::OverlayNotice(
+    std::wstring message) :
     message(message),
     timestamp(0)
-{
-}
+{}
 
 void clear_notices()
 {
@@ -853,17 +885,20 @@ void clear_notices()
         return;
 
     ENTER_CRITICAL_SECTION(&notices.lock);
+    {
+        for (level = 0; level < static_cast<int>(Log_Level::num_levels); level++)
+            notices.notices[level].clear();
 
-    for (level = 0; level < static_cast<int>(Log_Level::num_levels); level++)
-        notices.notices[level].clear();
-
-    notice_cleared_frame = G->frame_no;
-    has_notice = false;
-
+        notice_cleared_frame = G->frame_no;
+        has_notice           = false;
+    }
     LEAVE_CRITICAL_SECTION(&notices.lock);
 }
 
-void log_overlay_w(Log_Level level, wchar_t *fmt, ...)
+void log_overlay_w(
+    Log_Level level,
+    wchar_t*  fmt,
+    ...)
 {
     wchar_t msg[maxstring];
     va_list ap;
@@ -878,11 +913,11 @@ void log_overlay_w(Log_Level level, wchar_t *fmt, ...)
     _vsnwprintf_s(msg, maxstring, _TRUNCATE, fmt, ap);
 
     ENTER_CRITICAL_SECTION(&notices.lock);
-
-    size_t i = static_cast<size_t>(level);
-    notices.notices[i].emplace_back(msg);
-    has_notice = true;
-
+    {
+        size_t i = static_cast<size_t>(level);
+        notices.notices[i].emplace_back(msg);
+        has_notice = true;
+    }
     LEAVE_CRITICAL_SECTION(&notices.lock);
 
     va_end(ap);
@@ -893,9 +928,12 @@ void log_overlay_w(Log_Level level, wchar_t *fmt, ...)
 // to log_overlay_w, because that would reverse the meaning of %s and %S in the
 // format string. Instead we do our own LOG_INFO_V and _vsnprintf_s to handle the
 // format string correctly and convert the result to a wide string.
-void log_overlay(Log_Level level, char *fmt, ...)
+void log_overlay(
+    Log_Level level,
+    char*     fmt,
+    ...)
 {
-    char amsg[maxstring];
+    char    amsg[maxstring];
     wchar_t wmsg[maxstring];
     va_list ap;
     size_t  i = static_cast<size_t>(level);
@@ -903,7 +941,8 @@ void log_overlay(Log_Level level, char *fmt, ...)
     va_start(ap, fmt);
     LOG_INFO_V(fmt, ap);
 
-    if (!log_levels[i].hide_in_release || hunting_enabled()) {
+    if (!log_levels[i].hide_in_release || hunting_enabled())
+    {
         // Using _vsnprintf_s so we don't crash if the message is too long for
         // the buffer, and truncate it instead - unless we can automatically
         // wrap the message, which DirectXTK doesn't appear to support, who
@@ -912,10 +951,10 @@ void log_overlay(Log_Level level, char *fmt, ...)
         mbstowcs(wmsg, amsg, maxstring);
 
         ENTER_CRITICAL_SECTION(&notices.lock);
-
-        notices.notices[i].emplace_back(wmsg);
-        has_notice = true;
-
+        {
+            notices.notices[i].emplace_back(wmsg);
+            has_notice = true;
+        }
         LEAVE_CRITICAL_SECTION(&notices.lock);
     }
 
