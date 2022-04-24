@@ -111,7 +111,7 @@ private:
     void    DrawNotices(float* y);
     void    DrawProfiling(float* y);
     void    DrawRectangle(float x, float y, float w, float h, float r, float g, float b, float opacity);
-    void    DrawOutlinedString(DirectX::SpriteFont* font, wchar_t const* text, DirectX::XMFLOAT2 const& position, DirectX::FXMVECTOR color);
+    void    DrawOutlinedString(DirectX::SpriteFont* use_font, wchar_t const* text, DirectX::XMFLOAT2 const& position, DirectX::FXMVECTOR color);
 
 public:
     std::unique_ptr<DirectX::SpriteFont> font;
