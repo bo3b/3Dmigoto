@@ -77,8 +77,8 @@ void Override::ParseIniSection(LPCWSTR section)
     transition = get_ini_int(section, L"transition", 0, NULL);
     releaseTransition = get_ini_int(section, L"release_transition", 0, NULL);
 
-    transitionType = get_ini_enum_class(section, L"transition_type", TransitionType::LINEAR, NULL, TransitionTypeNames);
-    releaseTransitionType = get_ini_enum_class(section, L"release_transition_type", TransitionType::LINEAR, NULL, TransitionTypeNames);
+    transitionType = get_ini_enum_class(section, L"transition_type", Transition_Type::linear, NULL, TransitionTypeNames);
+    releaseTransitionType = get_ini_enum_class(section, L"release_transition_type", Transition_Type::linear, NULL, TransitionTypeNames);
 
     if (get_ini_string_and_log(section, L"condition", 0, buf, MAX_PATH)) {
         wstring sbuf(buf);
@@ -350,11 +350,11 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
         run.log(L"run");
         LOG_INFO("\n");
 
-        presets.push_back(KeyOverride(KeyOverrideType::CYCLE, &params, &vars,
+        presets.push_back(KeyOverride(Key_Override_Type::cycle, &params, &vars,
             separation.as_float(FLT_MAX), convergence.as_float(FLT_MAX),
             transition.as_int(0), release_transition.as_int(0),
-            transition_type.as_enum<const char *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
-            release_transition_type.as_enum<const char *, TransitionType>(TransitionTypeNames, TransitionType::LINEAR),
+            transition_type.as_enum<const char *, Transition_Type>(TransitionTypeNames, Transition_Type::linear),
+            release_transition_type.as_enum<const char *, Transition_Type>(TransitionTypeNames, Transition_Type::linear),
             is_conditional, condition_expression, activate_command_list, deactivate_command_list));
     }
 }
@@ -583,10 +583,10 @@ void Override::Toggle(HackerDevice *device)
 
 void KeyOverride::DownEvent(HackerDevice *device)
 {
-    if (type == KeyOverrideType::TOGGLE)
+    if (type == Key_Override_Type::toggle)
         return Toggle(device);
 
-    if (type == KeyOverrideType::HOLD)
+    if (type == Key_Override_Type::hold)
         return Activate(device, true);
 
     return Activate(device, false);
@@ -594,7 +594,7 @@ void KeyOverride::DownEvent(HackerDevice *device)
 
 void KeyOverride::UpEvent(HackerDevice *device)
 {
-    if (type == KeyOverrideType::HOLD)
+    if (type == Key_Override_Type::hold)
         return Deactivate(device);
 }
 
@@ -631,7 +631,7 @@ void PresetOverride::Update(HackerDevice *wrapper)
 
 static void _ScheduleTransition(struct OverrideTransitionParam *transition,
         char *name, float current, float val, ULONGLONG now, int time,
-        TransitionType transition_type)
+        Transition_Type transition_type)
 {
     LOG_INFO_NO_NL(" %s: %#.2g -> %#.2g", name, current, val);
     transition->start = current;
@@ -643,7 +643,7 @@ static void _ScheduleTransition(struct OverrideTransitionParam *transition,
 // FIXME: Clean up the wide vs sensible string mess and remove this duplicate function:
 static void _ScheduleTransition(struct OverrideTransitionParam *transition,
         const wchar_t *name, float current, float val, ULONGLONG now, int time,
-        TransitionType transition_type)
+        Transition_Type transition_type)
 {
     LOG_INFO_NO_NL(" %S: %#.2g -> %#.2g", name, current, val);
     transition->start = current;
@@ -657,7 +657,7 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
         float target_separation, float target_convergence,
         OverrideParams *targets,
         OverrideVars *var_targets,
-        int time, TransitionType transition_type)
+        int time, Transition_Type transition_type)
 {
     ULONGLONG now = GetTickCount64();
     NvAPI_Status err;
@@ -670,7 +670,7 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
     if (time) {
         LOG_INFO_NO_NL(" transition: %ims", time);
         LOG_INFO_NO_NL(" transition_type: %s",
-            lookup_enum_name<const char *, TransitionType>(TransitionTypeNames, transition_type));
+            lookup_enum_name<const char *, Transition_Type>(TransitionTypeNames, transition_type));
     }
 
     if (target_separation != FLT_MAX) {
@@ -727,7 +727,7 @@ static float _UpdateTransition(struct OverrideTransitionParam *transition, ULONG
         return transition->target;
     }
 
-    if (transition->transition_type == TransitionType::COSINE)
+    if (transition->transition_type == Transition_Type::cosine)
         percent = (float)((1.0 - cos(percent * M_PI)) / 2.0);
 
     percent = transition->target * percent + transition->start * (1.0f - percent);
