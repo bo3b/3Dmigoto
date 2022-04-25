@@ -276,16 +276,16 @@ static IniSections::iterator prefix_upper_bound(
 // the shaderhackers attention if something needs to be addressed, since their
 // eyes may be focussed elsewhere and may miss the notification message[s].
 static bool ini_warned = false;
-#define INI_WARNING(fmt, ...)                      \
-    do                                             \
-    {                                              \
-        ini_warned = true;                         \
+#define INI_WARNING(fmt, ...)                              \
+    do                                                     \
+    {                                                      \
+        ini_warned = true;                                 \
         log_overlay(Log_Level::warning, fmt, __VA_ARGS__); \
     } while (0)
-#define INI_WARNING_W(fmt, ...)                     \
-    do                                              \
-    {                                               \
-        ini_warned = true;                          \
+#define INI_WARNING_W(fmt, ...)                              \
+    do                                                       \
+    {                                                        \
+        ini_warned = true;                                   \
         log_overlay_w(Log_Level::warning, fmt, __VA_ARGS__); \
     } while (0)
 #define INI_WARNING_BEEP() \
@@ -1447,12 +1447,12 @@ T get_ini_enum_class(
 
 // Explicit template expansion is necessary to generate these functions for
 // the compiler to generate them so they can be used from other source files:
-template TransitionType get_ini_enum_class<const char*, TransitionType>(
-    const wchar_t*                                   section,
-    const wchar_t*                                   key,
-    TransitionType                                   def,
-    bool*                                            found,
-    struct Enum_Name_t<const char*, TransitionType>* enum_names);
+template Transition_Type get_ini_enum_class<const char*, Transition_Type>(
+    const wchar_t*                                    section,
+    const wchar_t*                                    key,
+    Transition_Type                                   def,
+    bool*                                             found,
+    struct Enum_Name_t<const char*, Transition_Type>* enum_names);
 template MarkingMode get_ini_enum_class<const wchar_t*, MarkingMode>(
     const wchar_t*                                   section,
     const wchar_t*                                   key,
@@ -1627,7 +1627,7 @@ static void parse_included_ini_files()
 
 static void register_preset_key_bindings()
 {
-    KeyOverrideType             type;
+    Key_Override_Type           type;
     shared_ptr<KeyOverrideBase> preset;
     int                         delay, release_delay;
     IniSections::iterator       lower, upper, i;
@@ -1651,12 +1651,12 @@ static void register_preset_key_bindings()
             continue;
         }
 
-        type = get_ini_enum_class(id, L"type", KeyOverrideType::ACTIVATE, nullptr, KeyOverrideTypeNames);
+        type = get_ini_enum_class(id, L"type", Key_Override_Type::activate, nullptr, KeyOverrideTypeNames);
 
         delay         = get_ini_int(id, L"delay", 0, nullptr);
         release_delay = get_ini_int(id, L"release_delay", 0, nullptr);
 
-        if (type == KeyOverrideType::CYCLE)
+        if (type == Key_Override_Type::cycle)
         {
             shared_ptr<KeyOverrideCycle>     cycle_preset = make_shared<KeyOverrideCycle>();
             shared_ptr<KeyOverrideCycleBack> cycle_back   = make_shared<KeyOverrideCycleBack>(cycle_preset);
@@ -2326,11 +2326,11 @@ static void parse_command_list(
             if (!G->user_config_dirty)
             {
                 log_overlay(Log_Level::warning,
-                           "NOTICE: Unknown user settings will be removed from d3dx_user.ini\n"
-                           " This is normal if you recently removed/changed any mods\n"
-                           " Press %S to update the config now, or %S to reset all settings to default\n"
-                           " The first unrecognised entry was: \"%S\"\n",
-                           user_friendly_ini_key_binding(L"Hunting", L"reload_config").c_str(), user_friendly_ini_key_binding(L"Hunting", L"wipe_user_config").c_str(), raw_line->c_str());
+                            "NOTICE: Unknown user settings will be removed from d3dx_user.ini\n"
+                            " This is normal if you recently removed/changed any mods\n"
+                            " Press %S to update the config now, or %S to reset all settings to default\n"
+                            " The first unrecognised entry was: \"%S\"\n",
+                            user_friendly_ini_key_binding(L"Hunting", L"reload_config").c_str(), user_friendly_ini_key_binding(L"Hunting", L"wipe_user_config").c_str(), raw_line->c_str());
                 // Once the [Constants] command list has finished running the
                 // low bit will be cleared to ensure that loading the user config
                 // itself cannot mark the user config as dirty. Set the second
@@ -2563,45 +2563,45 @@ static void warn_deprecated_shaderoverride_options(
     if (override->partner_hash && (!override->command_list.commands.empty() || !override->post_command_list.commands.empty()))
     {
         log_overlay(Log_Level::notice,
-                   "WARNING: [%S] tried to combine the deprecated partner= option with a command list.\n"
-                   "This almost certainly won't do what you want. Try something like this instead:\n"
-                   "\n"
-                   "[%S_VERTEX_SHADER]\n"
-                   "hash = <vertex shader hash>\n"
-                   "filter_index = 5\n"
-                   "\n"
-                   "[%S_PIXEL_SHADER]\n"
-                   "hash = <pixel shader hash>\n"
-                   "x = vs\n"
-                   "\n",
-                   id, id, id);
+                    "WARNING: [%S] tried to combine the deprecated partner= option with a command list.\n"
+                    "This almost certainly won't do what you want. Try something like this instead:\n"
+                    "\n"
+                    "[%S_VERTEX_SHADER]\n"
+                    "hash = <vertex shader hash>\n"
+                    "filter_index = 5\n"
+                    "\n"
+                    "[%S_PIXEL_SHADER]\n"
+                    "hash = <pixel shader hash>\n"
+                    "x = vs\n"
+                    "\n",
+                    id, id, id);
     }
 
     if (override->depth_filter != DepthBufferFilter::NONE)
     {
         log_overlay(Log_Level::notice,
-                   "NOTICE: [%S] used deprecated depth_filter option. Consider texture filtering for more flexibility:\n"
-                   "\n"
-                   "[%S]\n"
-                   "x = oD\n"
-                   "\n"
-                   "In the shader:\n"
-                   "if (asint(IniParams[0].x) == asint(-0.0)) {\n"
-                   "    // No depth buffer bound\n"
-                   "} else {\n"
-                   "    // Depth buffer bound\n"
-                   "}\n"
-                   "\n"
-                   "Or in assembly:\n"
-                   "dcl_resource_texture1d (float,float,float,float) t120\n"
-                   "ld_indexable(texture1d)(float,float,float,float) r0.x, l(0, 0, 0, 0), t120.xyzw\n"
-                   "ieq r0.x, r0.x, l(0x80000000)\n"
-                   "if_nz r0.x\n"
-                   "    // No depth buffer bound\n"
-                   "else\n"
-                   "    // Depth buffer bound\n"
-                   "endif\n",
-                   id, id);
+                    "NOTICE: [%S] used deprecated depth_filter option. Consider texture filtering for more flexibility:\n"
+                    "\n"
+                    "[%S]\n"
+                    "x = oD\n"
+                    "\n"
+                    "In the shader:\n"
+                    "if (asint(IniParams[0].x) == asint(-0.0)) {\n"
+                    "    // No depth buffer bound\n"
+                    "} else {\n"
+                    "    // Depth buffer bound\n"
+                    "}\n"
+                    "\n"
+                    "Or in assembly:\n"
+                    "dcl_resource_texture1d (float,float,float,float) t120\n"
+                    "ld_indexable(texture1d)(float,float,float,float) r0.x, l(0, 0, 0, 0), t120.xyzw\n"
+                    "ieq r0.x, r0.x, l(0x80000000)\n"
+                    "if_nz r0.x\n"
+                    "    // No depth buffer bound\n"
+                    "else\n"
+                    "    // Depth buffer bound\n"
+                    "endif\n",
+                    id, id);
     }
 }
 
@@ -4563,9 +4563,9 @@ static void warn_of_conflicting_d3dx(
         return;
 
     log_overlay(Log_Level::warning,
-               "Detected a conflicting d3dx.ini in the game directory that is not being used.\n"
-               "Using this configuration: %S\n",
-               dll_ini_path);
+                "Detected a conflicting d3dx.ini in the game directory that is not being used.\n"
+                "Using this configuration: %S\n",
+                dll_ini_path);
 }
 
 void load_config_file()
