@@ -1651,7 +1651,7 @@ static void register_preset_key_bindings()
             continue;
         }
 
-        type = get_ini_enum_class(id, L"type", Key_Override_Type::activate, nullptr, KeyOverrideTypeNames);
+        type = get_ini_enum_class(id, L"type", Key_Override_Type::activate, nullptr, key_override_type_names);
 
         delay         = get_ini_int(id, L"delay", 0, nullptr);
         release_delay = get_ini_int(id, L"release_delay", 0, nullptr);

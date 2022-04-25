@@ -194,7 +194,7 @@ template <
 static T2 parse_enum_option_string(struct Enum_Name_t<T1, T2>* enum_names, T3 option_string, T1* unrecognised)
 {
     T3 ptr = option_string, cur;
-    T2 ret = (T2)0;
+    T2 ret = static_cast<T2>(0);
     T2 tmp = T2::INVALID;
 
     if (unrecognised)

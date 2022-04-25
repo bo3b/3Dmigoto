@@ -20,7 +20,7 @@ const enum class Key_Override_Type
     toggle,
     cycle,
 };
-static Enum_Name_t<const wchar_t*, Key_Override_Type> KeyOverrideTypeNames[] = {
+static Enum_Name_t<const wchar_t*, Key_Override_Type> key_override_type_names[] = {
     { L"activate", Key_Override_Type::activate },
     { L"hold", Key_Override_Type::hold },
     { L"toggle", Key_Override_Type::toggle },
@@ -34,7 +34,7 @@ const enum class Transition_Type
     linear,
     cosine,
 };
-static Enum_Name_t<const char*, Transition_Type> TransitionTypeNames[] = {
+static Enum_Name_t<const char*, Transition_Type> transition_type_names[] = {
     { "linear", Transition_Type::linear },
     { "cosine", Transition_Type::cosine },
     { nullptr, Transition_Type::invalid }  // End of list marker
@@ -52,7 +52,7 @@ public:
         this->component = component;
     }
 
-    char chr() const
+    char XYZW() const
     {
         size_t offset = reinterpret_cast<uintptr_t>(&(static_cast<DirectX::XMFLOAT4*>((nullptr))->*component));
 
@@ -222,7 +222,7 @@ public:
 typedef std::map<std::wstring, class PresetOverride> PresetOverrideMap;
 extern PresetOverrideMap                             preset_overrides;
 
-struct OverrideTransitionParam
+struct override_transition_param
 {
     float           start;
     float           target;
@@ -230,7 +230,7 @@ struct OverrideTransitionParam
     int             time;
     Transition_Type transition_type;
 
-    OverrideTransitionParam() :
+    override_transition_param() :
         start(FLT_MAX),
         target(FLT_MAX),
         activation_time(0),
@@ -242,9 +242,9 @@ struct OverrideTransitionParam
 class OverrideTransition
 {
 public:
-    std::map<OverrideParam, OverrideTransitionParam>        params;
-    std::map<CommandListVariable*, OverrideTransitionParam> vars;
-    OverrideTransitionParam                                 separation, convergence;
+    std::map<OverrideParam, override_transition_param>        params;
+    std::map<CommandListVariable*, override_transition_param> vars;
+    override_transition_param                                 separation, convergence;
 
     void ScheduleTransition(HackerDevice* wrapper, float target_separation, float target_convergence, OverrideParams* targets, OverrideVars* var_targets, int time, Transition_Type transition_type);
     void UpdatePresets(HackerDevice* wrapper);
