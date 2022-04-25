@@ -77,8 +77,8 @@ void Override::ParseIniSection(LPCWSTR section)
     transition = get_ini_int(section, L"transition", 0, NULL);
     releaseTransition = get_ini_int(section, L"release_transition", 0, NULL);
 
-    transitionType = get_ini_enum_class(section, L"transition_type", Transition_Type::linear, NULL, TransitionTypeNames);
-    releaseTransitionType = get_ini_enum_class(section, L"release_transition_type", Transition_Type::linear, NULL, TransitionTypeNames);
+    transitionType = get_ini_enum_class(section, L"transition_type", Transition_Type::linear, NULL, transition_type_names);
+    releaseTransitionType = get_ini_enum_class(section, L"release_transition_type", Transition_Type::linear, NULL, transition_type_names);
 
     if (get_ini_string_and_log(section, L"condition", 0, buf, MAX_PATH)) {
         wstring sbuf(buf);
@@ -323,7 +323,7 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
         for (j = param_bufs.begin(); j != param_bufs.end(); j++) {
             val = j->second.as_float(FLT_MAX);
             if (val != FLT_MAX) {
-                StringCchPrintf(buf, 8, L"%c%.0i", j->first.chr(), j->first.idx);
+                StringCchPrintf(buf, 8, L"%c%.0i", j->first.XYZW(), j->first.idx);
                 j->second.log(buf);
                 params[j->first] = val;
             }
@@ -353,8 +353,8 @@ void KeyOverrideCycle::ParseIniSection(LPCWSTR section)
         presets.push_back(KeyOverride(Key_Override_Type::cycle, &params, &vars,
             separation.as_float(FLT_MAX), convergence.as_float(FLT_MAX),
             transition.as_int(0), release_transition.as_int(0),
-            transition_type.as_enum<const char *, Transition_Type>(TransitionTypeNames, Transition_Type::linear),
-            release_transition_type.as_enum<const char *, Transition_Type>(TransitionTypeNames, Transition_Type::linear),
+            transition_type.as_enum<const char *, Transition_Type>(transition_type_names, Transition_Type::linear),
+            release_transition_type.as_enum<const char *, Transition_Type>(transition_type_names, Transition_Type::linear),
             is_conditional, condition_expression, activate_command_list, deactivate_command_list));
     }
 }
@@ -367,7 +367,7 @@ bool Override::MatchesCurrent(HackerDevice *device)
     float val;
 
     for (i = begin(overrideParams); i != end(overrideParams); i++) {
-        std::map<OverrideParam, OverrideTransitionParam>::iterator transition = current_transition.params.find(i->first);
+        std::map<OverrideParam, override_transition_param>::iterator transition = current_transition.params.find(i->first);
         if (transition != current_transition.params.end() && transition->second.time != -1)
             val = transition->second.target;
         else
@@ -378,7 +378,7 @@ bool Override::MatchesCurrent(HackerDevice *device)
     }
 
     for (j = begin(overrideVars); j != end(overrideVars); j++) {
-        std::map<CommandListVariable*, OverrideTransitionParam>::iterator transition = current_transition.vars.find(j->first);
+        std::map<CommandListVariable*, override_transition_param>::iterator transition = current_transition.vars.find(j->first);
         if (transition != current_transition.vars.end() && transition->second.time != -1)
             val = transition->second.target;
         else
@@ -629,7 +629,7 @@ void PresetOverride::Update(HackerDevice *wrapper)
     excluded = false;
 }
 
-static void _ScheduleTransition(struct OverrideTransitionParam *transition,
+static void _ScheduleTransition(struct override_transition_param *transition,
         char *name, float current, float val, ULONGLONG now, int time,
         Transition_Type transition_type)
 {
@@ -641,7 +641,7 @@ static void _ScheduleTransition(struct OverrideTransitionParam *transition,
     transition->transition_type = transition_type;
 }
 // FIXME: Clean up the wide vs sensible string mess and remove this duplicate function:
-static void _ScheduleTransition(struct OverrideTransitionParam *transition,
+static void _ScheduleTransition(struct override_transition_param *transition,
         const wchar_t *name, float current, float val, ULONGLONG now, int time,
         Transition_Type transition_type)
 {
@@ -670,7 +670,7 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
     if (time) {
         LOG_INFO_NO_NL(" transition: %ims", time);
         LOG_INFO_NO_NL(" transition_type: %s",
-            lookup_enum_name<const char *, Transition_Type>(TransitionTypeNames, transition_type));
+            lookup_enum_name<const char *, Transition_Type>(transition_type_names, transition_type));
     }
 
     if (target_separation != FLT_MAX) {
@@ -686,7 +686,7 @@ void OverrideTransition::ScheduleTransition(HackerDevice *wrapper,
         _ScheduleTransition(&convergence, "convergence", current, target_convergence, now, time, transition_type);
     }
     for (i = targets->begin(); i != targets->end(); i++) {
-        StringCchPrintfA(buf, 8, "%c%.0i", i->first.chr(), i->first.idx);
+        StringCchPrintfA(buf, 8, "%c%.0i", i->first.XYZW(), i->first.idx);
         _ScheduleTransition(&params[i->first], buf, G->iniParams[i->first.idx].*i->first.component,
                 i->second, now, time, transition_type);
     }
@@ -706,7 +706,7 @@ void OverrideTransition::UpdatePresets(HackerDevice *wrapper)
         i->second.Update(wrapper);
 }
 
-static float _UpdateTransition(struct OverrideTransitionParam *transition, ULONGLONG now)
+static float _UpdateTransition(struct override_transition_param *transition, ULONGLONG now)
 {
     ULONGLONG time;
     float percent;
@@ -737,8 +737,8 @@ static float _UpdateTransition(struct OverrideTransitionParam *transition, ULONG
 
 void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
 {
-    std::map<OverrideParam, OverrideTransitionParam>::iterator i;
-    std::map<CommandListVariable*, OverrideTransitionParam>::iterator j;
+    std::map<OverrideParam, override_transition_param>::iterator i;
+    std::map<CommandListVariable*, override_transition_param>::iterator j;
     ULONGLONG now = GetTickCount64();
     NvAPI_Status err;
     float val;
@@ -768,7 +768,7 @@ void OverrideTransition::UpdateTransitions(HackerDevice *wrapper)
         for (i = params.begin(); i != params.end();) {
             float val = _UpdateTransition(&i->second, now);
             G->iniParams[i->first.idx].*i->first.component = val;
-            LOG_DEBUG_NO_NL("%c%.0i=%#.2g, ", i->first.chr(), i->first.idx, val);
+            LOG_DEBUG_NO_NL("%c%.0i=%#.2g, ", i->first.XYZW(), i->first.idx, val);
             if (i->second.time == -1)
                 i = params.erase(i);
             else
@@ -923,7 +923,7 @@ void OverrideGlobalSave::Save(HackerDevice *wrapper, Override *preset)
     }
 
     for (i = preset->overrideParams.begin(); i != preset->overrideParams.end(); i++) {
-        std::map<OverrideParam, OverrideTransitionParam>::iterator transition = current_transition.params.find(i->first);
+        std::map<OverrideParam, override_transition_param>::iterator transition = current_transition.params.find(i->first);
         if (transition != current_transition.params.end() && transition->second.time != -1)
             val = transition->second.target;
         else
@@ -934,7 +934,7 @@ void OverrideGlobalSave::Save(HackerDevice *wrapper, Override *preset)
     }
 
     for (j = preset->overrideVars.begin(); j != preset->overrideVars.end(); j++) {
-        std::map<CommandListVariable*, OverrideTransitionParam>::iterator transition = current_transition.vars.find(j->first);
+        std::map<CommandListVariable*, override_transition_param>::iterator transition = current_transition.vars.find(j->first);
         if (transition != current_transition.vars.end() && transition->second.time != -1)
             val = transition->second.target;
         else
@@ -981,7 +981,7 @@ void OverrideGlobalSave::Restore(Override *preset)
         j = preset->overrideParams.find(i->first);
         if (j != preset->overrideParams.end()) {
             if (!i->second.Restore(&preset->savedParams[i->first])) {
-                LOG_DEBUG("removed ini param %c%.0i save area\n", i->first.chr(), i->first.idx);
+                LOG_DEBUG("removed ini param %c%.0i save area\n", i->first.XYZW(), i->first.idx);
                 next = params.erase(i);
             }
         }
