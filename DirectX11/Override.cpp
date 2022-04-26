@@ -135,7 +135,7 @@ public:
         ptr(nullptr)
     {}
 
-    bool next()
+    bool Next()
     {
         const char *t1, *t2;
 
@@ -171,14 +171,14 @@ public:
         return true;
     }
 
-    void log(
+    void Log(
         const wchar_t* name)
     {
         if (!cur.empty())
             LOG_INFO_NO_NL(" %S=%s", name, cur.c_str());
     }
 
-    float as_float(
+    float AsFloat(
         float default)
     {
         float val;
@@ -193,7 +193,7 @@ public:
         return val;
     }
 
-    int as_int(
+    int AsInt(
         int default)
     {
         int val;
@@ -209,7 +209,7 @@ public:
     }
 
     template <class T1, class T2>
-    T2 as_enum(
+    T2 AsEnum(
         Enum_Name_t<T1, T2>* enum_names,
         T2 default)
     {
@@ -231,7 +231,7 @@ public:
         return val;
     }
 
-    bool as_expression(
+    bool AsExpression(
         LPCWSTR                section,
         CommandListExpression* expression)
     {
@@ -258,7 +258,7 @@ public:
         return true;
     }
 
-    void as_run_command(
+    void AsRunCommand(
         LPCWSTR      section,
         CommandList* pre_command_list,
         CommandList* deactivate_command_list)
@@ -346,19 +346,19 @@ void KeyOverrideCycle::ParseIniSection(
         not_done = false;
 
         for (j = param_bufs.begin(); j != param_bufs.end(); j++)
-            not_done = j->second.next() || not_done;
+            not_done = j->second.Next() || not_done;
 
         for (k = var_bufs.begin(); k != var_bufs.end(); k++)
-            not_done = k->second.next() || not_done;
+            not_done = k->second.Next() || not_done;
 
-        not_done = separation.next() || not_done;
-        not_done = convergence.next() || not_done;
-        not_done = transition.next() || not_done;
-        not_done = release_transition.next() || not_done;
-        not_done = transition_type.next() || not_done;
-        not_done = release_transition_type.next() || not_done;
-        not_done = condition.next() || not_done;
-        not_done = run.next() || not_done;
+        not_done = separation.Next() || not_done;
+        not_done = convergence.Next() || not_done;
+        not_done = transition.Next() || not_done;
+        not_done = release_transition.Next() || not_done;
+        not_done = transition_type.Next() || not_done;
+        not_done = release_transition_type.Next() || not_done;
+        not_done = condition.Next() || not_done;
+        not_done = run.Next() || not_done;
 
         if (!not_done)
             break;
@@ -367,39 +367,39 @@ void KeyOverrideCycle::ParseIniSection(
         params.clear();
         for (j = param_bufs.begin(); j != param_bufs.end(); j++)
         {
-            val = j->second.as_float(FLT_MAX);
+            val = j->second.AsFloat(FLT_MAX);
             if (val != FLT_MAX)
             {
                 StringCchPrintf(buf, 8, L"%c%.0i", j->first.XYZW(), j->first.idx);
-                j->second.log(buf);
+                j->second.Log(buf);
                 params[j->first] = val;
             }
         }
         vars.clear();
         for (k = var_bufs.begin(); k != var_bufs.end(); k++)
         {
-            val = k->second.as_float(FLT_MAX);
+            val = k->second.AsFloat(FLT_MAX);
             if (val != FLT_MAX)
             {
-                k->second.log(k->first->name.c_str());
+                k->second.Log(k->first->name.c_str());
                 vars[k->first] = val;
             }
         }
 
-        is_conditional = condition.as_expression(section, &condition_expression);
-        run.as_run_command(section, &activate_command_list, &deactivate_command_list);
+        is_conditional = condition.AsExpression(section, &condition_expression);
+        run.AsRunCommand(section, &activate_command_list, &deactivate_command_list);
 
-        separation.log(L"separation");
-        convergence.log(L"convergence");
-        transition.log(L"transition");
-        release_transition.log(L"release_transition");
-        transition_type.log(L"transition_type");
-        release_transition_type.log(L"release_transition_type");
-        condition.log(L"condition");
-        run.log(L"run");
+        separation.Log(L"separation");
+        convergence.Log(L"convergence");
+        transition.Log(L"transition");
+        release_transition.Log(L"release_transition");
+        transition_type.Log(L"transition_type");
+        release_transition_type.Log(L"release_transition_type");
+        condition.Log(L"condition");
+        run.Log(L"run");
         LOG_INFO("\n");
 
-        presets.push_back(KeyOverride(Key_Override_Type::cycle, &params, &vars, separation.as_float(FLT_MAX), convergence.as_float(FLT_MAX), transition.as_int(0), release_transition.as_int(0), transition_type.as_enum<const char*, Transition_Type>(transition_type_names, Transition_Type::linear), release_transition_type.as_enum<const char*, Transition_Type>(transition_type_names, Transition_Type::linear), is_conditional, condition_expression, activate_command_list, deactivate_command_list));
+        presets.push_back(KeyOverride(Key_Override_Type::cycle, &params, &vars, separation.AsFloat(FLT_MAX), convergence.AsFloat(FLT_MAX), transition.AsInt(0), release_transition.AsInt(0), transition_type.AsEnum<const char*, Transition_Type>(transition_type_names, Transition_Type::linear), release_transition_type.AsEnum<const char*, Transition_Type>(transition_type_names, Transition_Type::linear), is_conditional, condition_expression, activate_command_list, deactivate_command_list));
     }
 }
 
@@ -567,17 +567,17 @@ void KeyOverrideCycleBack::DownEvent(
 // This map/unmap code also requires that the texture be created with the D3D11_USAGE_DYNAMIC flag set.
 // This map operation can also cause the GPU to stall, so this should be done as rarely as possible.
 
-static void UpdateIniParams(
+static void update_ini_params(
     HackerDevice* wrapper)
 {
-    ID3D11DeviceContext1*    realContext = wrapper->GetPassThroughOrigContext1();
-    D3D11_MAPPED_SUBRESOURCE mappedResource;
+    ID3D11DeviceContext1*    real_context = wrapper->GetPassThroughOrigContext1();
+    D3D11_MAPPED_SUBRESOURCE mapped_resource;
 
     if (wrapper->iniTexture)
     {
-        realContext->Map(wrapper->iniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-        memcpy(mappedResource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
-        realContext->Unmap(wrapper->iniTexture, 0);
+        real_context->Map(wrapper->iniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
+        memcpy(mapped_resource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
+        real_context->Unmap(wrapper->iniTexture, 0);
         Profiling::iniparams_updates++;
     }
 }
@@ -875,7 +875,7 @@ void OverrideTransition::UpdateTransitions(
         }
         LOG_DEBUG("\n");
 
-        UpdateIniParams(wrapper);
+        update_ini_params(wrapper);
     }
 
     if (!vars.empty())
