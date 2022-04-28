@@ -18,6 +18,22 @@ void Profiling::Overhead::clear()
     hits = 0;
 }
 
+void Profiling::start(
+    State* state)
+{
+    QueryPerformanceCounter(&state->start_time);
+}
+
+void Profiling::end(
+    State* state,
+    Profiling::Overhead* overhead)
+{
+    LARGE_INTEGER end_time;
+
+    QueryPerformanceCounter(&end_time);
+    overhead->cpu.QuadPart += end_time.QuadPart - state->start_time.QuadPart;
+}
+
 namespace Profiling {
     Mode mode;
     Overhead present_overhead;
@@ -488,4 +504,145 @@ void Profiling::clear()
 
     start_frame_no = G->frame_no;
     QueryPerformanceCounter(&profiling_start_time);
+}
+
+// -----------------------------------------------------------------------------
+
+#define NVAPI_PROFILE(CODE)                                     \
+    [&]() -> NvAPI_Status {                                     \
+        Profiling::State state;                                 \
+        if (Profiling::mode == Profiling::Mode::SUMMARY)        \
+        {                                                       \
+            Profiling::start(&state);                           \
+            auto ret = CODE;                                    \
+            Profiling::end(&state, &Profiling::nvapi_overhead); \
+            return ret;                                         \
+        }                                                       \
+        else                                                    \
+            return CODE;                                        \
+    }()
+
+NVAPI_INTERFACE Profiling::NvAPI_Stereo_Enable()
+{
+    return NVAPI_PROFILE(::NvAPI_Stereo_Enable());
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_Stereo_IsEnabled(
+    NvU8* pIsStereoEnabled)
+{
+    return NVAPI_PROFILE(::NvAPI_Stereo_IsEnabled(pIsStereoEnabled));
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_Stereo_IsActivated(
+    StereoHandle stereoHandle,
+    NvU8* pIsStereoOn)
+{
+    if (stereoHandle)
+        return NVAPI_PROFILE(::NvAPI_Stereo_IsActivated(stereoHandle, pIsStereoOn));
+    if (pIsStereoOn)
+        *pIsStereoOn = 0;
+    return NVAPI_ERROR;
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_Stereo_GetEyeSeparation(
+    StereoHandle hStereoHandle,
+    float* pSeparation)
+{
+    if (hStereoHandle)
+        return NVAPI_PROFILE(::NvAPI_Stereo_GetEyeSeparation(hStereoHandle, pSeparation));
+    if (pSeparation)
+        *pSeparation = 0;
+    return NVAPI_ERROR;
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_Stereo_GetSeparation(
+    StereoHandle stereoHandle,
+    float* pSeparationPercentage)
+{
+    if (stereoHandle)
+        return NVAPI_PROFILE(::NvAPI_Stereo_GetSeparation(stereoHandle, pSeparationPercentage));
+    if (pSeparationPercentage)
+        *pSeparationPercentage = 0;
+    return NVAPI_ERROR;
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_Stereo_SetSeparation(
+    StereoHandle stereoHandle,
+    float newSeparationPercentage)
+{
+    if (stereoHandle)
+        return NVAPI_PROFILE(::NvAPI_Stereo_SetSeparation(stereoHandle, newSeparationPercentage));
+    return NVAPI_ERROR;
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_Stereo_GetConvergence(
+    StereoHandle stereoHandle,
+    float* pConvergence)
+{
+    if (stereoHandle)
+        return NVAPI_PROFILE(::NvAPI_Stereo_GetConvergence(stereoHandle, pConvergence));
+    if (pConvergence)
+        *pConvergence = 0;
+    return NVAPI_ERROR;
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_Stereo_SetConvergence(
+    StereoHandle stereoHandle,
+    float newConvergence)
+{
+    if (stereoHandle)
+        return NVAPI_PROFILE(::NvAPI_Stereo_SetConvergence(stereoHandle, newConvergence));
+    return NVAPI_ERROR;
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_Stereo_SetActiveEye(
+    StereoHandle hStereoHandle,
+    NV_STEREO_ACTIVE_EYE StereoEye)
+{
+    if (hStereoHandle)
+        return NVAPI_PROFILE(::NvAPI_Stereo_SetActiveEye(hStereoHandle, StereoEye));
+    return NVAPI_ERROR;
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_Stereo_ReverseStereoBlitControl(
+    StereoHandle hStereoHandle,
+    NvU8 TurnOn)
+{
+    if (hStereoHandle)
+        return NVAPI_PROFILE(::NvAPI_Stereo_ReverseStereoBlitControl(hStereoHandle, TurnOn));
+    return NVAPI_ERROR;
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_Stereo_SetSurfaceCreationMode(
+    StereoHandle hStereoHandle,
+    NVAPI_STEREO_SURFACECREATEMODE creationMode)
+{
+    if (hStereoHandle)
+        return NVAPI_PROFILE(::NvAPI_Stereo_SetSurfaceCreationMode(hStereoHandle, creationMode));
+    return NVAPI_ERROR;
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_Stereo_GetSurfaceCreationMode(
+    StereoHandle hStereoHandle,
+    NVAPI_STEREO_SURFACECREATEMODE* pCreationMode)
+{
+    if (hStereoHandle)
+        return NVAPI_PROFILE(::NvAPI_Stereo_GetSurfaceCreationMode(hStereoHandle, pCreationMode));
+    if (pCreationMode)
+        *pCreationMode = NVAPI_STEREO_SURFACECREATEMODE_AUTO;
+    return NVAPI_ERROR;
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_DISP_GetDisplayConfig(
+    NvU32* pathInfoCount,
+    NV_DISPLAYCONFIG_PATH_INFO* pathInfo)
+{
+    return NVAPI_PROFILE(::NvAPI_DISP_GetDisplayConfig(pathInfoCount, pathInfo));
+}
+
+NVAPI_INTERFACE Profiling::NvAPI_D3D_GetCurrentSLIState(
+    IUnknown* pDevice,
+    NV_GET_CURRENT_SLI_STATE* pSliState)
+{
+    return NVAPI_PROFILE(::NvAPI_D3D_GetCurrentSLIState(pDevice, pSliState));
 }
