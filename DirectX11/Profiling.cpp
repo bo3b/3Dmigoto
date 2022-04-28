@@ -35,7 +35,7 @@ void Profiling::end(
 }
 
 namespace Profiling {
-    Mode mode;
+    mode profile_type;
     Overhead present_overhead;
     Overhead overlay_overhead;
     Overhead draw_overhead;
@@ -444,17 +444,17 @@ void Profiling::update_txt()
                     L"Performance Monitor %.1ffps", frames * 1000000.0 / collection_duration.QuadPart);
         Profiling::text = buf;
 
-        switch (Profiling::mode) {
-            case Profiling::Mode::SUMMARY:
+        switch (Profiling::profile_type) {
+            case Profiling::mode::summary:
                 update_txt_summary(collection_duration, freq, frames);
                 break;
-            case Profiling::Mode::TOP_COMMAND_LISTS:
+            case Profiling::mode::top_command_lists:
                 update_txt_command_lists(collection_duration, freq, frames);
                 break;
-            case Profiling::Mode::TOP_COMMANDS:
+            case Profiling::mode::top_commands:
                 update_txt_commands(collection_duration, freq, frames);
                 break;
-            case Profiling::Mode::CTO_WARNING:
+            case Profiling::mode::cto_warning:
                 update_txt_cto_warning();
                 break;
         }
@@ -511,7 +511,7 @@ void Profiling::clear()
 #define NVAPI_PROFILE(CODE)                                     \
     [&]() -> NvAPI_Status {                                     \
         Profiling::State state;                                 \
-        if (Profiling::mode == Profiling::Mode::SUMMARY)        \
+        if (Profiling::profile_type == Profiling::mode::summary)        \
         {                                                       \
             Profiling::start(&state);                           \
             auto ret = CODE;                                    \

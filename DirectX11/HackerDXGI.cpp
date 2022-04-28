@@ -598,7 +598,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present(
     if (!(Flags & DXGI_PRESENT_TEST))
     {
         // Profiling::mode may change below, so make a copy
-        profiling = Profiling::mode == Profiling::Mode::SUMMARY;
+        profiling = Profiling::profile_type == Profiling::mode::summary;
         if (profiling)
             Profiling::start(&profiling_state);
 
@@ -895,7 +895,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present1(
     if (!(PresentFlags & DXGI_PRESENT_TEST))
     {
         // Profiling::mode may change below, so make a copy
-        profiling = Profiling::mode == Profiling::Mode::SUMMARY;
+        profiling = Profiling::profile_type == Profiling::mode::summary;
         if (profiling)
             Profiling::start(&profiling_state);
 
