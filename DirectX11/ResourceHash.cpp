@@ -1004,7 +1004,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
     if (!dest)
         return;
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::start(&profiling_state);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1109,7 +1109,7 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 out_unlock:
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
 }
 
@@ -1129,7 +1129,7 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
     if (!resource || !data)
         return;
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::start(&profiling_state);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1189,7 +1189,7 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 out_unlock:
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
 }
 
@@ -1202,7 +1202,7 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
     uint32_t old_data_hash, old_hash;
     Profiling::State profiling_state;
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::start(&profiling_state);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
@@ -1262,7 +1262,7 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 out_unlock:
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
 }
 

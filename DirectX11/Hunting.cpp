@@ -1533,13 +1533,13 @@ static void analyse_perf(
     HackerDevice* device,
     void*         private_data)
 {
-    Profiling::mode = static_cast<Profiling::Mode>(static_cast<int>(Profiling::mode) + 1);
+    Profiling::profile_type = static_cast<Profiling::mode>(static_cast<int>(Profiling::profile_type) + 1);
 
-    if (Profiling::mode == Profiling::Mode::CTO_WARNING && (!G->implicit_post_checktextureoverride_used || Profiling::cto_warning.empty()))
-        Profiling::mode = static_cast<Profiling::Mode>(static_cast<int>(Profiling::mode) + 1);
+    if (Profiling::profile_type == Profiling::mode::cto_warning && (!G->implicit_post_checktextureoverride_used || Profiling::cto_warning.empty()))
+        Profiling::profile_type = static_cast<Profiling::mode>(static_cast<int>(Profiling::profile_type) + 1);
 
-    if (Profiling::mode == Profiling::Mode::INVALID)
-        Profiling::mode = Profiling::Mode::NONE;
+    if (Profiling::profile_type == Profiling::mode::invalid)
+        Profiling::profile_type = Profiling::mode::none;
 
     Profiling::text.clear();
     Profiling::clear();
@@ -1549,7 +1549,7 @@ static void freeze_perf(
     HackerDevice* device,
     void*         private_data)
 {
-    if (Profiling::mode == Profiling::Mode::NONE)
+    if (Profiling::profile_type == Profiling::mode::none)
         return;
 
     Profiling::freeze = !Profiling::freeze;
