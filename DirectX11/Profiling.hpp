@@ -9,7 +9,7 @@
 // calls in the nvapi.  It is defined by d3d11.h.
 #include "nvapi.h"
 
-namespace Profiling {
+namespace profiling {
     enum class mode {
         none = 0,
         summary,
@@ -33,20 +33,20 @@ namespace Profiling {
     };
 
     inline void start(State *state);
-    inline void end(State *state, Profiling::Overhead *overhead);
+    inline void end(State *state, profiling::Overhead *overhead);
 
     template<class T>
-    static inline typename T::iterator lookup_map(T &map, typename T::key_type key, Profiling::Overhead *overhead)
+    static inline typename T::iterator lookup_map(T &map, typename T::key_type key, profiling::Overhead *overhead)
     {
-        Profiling::State state;
+        profiling::State state;
 
-        if (Profiling::profile_type == Profiling::mode::summary) {
+        if (profiling::profile_type == profiling::mode::summary) {
             overhead->count++;
-            Profiling::start(&state);
+            profiling::start(&state);
         }
         auto ret = map.find(key);
-        if (Profiling::profile_type == Profiling::mode::summary) {
-            Profiling::end(&state, overhead);
+        if (profiling::profile_type == profiling::mode::summary) {
+            profiling::end(&state, overhead);
             if (ret != end(map))
                 overhead->hits++;
         }

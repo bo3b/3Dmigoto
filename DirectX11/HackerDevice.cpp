@@ -441,7 +441,7 @@ HRESULT HackerDevice::SetGlobalNVSurfaceCreationMode()
         nvapi_override();
         LOG_INFO("  setting custom surface creation mode.\n");
 
-        hr = Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, static_cast<NVAPI_STEREO_SURFACECREATEMODE>(G->gSurfaceCreateMode));
+        hr = profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereoHandle, static_cast<NVAPI_STEREO_SURFACECREATEMODE>(G->gSurfaceCreateMode));
         if (hr != NVAPI_OK)
         {
             LOG_INFO("    custom surface creation call failed: %d.\n", hr);
@@ -2152,11 +2152,11 @@ static const DescType* process_texture_override(
     {
         if (new_mode != static_cast<NVAPI_STEREO_SURFACECREATEMODE>(-1))
         {
-            Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereo_handle, old_mode);
+            profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereo_handle, old_mode);
             nvapi_override();
             LOG_INFO("    setting custom surface creation mode %d\n", new_mode);
 
-            if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, new_mode))
+            if (NVAPI_OK != profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, new_mode))
                 LOG_INFO("      call failed.\n");
         }
         return ret;
@@ -2170,7 +2170,7 @@ static void restore_old_surface_create_mode(
     {
         if (old_mode != static_cast<NVAPI_STEREO_SURFACECREATEMODE>(-1))
         {
-            if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, old_mode))
+            if (NVAPI_OK != profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, old_mode))
                 LOG_INFO("    restore call failed.\n");
         }
     }

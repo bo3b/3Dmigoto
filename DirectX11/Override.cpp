@@ -443,7 +443,7 @@ bool Override::MatchesCurrent(
         }
         else
         {
-            err = Profiling::NvAPI_Stereo_GetSeparation(device->stereoHandle, &val);
+            err = profiling::NvAPI_Stereo_GetSeparation(device->stereoHandle, &val);
             if (err != NVAPI_OK)
             {
                 LOG_DEBUG("    Stereo_GetSeparation failed: %i\n", err);
@@ -474,7 +474,7 @@ bool Override::MatchesCurrent(
         }
         else
         {
-            err = Profiling::NvAPI_Stereo_GetConvergence(device->stereoHandle, &val);
+            err = profiling::NvAPI_Stereo_GetConvergence(device->stereoHandle, &val);
             if (err != NVAPI_OK)
             {
                 LOG_DEBUG("    Stereo_GetConvergence failed: %i\n", err);
@@ -578,7 +578,7 @@ static void update_ini_params(
         real_context->Map(wrapper->iniTexture, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped_resource);
         memcpy(mapped_resource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
         real_context->Unmap(wrapper->iniTexture, 0);
-        Profiling::iniparams_updates++;
+        profiling::iniparams_updates++;
     }
 }
 
@@ -762,14 +762,14 @@ void OverrideTransition::ScheduleTransition(
 
     if (target_separation != FLT_MAX)
     {
-        err = Profiling::NvAPI_Stereo_GetSeparation(wrapper->stereoHandle, &current);
+        err = profiling::NvAPI_Stereo_GetSeparation(wrapper->stereoHandle, &current);
         if (err != NVAPI_OK)
             LOG_DEBUG("    Stereo_GetSeparation failed: %i\n", err);
         _ScheduleTransition(&separation, "separation", current, target_separation, now, time, transition_type);
     }
     if (target_convergence != FLT_MAX)
     {
-        err = Profiling::NvAPI_Stereo_GetConvergence(wrapper->stereoHandle, &current);
+        err = profiling::NvAPI_Stereo_GetConvergence(wrapper->stereoHandle, &current);
         if (err != NVAPI_OK)
             LOG_DEBUG("    Stereo_GetConvergence failed: %i\n", err);
         _ScheduleTransition(&convergence, "convergence", current, target_convergence, now, time, transition_type);
@@ -844,7 +844,7 @@ void OverrideTransition::UpdateTransitions(
         LOG_INFO(" Transitioning separation to %#.2f\n", val);
 
         nvapi_override();
-        err = Profiling::NvAPI_Stereo_SetSeparation(wrapper->stereoHandle, val);
+        err = profiling::NvAPI_Stereo_SetSeparation(wrapper->stereoHandle, val);
         if (err != NVAPI_OK)
             LOG_DEBUG("    Stereo_SetSeparation failed: %i\n", err);
     }
@@ -855,7 +855,7 @@ void OverrideTransition::UpdateTransitions(
         LOG_INFO(" Transitioning convergence to %#.2f\n", val);
 
         nvapi_override();
-        err = Profiling::NvAPI_Stereo_SetConvergence(wrapper->stereoHandle, val);
+        err = profiling::NvAPI_Stereo_SetConvergence(wrapper->stereoHandle, val);
         if (err != NVAPI_OK)
             LOG_DEBUG("    Stereo_SetConvergence failed: %i\n", err);
     }
@@ -954,7 +954,7 @@ void OverrideGlobalSave::Reset(
         LOG_INFO(" Restoring separation to %#.2f\n", val);
 
         nvapi_override();
-        err = Profiling::NvAPI_Stereo_SetSeparation(wrapper->stereoHandle, val);
+        err = profiling::NvAPI_Stereo_SetSeparation(wrapper->stereoHandle, val);
         if (err != NVAPI_OK)
             LOG_DEBUG("    Stereo_SetSeparation failed: %i\n", err);
     }
@@ -967,7 +967,7 @@ void OverrideGlobalSave::Reset(
         LOG_INFO(" Restoring convergence to %#.2f\n", val);
 
         nvapi_override();
-        err = Profiling::NvAPI_Stereo_SetConvergence(wrapper->stereoHandle, val);
+        err = profiling::NvAPI_Stereo_SetConvergence(wrapper->stereoHandle, val);
         if (err != NVAPI_OK)
             LOG_DEBUG("    Stereo_SetConvergence failed: %i\n", err);
     }
@@ -1009,7 +1009,7 @@ void OverrideGlobalSave::Save(
         }
         else
         {
-            err = Profiling::NvAPI_Stereo_GetSeparation(wrapper->stereoHandle, &val);
+            err = profiling::NvAPI_Stereo_GetSeparation(wrapper->stereoHandle, &val);
             if (err != NVAPI_OK)
             {
                 LOG_DEBUG("    Stereo_GetSeparation failed: %i\n", err);
@@ -1028,7 +1028,7 @@ void OverrideGlobalSave::Save(
         }
         else
         {
-            err = Profiling::NvAPI_Stereo_GetConvergence(wrapper->stereoHandle, &val);
+            err = profiling::NvAPI_Stereo_GetConvergence(wrapper->stereoHandle, &val);
             if (err != NVAPI_OK)
             {
                 LOG_DEBUG("    Stereo_GetConvergence failed: %i\n", err);

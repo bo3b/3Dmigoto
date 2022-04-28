@@ -566,14 +566,14 @@ HRESULT FrameAnalysisContext::CreateStagingResource(ID3D11Texture2D **resource,
         // arguably better since it will be immediately obvious, but
         // risks missing the second perspective if the original
         // resource was actually stereo)
-        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(GetHackerDevice()->stereoHandle, &orig_mode);
-        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->stereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
+        profiling::NvAPI_Stereo_GetSurfaceCreationMode(GetHackerDevice()->stereoHandle, &orig_mode);
+        profiling::NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->stereoHandle, NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
     }
 
     hr = GetHackerDevice()->GetPassThroughOrigDevice1()->CreateTexture2D(&desc, NULL, resource);
 
     if (analyse_options & FrameAnalysisOptions::STEREO)
-        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->stereoHandle, orig_mode);
+        profiling::NvAPI_Stereo_SetSurfaceCreationMode(GetHackerDevice()->stereoHandle, orig_mode);
 
     UNLOCK_RESOURCE_CREATION_MODE();
 
@@ -2799,9 +2799,9 @@ void FrameAnalysisContext::UpdateStereoDumpingMode()
     NvU8 stereo = false;
 
     nvapi_override();
-    Profiling::NvAPI_Stereo_IsEnabled(&stereo);
+    profiling::NvAPI_Stereo_IsEnabled(&stereo);
     if (stereo)
-        Profiling::NvAPI_Stereo_IsActivated(GetHackerDevice()->stereoHandle, &stereo);
+        profiling::NvAPI_Stereo_IsActivated(GetHackerDevice()->stereoHandle, &stereo);
 
     if (!stereo) {
         // 3D Vision is disabled, force mono dumping mode:
@@ -2877,7 +2877,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
         (analyse_options & FrameAnalysisOptions::STEREO) &&
         (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
         // Enable reverse stereo blit for all resources we are about to dump:
-        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, true);
+        nvret = profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, true);
         if (nvret != NVAPI_OK) {
             FA_LOG_ERR("DumpStereoResource failed to enable reverse stereo blit\n");
             // Continue anyway, we should still be able to dump in 2D...
@@ -2913,7 +2913,7 @@ void FrameAnalysisContext::FrameAnalysisAfterDraw(bool compute, DrawCallInfo *ca
     if ((analyse_options & FrameAnalysisOptions::FMT_2D_MASK) &&
         (analyse_options & FrameAnalysisOptions::STEREO) &&
         (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
-        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, false);
+        profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, false);
     }
 
     draw_call++;
@@ -2995,7 +2995,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
     if ((analyse_options & FrameAnalysisOptions::STEREO) &&
         (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
         // Enable reverse stereo blit for all resources we are about to dump:
-        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, true);
+        nvret = profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, true);
         if (nvret != NVAPI_OK) {
             FA_LOG_ERR("FrameAnalyisDump failed to enable reverse stereo blit\n");
             // Continue anyway, we should still be able to dump in 2D...
@@ -3017,7 +3017,7 @@ void FrameAnalysisContext::FrameAnalysisDump(ID3D11Resource *resource, FrameAnal
 
     if ((analyse_options & FrameAnalysisOptions::STEREO) &&
         (GetDumpingContext()->GetType() == D3D11_DEVICE_CONTEXT_IMMEDIATE)) {
-        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, false);
+        profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, false);
     }
 
     non_draw_call_dump_counter++;
@@ -3643,7 +3643,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::ExecuteCommandList(THIS_
         // on a deferred context it must be enabled on the immediate context
         // when the command list is executed. We don't know what options may
         // have been used during the dump, so enable it unconditionally.
-        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, true);
+        nvret = profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, true);
         if (nvret != NVAPI_OK) {
             FA_LOG_ERR("FrameAnalyisDump failed to enable reverse stereo blit\n");
             // Continue anyway, we should still be able to dump in 2D...
@@ -3653,7 +3653,7 @@ STDMETHODIMP_(void) FrameAnalysisContext::ExecuteCommandList(THIS_
     HackerContext::ExecuteCommandList(pCommandList, RestoreContextState);
 
     if (G->analyse_frame)
-        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, false);
+        profiling::NvAPI_Stereo_ReverseStereoBlitControl(GetHackerDevice()->stereoHandle, false);
 
     DumpDeferredResources(pCommandList);
 }
