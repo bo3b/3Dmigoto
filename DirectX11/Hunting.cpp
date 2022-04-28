@@ -385,9 +385,9 @@ static void stereo_screen_shot(
     NvU8                 stereo   = false;
 
     nvapi_override();
-    Profiling::NvAPI_Stereo_IsEnabled(&stereo);
+    profiling::NvAPI_Stereo_IsEnabled(&stereo);
     if (stereo)
-        Profiling::NvAPI_Stereo_IsActivated(device->stereoHandle, &stereo);
+        profiling::NvAPI_Stereo_IsActivated(device->stereoHandle, &stereo);
 
     if (!stereo)
     {
@@ -419,7 +419,7 @@ static void stereo_screen_shot(
         goto out_release_bb;
     }
 
-    nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(device->stereoHandle, true);
+    nvret = profiling::NvAPI_Stereo_ReverseStereoBlitControl(device->stereoHandle, true);
     if (nvret != NVAPI_OK)
     {
         LOG_INFO("StereoScreenShot failed to enable reverse stereo blit\n");
@@ -450,7 +450,7 @@ static void stereo_screen_shot(
 
     LOG_INFO_W(L"  StereoScreenShot on Mark: %s, result: %d\n", full_name, hr);
 
-    Profiling::NvAPI_Stereo_ReverseStereoBlitControl(device->stereoHandle, false);
+    profiling::NvAPI_Stereo_ReverseStereoBlitControl(device->stereoHandle, false);
 out_release_stereo_bb:
     stereo_back_buffer->Release();
 out_release_bb:
@@ -1533,29 +1533,29 @@ static void analyse_perf(
     HackerDevice* device,
     void*         private_data)
 {
-    Profiling::profile_type = static_cast<Profiling::mode>(static_cast<int>(Profiling::profile_type) + 1);
+    profiling::profile_type = static_cast<profiling::mode>(static_cast<int>(profiling::profile_type) + 1);
 
-    if (Profiling::profile_type == Profiling::mode::cto_warning && (!G->implicit_post_checktextureoverride_used || Profiling::cto_warning.empty()))
-        Profiling::profile_type = static_cast<Profiling::mode>(static_cast<int>(Profiling::profile_type) + 1);
+    if (profiling::profile_type == profiling::mode::cto_warning && (!G->implicit_post_checktextureoverride_used || profiling::cto_warning.empty()))
+        profiling::profile_type = static_cast<profiling::mode>(static_cast<int>(profiling::profile_type) + 1);
 
-    if (Profiling::profile_type == Profiling::mode::invalid)
-        Profiling::profile_type = Profiling::mode::none;
+    if (profiling::profile_type == profiling::mode::invalid)
+        profiling::profile_type = profiling::mode::none;
 
-    Profiling::text.clear();
-    Profiling::clear();
+    profiling::text.clear();
+    profiling::clear();
 }
 
 static void freeze_perf(
     HackerDevice* device,
     void*         private_data)
 {
-    if (Profiling::profile_type == Profiling::mode::none)
+    if (profiling::profile_type == profiling::mode::none)
         return;
 
-    Profiling::freeze = !Profiling::freeze;
+    profiling::freeze = !profiling::freeze;
 
-    if (Profiling::freeze)
-        LOG_INFO_W(L"%s", Profiling::text.c_str());
+    if (profiling::freeze)
+        LOG_INFO_W(L"%s", profiling::text.c_str());
 }
 
 static void disable_deferred(
@@ -2267,7 +2267,7 @@ void parse_hunting_section()
     // a user to send us a screenshot of the profiling info:
     RegisterIniKeyBinding(L"Hunting", L"monitor_performance", analyse_perf, nullptr, no_repeat, nullptr);
     RegisterIniKeyBinding(L"Hunting", L"freeze_performance_monitor", freeze_perf, nullptr, no_repeat, nullptr);
-    Profiling::interval = static_cast<INT64>(get_ini_float(L"Hunting", L"monitor_performance_interval", 1.0f, nullptr) * 1000000);
+    profiling::interval = static_cast<INT64>(get_ini_float(L"Hunting", L"monitor_performance_interval", 1.0f, nullptr) * 1000000);
 
     // Taking a screenshot does not really belong in the hunting section,
     // so we no longer make it depend on Hunting, but it still falls under

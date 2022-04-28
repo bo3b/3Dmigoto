@@ -11,22 +11,22 @@
 using namespace std;
 
 
-void Profiling::Overhead::clear()
+void profiling::Overhead::clear()
 {
     cpu.QuadPart = 0;
     count = 0;
     hits = 0;
 }
 
-void Profiling::start(
+void profiling::start(
     State* state)
 {
     QueryPerformanceCounter(&state->start_time);
 }
 
-void Profiling::end(
+void profiling::end(
     State* state,
-    Profiling::Overhead* overhead)
+    profiling::Overhead* overhead)
 {
     LARGE_INTEGER end_time;
 
@@ -34,7 +34,7 @@ void Profiling::end(
     overhead->cpu.QuadPart += end_time.QuadPart - state->start_time.QuadPart;
 }
 
-namespace Profiling {
+namespace profiling {
     mode profile_type;
     Overhead present_overhead;
     Overhead overlay_overhead;
@@ -105,7 +105,7 @@ static void cto_warn_post_commands(CommandList *command_list)
             cto_warn_post_commands(if_command->trueCommandsPost.get());
             cto_warn_post_commands(if_command->falseCommandsPost.get());
         } else
-            Profiling::cto_warning += command->iniLine + L"\n";
+            profiling::cto_warning += command->iniLine + L"\n";
 
         run_command = dynamic_cast<RunExplicitCommandList*>(command.get());
         if (run_command) {
@@ -119,14 +119,14 @@ static void cto_warn_post_commands(CommandList *command_list)
     }
 }
 
-void Profiling::update_cto_warning(bool warn)
+void profiling::update_cto_warning(bool warn)
 {
-    Profiling::cto_warning.clear();
+    profiling::cto_warning.clear();
 
     if (!warn)
         return;
 
-    Profiling::cto_warning = L"\nThe following commands prevented optimising out all implicit post checktextureoverrides:\n";
+    profiling::cto_warning = L"\nThe following commands prevented optimising out all implicit post checktextureoverrides:\n";
     warned_cto_command_lists.clear();
 
     for (auto &tolkv : G->mTextureOverrideMap) {
@@ -136,12 +136,12 @@ void Profiling::update_cto_warning(bool warn)
     for (auto &tof : G->mFuzzyTextureOverrides)
         cto_warn_post_commands(&tof->textureOverride->post_command_list);
 
-    LOG_INFO_NO_NL("%S", Profiling::cto_warning.c_str());
+    LOG_INFO_NO_NL("%S", profiling::cto_warning.c_str());
 }
 
 static void update_txt_cto_warning()
 {
-    Profiling::text += L" (post [TextureOverride] commands):\n" + Profiling::cto_warning;
+    profiling::text += L" (post [TextureOverride] commands):\n" + profiling::cto_warning;
 }
 
 static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
@@ -171,32 +171,32 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
     // the profiling overlay was only just turned on and the first frame
     // won't have counted any present overhead yet, but will have counted
     // overlay overhead:
-    if (Profiling::present_overhead.cpu.QuadPart > Profiling::overlay_overhead.cpu.QuadPart)
-        present_overhead.QuadPart = Profiling::present_overhead.cpu.QuadPart - Profiling::overlay_overhead.cpu.QuadPart;
+    if (profiling::present_overhead.cpu.QuadPart > profiling::overlay_overhead.cpu.QuadPart)
+        present_overhead.QuadPart = profiling::present_overhead.cpu.QuadPart - profiling::overlay_overhead.cpu.QuadPart;
 
     for (CommandList *command_list : command_lists_profiling)
         command_list_overhead.QuadPart += command_list->timeSpentExclusive.QuadPart;
 
     present_overhead.QuadPart = present_overhead.QuadPart * 1000000 / freq.QuadPart;
     command_list_overhead.QuadPart = command_list_overhead.QuadPart * 1000000 / freq.QuadPart;
-    overlay_overhead.QuadPart = Profiling::overlay_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    draw_overhead.QuadPart = Profiling::draw_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    map_overhead.QuadPart = Profiling::map_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    hash_tracking_overhead.QuadPart = Profiling::hash_tracking_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    stat_overhead.QuadPart = Profiling::stat_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    shaderregex_overhead.QuadPart = Profiling::shaderregex_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    cursor_overhead.QuadPart = Profiling::cursor_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    nvapi_overhead.QuadPart = Profiling::nvapi_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    overlay_overhead.QuadPart = profiling::overlay_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    draw_overhead.QuadPart = profiling::draw_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    map_overhead.QuadPart = profiling::map_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    hash_tracking_overhead.QuadPart = profiling::hash_tracking_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    stat_overhead.QuadPart = profiling::stat_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    shaderregex_overhead.QuadPart = profiling::shaderregex_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    cursor_overhead.QuadPart = profiling::cursor_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    nvapi_overhead.QuadPart = profiling::nvapi_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 
-    shader_hash_lookup_overhead.QuadPart = Profiling::shader_hash_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    shader_reload_lookup_overhead.QuadPart = Profiling::shader_reload_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    shader_original_lookup_overhead.QuadPart = Profiling::shader_original_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    shaderoverride_lookup_overhead.QuadPart = Profiling::shaderoverride_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    texture_handle_info_lookup_overhead.QuadPart = Profiling::texture_handle_info_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    textureoverride_lookup_overhead.QuadPart = Profiling::textureoverride_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
-    resource_pool_lookup_overhead.QuadPart = Profiling::resource_pool_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    shader_hash_lookup_overhead.QuadPart = profiling::shader_hash_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    shader_reload_lookup_overhead.QuadPart = profiling::shader_reload_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    shader_original_lookup_overhead.QuadPart = profiling::shader_original_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    shaderoverride_lookup_overhead.QuadPart = profiling::shaderoverride_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    texture_handle_info_lookup_overhead.QuadPart = profiling::texture_handle_info_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    textureoverride_lookup_overhead.QuadPart = profiling::textureoverride_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
+    resource_pool_lookup_overhead.QuadPart = profiling::resource_pool_lookup_overhead.cpu.QuadPart * 1000000 / freq.QuadPart;
 
-    Profiling::text += L" (CPU Performance Summary):\n";
+    profiling::text += L" (CPU Performance Summary):\n";
     _snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
                 L"     Present overhead: %7.2fus/frame ~%ffps\n"
                 L"     Overlay overhead: %7.2fus/frame ~%ffps\n"
@@ -239,7 +239,7 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
                 (float)nvapi_overhead.QuadPart / frames,
                 60.0 * nvapi_overhead.QuadPart / collection_duration.QuadPart
     );
-    Profiling::text += buf;
+    profiling::text += buf;
 
     _snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
                 L"\n"
@@ -254,40 +254,40 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
                 ,
                 (float)shader_hash_lookup_overhead.QuadPart / frames,
                 60.0 * shader_hash_lookup_overhead.QuadPart / collection_duration.QuadPart,
-                Profiling::shader_hash_lookup_overhead.hits / frames,
-                Profiling::shader_hash_lookup_overhead.count / frames,
+                profiling::shader_hash_lookup_overhead.hits / frames,
+                profiling::shader_hash_lookup_overhead.count / frames,
 
                 (float)shader_reload_lookup_overhead.QuadPart / frames,
                 60.0 * shader_reload_lookup_overhead.QuadPart / collection_duration.QuadPart,
-                Profiling::shader_reload_lookup_overhead.hits / frames,
-                Profiling::shader_reload_lookup_overhead.count / frames,
+                profiling::shader_reload_lookup_overhead.hits / frames,
+                profiling::shader_reload_lookup_overhead.count / frames,
 
                 (float)shader_original_lookup_overhead.QuadPart / frames,
                 60.0 * shader_original_lookup_overhead.QuadPart / collection_duration.QuadPart,
-                Profiling::shader_original_lookup_overhead.hits / frames,
-                Profiling::shader_original_lookup_overhead.count / frames,
+                profiling::shader_original_lookup_overhead.hits / frames,
+                profiling::shader_original_lookup_overhead.count / frames,
 
                 (float)shaderoverride_lookup_overhead.QuadPart / frames,
                 60.0 * shaderoverride_lookup_overhead.QuadPart / collection_duration.QuadPart,
-                Profiling::shaderoverride_lookup_overhead.hits / frames,
-                Profiling::shaderoverride_lookup_overhead.count / frames,
+                profiling::shaderoverride_lookup_overhead.hits / frames,
+                profiling::shaderoverride_lookup_overhead.count / frames,
 
                 (float)texture_handle_info_lookup_overhead.QuadPart / frames,
                 60.0 * texture_handle_info_lookup_overhead.QuadPart / collection_duration.QuadPart,
-                Profiling::texture_handle_info_lookup_overhead.hits / frames,
-                Profiling::texture_handle_info_lookup_overhead.count / frames,
+                profiling::texture_handle_info_lookup_overhead.hits / frames,
+                profiling::texture_handle_info_lookup_overhead.count / frames,
 
                 (float)textureoverride_lookup_overhead.QuadPart / frames,
                 60.0 * textureoverride_lookup_overhead.QuadPart / collection_duration.QuadPart,
-                Profiling::textureoverride_lookup_overhead.hits / frames,
-                Profiling::textureoverride_lookup_overhead.count / frames,
+                profiling::textureoverride_lookup_overhead.hits / frames,
+                profiling::textureoverride_lookup_overhead.count / frames,
 
                 (float)resource_pool_lookup_overhead.QuadPart / frames,
                 60.0 * resource_pool_lookup_overhead.QuadPart / collection_duration.QuadPart,
-                Profiling::resource_pool_lookup_overhead.hits / frames,
-                Profiling::resource_pool_lookup_overhead.count / frames
+                profiling::resource_pool_lookup_overhead.hits / frames,
+                profiling::resource_pool_lookup_overhead.count / frames
     );
-    Profiling::text += buf;
+    profiling::text += buf;
 
     _snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
                 L"\n"
@@ -307,25 +307,25 @@ static void update_txt_summary(LARGE_INTEGER collection_duration, LARGE_INTEGER 
                 L"               Skipped draw calls: %4u/frame (Cost saving)\n"
                 L"max_executions_per_frame exceeded: %4u/frame (Cost saving)\n"
                 ,
-                Profiling::iniparams_updates / frames, G->iniParams.size() * sizeof(DirectX::XMFLOAT4),
-                Profiling::resource_full_copies / frames,
-                Profiling::resource_reference_copies / frames,
-                Profiling::inter_device_copies / frames,
-                Profiling::stereo2mono_copies / frames,
-                Profiling::msaa_resolutions / frames,
-                Profiling::buffer_region_copies / frames,
-                Profiling::views_cleared / frames,
-                Profiling::resources_created,
-                Profiling::resource_pool_swaps / frames,
-                Profiling::max_copies_per_frame_exceeded / frames,
-                Profiling::injected_draw_calls / frames,
-                Profiling::skipped_draw_calls / frames,
-                Profiling::max_executions_per_frame_exceeded / frames
+                profiling::iniparams_updates / frames, G->iniParams.size() * sizeof(DirectX::XMFLOAT4),
+                profiling::resource_full_copies / frames,
+                profiling::resource_reference_copies / frames,
+                profiling::inter_device_copies / frames,
+                profiling::stereo2mono_copies / frames,
+                profiling::msaa_resolutions / frames,
+                profiling::buffer_region_copies / frames,
+                profiling::views_cleared / frames,
+                profiling::resources_created,
+                profiling::resource_pool_swaps / frames,
+                profiling::max_copies_per_frame_exceeded / frames,
+                profiling::injected_draw_calls / frames,
+                profiling::skipped_draw_calls / frames,
+                profiling::max_executions_per_frame_exceeded / frames
     );
-    Profiling::text += buf;
+    profiling::text += buf;
 
-    if (G->implicit_post_checktextureoverride_used && !Profiling::cto_warning.empty())
-        Profiling::text += L"\nImplicit post checktextureoverrides were not optimised out\n";
+    if (G->implicit_post_checktextureoverride_used && !profiling::cto_warning.empty())
+        profiling::text += L"\nImplicit post checktextureoverrides were not optimised out\n";
 }
 
 static void update_txt_command_lists(LARGE_INTEGER collection_duration, LARGE_INTEGER freq, unsigned frames)
@@ -339,7 +339,7 @@ static void update_txt_command_lists(LARGE_INTEGER collection_duration, LARGE_IN
         return lhs->timeSpentInclusive.QuadPart > rhs->timeSpentInclusive.QuadPart;
     });
 
-    Profiling::text += L" (Top Command Lists):\n"
+    profiling::text += L" (Top Command Lists):\n"
                 L"      | Including sub-lists | Excluding sub-lists |\n"
                 L"count | CPU/frame ~fps cost | CPU/frame ~fps cost |\n"
                 L"----- | --------- --------- | --------- --------- |\n";
@@ -362,7 +362,7 @@ static void update_txt_command_lists(LARGE_INTEGER collection_duration, LARGE_IN
                 command_list->post ? L"post" : L"pre",
                 command_list->iniSection.c_str()
         );
-        Profiling::text += buf;
+        profiling::text += buf;
         // TODO: GPU time spent
     }
 }
@@ -380,7 +380,7 @@ static void update_txt_commands(LARGE_INTEGER collection_duration, LARGE_INTEGER
                (rhs->preTimeSpent.QuadPart + rhs->postTimeSpent.QuadPart);
     });
 
-    Profiling::text += L" (Top Commands):\n"
+    profiling::text += L" (Top Commands):\n"
                 L"         pre              |         post\n"
                 L"count CPU/frame ~fps cost | count CPU/frame ~fps cost\n"
                 L"----- --------- --------- | ----- --------- ---------\n";
@@ -399,25 +399,25 @@ static void update_txt_commands(LARGE_INTEGER collection_duration, LARGE_INTEGER
                     ceil((float)cmd->preExecutions / frames),
                     (float)pre_time_spent.QuadPart / frames,
                     pre_fps_cost);
-            Profiling::text += buf;
+            profiling::text += buf;
         } else
-            Profiling::text += L"                          | ";
+            profiling::text += L"                          | ";
         if (cmd->postExecutions) {
             _snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
                     L"%5.0f %7.2fus %9f ",
                     ceil((float)cmd->postExecutions / frames),
                     (float)post_time_spent.QuadPart / frames,
                     post_fps_cost);
-            Profiling::text += buf;
+            profiling::text += buf;
         } else
-            Profiling::text += L"                          ";
-        Profiling::text += cmd->iniLine;
-        Profiling::text += L"\n";
+            profiling::text += L"                          ";
+        profiling::text += cmd->iniLine;
+        profiling::text += L"\n";
         // TODO: GPU time spent
     }
 }
 
-void Profiling::update_txt()
+void profiling::update_txt()
 {
     static LARGE_INTEGER freq = {};
     LARGE_INTEGER end_time, collection_duration;
@@ -436,25 +436,25 @@ void Profiling::update_txt()
         return;
 
     collection_duration.QuadPart = (end_time.QuadPart - profiling_start_time.QuadPart) * 1000000 / freq.QuadPart;
-    if (collection_duration.QuadPart < interval && !Profiling::text.empty())
+    if (collection_duration.QuadPart < interval && !profiling::text.empty())
         return;
 
     if (frames && collection_duration.QuadPart) {
         _snwprintf_s(buf, ARRAYSIZE(buf), _TRUNCATE,
                     L"Performance Monitor %.1ffps", frames * 1000000.0 / collection_duration.QuadPart);
-        Profiling::text = buf;
+        profiling::text = buf;
 
-        switch (Profiling::profile_type) {
-            case Profiling::mode::summary:
+        switch (profiling::profile_type) {
+            case profiling::mode::summary:
                 update_txt_summary(collection_duration, freq, frames);
                 break;
-            case Profiling::mode::top_command_lists:
+            case profiling::mode::top_command_lists:
                 update_txt_command_lists(collection_duration, freq, frames);
                 break;
-            case Profiling::mode::top_commands:
+            case profiling::mode::top_commands:
                 update_txt_commands(collection_duration, freq, frames);
                 break;
-            case Profiling::mode::cto_warning:
+            case profiling::mode::cto_warning:
                 update_txt_cto_warning();
                 break;
         }
@@ -464,7 +464,7 @@ void Profiling::update_txt()
     clear();
 }
 
-void Profiling::clear()
+void profiling::clear()
 {
     command_lists_profiling.clear();
     command_lists_cmd_profiling.clear();
@@ -510,30 +510,30 @@ void Profiling::clear()
 
 #define NVAPI_PROFILE(CODE)                                     \
     [&]() -> NvAPI_Status {                                     \
-        Profiling::State state;                                 \
-        if (Profiling::profile_type == Profiling::mode::summary)        \
+        profiling::State state;                                 \
+        if (profiling::profile_type == profiling::mode::summary)        \
         {                                                       \
-            Profiling::start(&state);                           \
+            profiling::start(&state);                           \
             auto ret = CODE;                                    \
-            Profiling::end(&state, &Profiling::nvapi_overhead); \
+            profiling::end(&state, &profiling::nvapi_overhead); \
             return ret;                                         \
         }                                                       \
         else                                                    \
             return CODE;                                        \
     }()
 
-NVAPI_INTERFACE Profiling::NvAPI_Stereo_Enable()
+NVAPI_INTERFACE profiling::NvAPI_Stereo_Enable()
 {
     return NVAPI_PROFILE(::NvAPI_Stereo_Enable());
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_Stereo_IsEnabled(
+NVAPI_INTERFACE profiling::NvAPI_Stereo_IsEnabled(
     NvU8* pIsStereoEnabled)
 {
     return NVAPI_PROFILE(::NvAPI_Stereo_IsEnabled(pIsStereoEnabled));
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_Stereo_IsActivated(
+NVAPI_INTERFACE profiling::NvAPI_Stereo_IsActivated(
     StereoHandle stereoHandle,
     NvU8* pIsStereoOn)
 {
@@ -544,7 +544,7 @@ NVAPI_INTERFACE Profiling::NvAPI_Stereo_IsActivated(
     return NVAPI_ERROR;
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_Stereo_GetEyeSeparation(
+NVAPI_INTERFACE profiling::NvAPI_Stereo_GetEyeSeparation(
     StereoHandle hStereoHandle,
     float* pSeparation)
 {
@@ -555,7 +555,7 @@ NVAPI_INTERFACE Profiling::NvAPI_Stereo_GetEyeSeparation(
     return NVAPI_ERROR;
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_Stereo_GetSeparation(
+NVAPI_INTERFACE profiling::NvAPI_Stereo_GetSeparation(
     StereoHandle stereoHandle,
     float* pSeparationPercentage)
 {
@@ -566,7 +566,7 @@ NVAPI_INTERFACE Profiling::NvAPI_Stereo_GetSeparation(
     return NVAPI_ERROR;
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_Stereo_SetSeparation(
+NVAPI_INTERFACE profiling::NvAPI_Stereo_SetSeparation(
     StereoHandle stereoHandle,
     float newSeparationPercentage)
 {
@@ -575,7 +575,7 @@ NVAPI_INTERFACE Profiling::NvAPI_Stereo_SetSeparation(
     return NVAPI_ERROR;
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_Stereo_GetConvergence(
+NVAPI_INTERFACE profiling::NvAPI_Stereo_GetConvergence(
     StereoHandle stereoHandle,
     float* pConvergence)
 {
@@ -586,7 +586,7 @@ NVAPI_INTERFACE Profiling::NvAPI_Stereo_GetConvergence(
     return NVAPI_ERROR;
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_Stereo_SetConvergence(
+NVAPI_INTERFACE profiling::NvAPI_Stereo_SetConvergence(
     StereoHandle stereoHandle,
     float newConvergence)
 {
@@ -595,7 +595,7 @@ NVAPI_INTERFACE Profiling::NvAPI_Stereo_SetConvergence(
     return NVAPI_ERROR;
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_Stereo_SetActiveEye(
+NVAPI_INTERFACE profiling::NvAPI_Stereo_SetActiveEye(
     StereoHandle hStereoHandle,
     NV_STEREO_ACTIVE_EYE StereoEye)
 {
@@ -604,7 +604,7 @@ NVAPI_INTERFACE Profiling::NvAPI_Stereo_SetActiveEye(
     return NVAPI_ERROR;
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_Stereo_ReverseStereoBlitControl(
+NVAPI_INTERFACE profiling::NvAPI_Stereo_ReverseStereoBlitControl(
     StereoHandle hStereoHandle,
     NvU8 TurnOn)
 {
@@ -613,7 +613,7 @@ NVAPI_INTERFACE Profiling::NvAPI_Stereo_ReverseStereoBlitControl(
     return NVAPI_ERROR;
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_Stereo_SetSurfaceCreationMode(
+NVAPI_INTERFACE profiling::NvAPI_Stereo_SetSurfaceCreationMode(
     StereoHandle hStereoHandle,
     NVAPI_STEREO_SURFACECREATEMODE creationMode)
 {
@@ -622,7 +622,7 @@ NVAPI_INTERFACE Profiling::NvAPI_Stereo_SetSurfaceCreationMode(
     return NVAPI_ERROR;
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_Stereo_GetSurfaceCreationMode(
+NVAPI_INTERFACE profiling::NvAPI_Stereo_GetSurfaceCreationMode(
     StereoHandle hStereoHandle,
     NVAPI_STEREO_SURFACECREATEMODE* pCreationMode)
 {
@@ -633,14 +633,14 @@ NVAPI_INTERFACE Profiling::NvAPI_Stereo_GetSurfaceCreationMode(
     return NVAPI_ERROR;
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_DISP_GetDisplayConfig(
+NVAPI_INTERFACE profiling::NvAPI_DISP_GetDisplayConfig(
     NvU32* pathInfoCount,
     NV_DISPLAYCONFIG_PATH_INFO* pathInfo)
 {
     return NVAPI_PROFILE(::NvAPI_DISP_GetDisplayConfig(pathInfoCount, pathInfo));
 }
 
-NVAPI_INTERFACE Profiling::NvAPI_D3D_GetCurrentSLIState(
+NVAPI_INTERFACE profiling::NvAPI_D3D_GetCurrentSLIState(
     IUnknown* pDevice,
     NV_GET_CURRENT_SLI_STATE* pSliState)
 {
