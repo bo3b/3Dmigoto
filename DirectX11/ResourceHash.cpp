@@ -989,13 +989,13 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
     UINT dstWidth = 1, dstHeight = 1, dstDepth = 1, dstMip = 0, dstIdx = 0, dstArraySize = 1;
     bool partial = false;
     ResourceInfoMap::iterator info_i;
-    Profiling::State profiling_state;
+    profiling::State profiling_state;
 
     if (!dest)
         return;
 
-    if (Profiling::profile_type == Profiling::mode::summary)
-        Profiling::start(&profiling_state);
+    if (profiling::profile_type == profiling::mode::summary)
+        profiling::start(&profiling_state);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
@@ -1099,8 +1099,8 @@ void MarkResourceHashContaminated(ID3D11Resource *dest, UINT DstSubresource,
 out_unlock:
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
-    if (Profiling::profile_type == Profiling::mode::summary)
-        Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
+    if (profiling::profile_type == profiling::mode::summary)
+        profiling::end(&profiling_state, &profiling::hash_tracking_overhead);
 }
 
 void UpdateResourceHashFromCPU(ID3D11Resource *resource,
@@ -1114,13 +1114,13 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
     D3D11_TEXTURE3D_DESC *desc3D;
     uint32_t old_data_hash, old_hash;
     ResourceHandleInfo *info = NULL;
-    Profiling::State profiling_state;
+    profiling::State profiling_state;
 
     if (!resource || !data)
         return;
 
-    if (Profiling::profile_type == Profiling::mode::summary)
-        Profiling::start(&profiling_state);
+    if (profiling::profile_type == profiling::mode::summary)
+        profiling::start(&profiling_state);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
@@ -1179,8 +1179,8 @@ void UpdateResourceHashFromCPU(ID3D11Resource *resource,
 out_unlock:
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
-    if (Profiling::profile_type == Profiling::mode::summary)
-        Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
+    if (profiling::profile_type == profiling::mode::summary)
+        profiling::end(&profiling_state, &profiling::hash_tracking_overhead);
 }
 
 void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
@@ -1190,10 +1190,10 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
     D3D11_TEXTURE2D_DESC *desc2D;
     D3D11_TEXTURE3D_DESC *desc3D;
     uint32_t old_data_hash, old_hash;
-    Profiling::State profiling_state;
+    profiling::State profiling_state;
 
-    if (Profiling::profile_type == Profiling::mode::summary)
-        Profiling::start(&profiling_state);
+    if (profiling::profile_type == profiling::mode::summary)
+        profiling::start(&profiling_state);
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
 
@@ -1252,8 +1252,8 @@ void PropagateResourceHash(ID3D11Resource *dst, ID3D11Resource *src)
 out_unlock:
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
 
-    if (Profiling::profile_type == Profiling::mode::summary)
-        Profiling::end(&profiling_state, &Profiling::hash_tracking_overhead);
+    if (profiling::profile_type == profiling::mode::summary)
+        profiling::end(&profiling_state, &profiling::hash_tracking_overhead);
 }
 
 bool MapTrackResourceHashUpdate(ID3D11Resource *pResource, UINT Subresource)

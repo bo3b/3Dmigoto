@@ -588,7 +588,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present(
     UINT SyncInterval,
     UINT Flags)
 {
-    Profiling::State profiling_state = {};
+    profiling::State profiling_state = {};
     bool             profiling       = false;
 
     LOG_DEBUG("HackerSwapChain::Present(%s@%p) called with\n", type_name(this), this);
@@ -597,17 +597,17 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present(
 
     if (!(Flags & DXGI_PRESENT_TEST))
     {
-        // Profiling::mode may change below, so make a copy
-        profiling = Profiling::profile_type == Profiling::mode::summary;
+        // profiling::mode may change below, so make a copy
+        profiling = profiling::profile_type == profiling::mode::summary;
         if (profiling)
-            Profiling::start(&profiling_state);
+            profiling::start(&profiling_state);
 
         // Every presented frame, we want to take some CPU time to run our actions,
         // which enables hunting, and snapshots, and aiming overrides and other inputs
         RunFrameActions();
 
         if (profiling)
-            Profiling::end(&profiling_state, &Profiling::present_overhead);
+            profiling::end(&profiling_state, &profiling::present_overhead);
     }
 
     HRESULT hr = origSwapChain1->Present(SyncInterval, Flags);
@@ -615,7 +615,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present(
     if (!(Flags & DXGI_PRESENT_TEST))
     {
         if (profiling)
-            Profiling::start(&profiling_state);
+            profiling::start(&profiling_state);
 
         // Update the stereo params texture just after the present so that
         // shaders get the new values for the current frame:
@@ -629,7 +629,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present(
         run_command_list(hackerDevice, hackerContext, &G->post_present_command_list, nullptr, true);
 
         if (profiling)
-            Profiling::end(&profiling_state, &Profiling::present_overhead);
+            profiling::end(&profiling_state, &profiling::present_overhead);
     }
 
     LOG_DEBUG("  returns %x\n", hr);
@@ -882,7 +882,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present1(
     UINT                           PresentFlags,
     const DXGI_PRESENT_PARAMETERS* pPresentParameters)
 {
-    Profiling::State profiling_state = {};
+    profiling::State profiling_state = {};
     gLogDebug                        = true;
     bool profiling                   = false;
 
@@ -892,17 +892,17 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present1(
 
     if (!(PresentFlags & DXGI_PRESENT_TEST))
     {
-        // Profiling::mode may change below, so make a copy
-        profiling = Profiling::profile_type == Profiling::mode::summary;
+        // profiling::mode may change below, so make a copy
+        profiling = profiling::profile_type == profiling::mode::summary;
         if (profiling)
-            Profiling::start(&profiling_state);
+            profiling::start(&profiling_state);
 
         // Every presented frame, we want to take some CPU time to run our actions,
         // which enables hunting, and snapshots, and aiming overrides and other inputs
         RunFrameActions();
 
         if (profiling)
-            Profiling::end(&profiling_state, &Profiling::present_overhead);
+            profiling::end(&profiling_state, &profiling::present_overhead);
     }
 
     HRESULT hr = origSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);
@@ -910,7 +910,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present1(
     if (!(PresentFlags & DXGI_PRESENT_TEST))
     {
         if (profiling)
-            Profiling::start(&profiling_state);
+            profiling::start(&profiling_state);
 
         // Update the stereo params texture just after the present so that we
         // get the new values for the current frame:
@@ -924,7 +924,7 @@ HRESULT STDMETHODCALLTYPE HackerSwapChain::Present1(
         run_command_list(hackerDevice, hackerContext, &G->post_present_command_list, nullptr, true);
 
         if (profiling)
-            Profiling::end(&profiling_state, &Profiling::present_overhead);
+            profiling::end(&profiling_state, &profiling::present_overhead);
     }
 
     LOG_DEBUG("  returns %x\n", hr);

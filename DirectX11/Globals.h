@@ -756,30 +756,30 @@ extern globals *G;
 
 static inline ShaderMap::iterator lookup_shader_hash(ID3D11DeviceChild *shader)
 {
-    return Profiling::lookup_map(G->mShaders, shader, &Profiling::shader_hash_lookup_overhead);
+    return profiling::lookup_map(G->mShaders, shader, &profiling::shader_hash_lookup_overhead);
 }
 
 static inline ShaderReloadMap::iterator lookup_reloaded_shader(ID3D11DeviceChild *shader)
 {
-    return Profiling::lookup_map(G->mReloadedShaders, shader, &Profiling::shader_reload_lookup_overhead);
+    return profiling::lookup_map(G->mReloadedShaders, shader, &profiling::shader_reload_lookup_overhead);
 }
 
 static inline ShaderReplacementMap::iterator lookup_original_shader(ID3D11DeviceChild *shader)
 {
-    return Profiling::lookup_map(G->mOriginalShaders, shader, &Profiling::shader_original_lookup_overhead);
+    return profiling::lookup_map(G->mOriginalShaders, shader, &profiling::shader_original_lookup_overhead);
 }
 
 static inline ShaderOverrideMap::iterator lookup_shaderoverride(UINT64 hash)
 {
-    return Profiling::lookup_map(G->mShaderOverrideMap, hash, &Profiling::shaderoverride_lookup_overhead);
+    return profiling::lookup_map(G->mShaderOverrideMap, hash, &profiling::shaderoverride_lookup_overhead);
 }
 
 static inline ResourceMap::iterator lookup_resource_handle_info(ID3D11Resource *resource)
 {
-    return Profiling::lookup_map(G->mResources, resource, &Profiling::texture_handle_info_lookup_overhead);
+    return profiling::lookup_map(G->mResources, resource, &profiling::texture_handle_info_lookup_overhead);
 }
 
 static inline TextureOverrideMap::iterator lookup_textureoverride(uint32_t hash)
 {
-    return Profiling::lookup_map(G->mTextureOverrideMap, hash, &Profiling::textureoverride_lookup_overhead);
+    return profiling::lookup_map(G->mTextureOverrideMap, hash, &profiling::textureoverride_lookup_overhead);
 }

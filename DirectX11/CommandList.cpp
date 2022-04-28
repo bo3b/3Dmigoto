@@ -53,8 +53,8 @@ static inline void profile_command_list_start(CommandList *command_list, Command
 {
     bool inserted;
 
-    if ((Profiling::profile_type != Profiling::mode::summary)
-     && (Profiling::profile_type != Profiling::mode::top_command_lists))
+    if ((profiling::profile_type != profiling::mode::summary)
+     && (profiling::profile_type != profiling::mode::top_command_lists))
         return;
 
     inserted = command_lists_profiling.insert(command_list).second;
@@ -75,8 +75,8 @@ static inline void profile_command_list_end(CommandList *command_list, CommandLi
 {
     LARGE_INTEGER list_end_time, duration;
 
-    if ((Profiling::profile_type != Profiling::mode::summary)
-     && (Profiling::profile_type != Profiling::mode::top_command_lists))
+    if ((profiling::profile_type != profiling::mode::summary)
+     && (profiling::profile_type != profiling::mode::top_command_lists))
         return;
 
     QueryPerformanceCounter(&list_end_time);
@@ -92,7 +92,7 @@ static inline void profile_command_list_cmd_start(CommandListCommand *cmd,
 {
     bool inserted;
 
-    if (Profiling::profile_type != Profiling::mode::top_commands)
+    if (profiling::profile_type != profiling::mode::top_commands)
         return;
 
     inserted = command_lists_cmd_profiling.insert(cmd).second;
@@ -111,7 +111,7 @@ static inline void profile_command_list_cmd_end(CommandListCommand *cmd, Command
 {
     LARGE_INTEGER end_time;
 
-    if (Profiling::profile_type != Profiling::mode::top_commands)
+    if (profiling::profile_type != profiling::mode::top_commands)
         return;
 
     QueryPerformanceCounter(&end_time);
@@ -172,7 +172,7 @@ static void command_list_flush_state(CommandListState *state)
         memcpy(mapped_subresource.pData, G->iniParams.data(), sizeof(DirectX::XMFLOAT4) * G->iniParams.size());
         state->origContext1->Unmap(state->hackerDevice->iniTexture, 0);
         state->updateParams = false;
-        Profiling::iniparams_updates++;
+        profiling::iniparams_updates++;
     }
 }
 
@@ -309,7 +309,7 @@ void optimise_command_lists(HackerDevice *device)
         // nice if this sort of thing worked more generally.
     } while (making_progress);
 
-    Profiling::update_cto_warning(!ignore_cto_post);
+    profiling::update_cto_warning(!ignore_cto_post);
 
     LOG_INFO("Command List Optimiser finished after %ums\n", GetTickCount() - start);
     registered_command_lists.clear();
@@ -1163,7 +1163,7 @@ void DrawCommand::Run(CommandListState *state)
     // Ensure IniParams are visible:
     command_list_flush_state(state);
 
-    Profiling::injected_draw_calls++;
+    profiling::injected_draw_calls++;
 
     switch (type) {
         case DrawCommandType::DRAW:
@@ -1408,7 +1408,7 @@ bool PerDrawStereoOverrideCommand::Noop(bool post, bool ignore_cto_pre, bool ign
     NvU8 enabled = false;
 
     nvapi_override();
-    Profiling::NvAPI_Stereo_IsEnabled(&enabled);
+    profiling::NvAPI_Stereo_IsEnabled(&enabled);
     return !enabled;
 }
 
@@ -1416,7 +1416,7 @@ void DirectModeSetActiveEyeCommand::Run(CommandListState *state)
 {
     COMMAND_LIST_LOG(state, "%S\n", iniLine.c_str());
 
-    if (NVAPI_OK != Profiling::NvAPI_Stereo_SetActiveEye(state->hackerDevice->stereoHandle, eye))
+    if (NVAPI_OK != profiling::NvAPI_Stereo_SetActiveEye(state->hackerDevice->stereoHandle, eye))
         COMMAND_LIST_LOG(state, "  Stereo_SetActiveEye failed\n");
 }
 
@@ -1425,7 +1425,7 @@ bool DirectModeSetActiveEyeCommand::Noop(bool post, bool ignore_cto_pre, bool ig
     NvU8 enabled = false;
 
     nvapi_override();
-    Profiling::NvAPI_Stereo_IsEnabled(&enabled);
+    profiling::NvAPI_Stereo_IsEnabled(&enabled);
     return !enabled;
 
     // FIXME: Should also return false if direct mode is disabled...
@@ -1436,7 +1436,7 @@ float PerDrawSeparationOverrideCommand::GetStereoValue(CommandListState *state)
 {
     float ret = 0.0f;
 
-    if (NVAPI_OK != Profiling::NvAPI_Stereo_GetSeparation(state->hackerDevice->stereoHandle, &ret))
+    if (NVAPI_OK != profiling::NvAPI_Stereo_GetSeparation(state->hackerDevice->stereoHandle, &ret))
         COMMAND_LIST_LOG(state, "  Stereo_GetSeparation failed\n");
 
     return ret;
@@ -1445,7 +1445,7 @@ float PerDrawSeparationOverrideCommand::GetStereoValue(CommandListState *state)
 void PerDrawSeparationOverrideCommand::SetStereoValue(CommandListState *state, float val)
 {
     nvapi_override();
-    if (NVAPI_OK != Profiling::NvAPI_Stereo_SetSeparation(state->hackerDevice->stereoHandle, val))
+    if (NVAPI_OK != profiling::NvAPI_Stereo_SetSeparation(state->hackerDevice->stereoHandle, val))
         COMMAND_LIST_LOG(state, "  Stereo_SetSeparation failed\n");
 }
 
@@ -1453,7 +1453,7 @@ float PerDrawConvergenceOverrideCommand::GetStereoValue(CommandListState *state)
 {
     float ret = 0.0f;
 
-    if (NVAPI_OK != Profiling::NvAPI_Stereo_GetConvergence(state->hackerDevice->stereoHandle, &ret))
+    if (NVAPI_OK != profiling::NvAPI_Stereo_GetConvergence(state->hackerDevice->stereoHandle, &ret))
         COMMAND_LIST_LOG(state, "  Stereo_GetConvergence failed\n");
 
     return ret;
@@ -1462,7 +1462,7 @@ float PerDrawConvergenceOverrideCommand::GetStereoValue(CommandListState *state)
 void PerDrawConvergenceOverrideCommand::SetStereoValue(CommandListState *state, float val)
 {
     nvapi_override();
-    if (NVAPI_OK != Profiling::NvAPI_Stereo_SetConvergence(state->hackerDevice->stereoHandle, val))
+    if (NVAPI_OK != profiling::NvAPI_Stereo_SetConvergence(state->hackerDevice->stereoHandle, val))
         COMMAND_LIST_LOG(state, "  Stereo_SetConvergence failed\n");
 }
 
@@ -2215,7 +2215,7 @@ void RunCustomShaderCommand::Run(CommandListState *state)
             customShader->executionsThisFrame = 1;
         } else if (customShader->executionsThisFrame++ >= customShader->maxExecutionsPerFrame) {
             COMMAND_LIST_LOG(state, "  max_executions_per_frame exceeded\n");
-            Profiling::max_executions_per_frame_exceeded++;
+            profiling::max_executions_per_frame_exceeded++;
             return;
         }
     }
@@ -2812,13 +2812,13 @@ out_delete_mem_dc:
 static void update_cursor_resources(CommandListState *state)
 {
     HDC dc;
-    Profiling::State profiling_state;
+    profiling::State profiling_state;
 
     if (state->cursorMaskTex || state->cursorColorTex)
         return;
 
-    if (Profiling::profile_type == Profiling::mode::summary)
-        Profiling::start(&profiling_state);
+    if (profiling::profile_type == profiling::mode::summary)
+        profiling::start(&profiling_state);
 
     update_cursor_info_ex(state);
 
@@ -2868,8 +2868,8 @@ static void update_cursor_resources(CommandListState *state)
 
     ReleaseDC(NULL, dc);
 
-    if (Profiling::profile_type == Profiling::mode::summary)
-        Profiling::end(&profiling_state, &Profiling::cursor_overhead);
+    if (profiling::profile_type == profiling::mode::summary)
+        profiling::end(&profiling_state, &profiling::cursor_overhead);
 }
 
 static bool sli_enabled(HackerDevice *device)
@@ -2878,7 +2878,7 @@ static bool sli_enabled(HackerDevice *device)
     sli_state.version = NV_GET_CURRENT_SLI_STATE_VER;
     NvAPI_Status status;
 
-    status = Profiling::NvAPI_D3D_GetCurrentSLIState(device->GetPossiblyHookedOrigDevice1(), &sli_state);
+    status = profiling::NvAPI_D3D_GetCurrentSLIState(device->GetPossiblyHookedOrigDevice1(), &sli_state);
     if (status != NVAPI_OK) {
         LOG_INFO("Unable to retrieve SLI state from nvapi\n");
         return false;
@@ -2931,19 +2931,19 @@ float CommandListOperand::Evaluate(CommandListState *state, HackerDevice *device
             // this is rarely used, so let's just go with this for
             // now and worry about optimisations only if it proves
             // to be a bottleneck in practice:
-            Profiling::NvAPI_Stereo_GetSeparation(device->stereoHandle, &fret);
+            profiling::NvAPI_Stereo_GetSeparation(device->stereoHandle, &fret);
             return fret;
         case ParamOverrideType::CONVERGENCE:
-            Profiling::NvAPI_Stereo_GetConvergence(device->stereoHandle, &fret);
+            profiling::NvAPI_Stereo_GetConvergence(device->stereoHandle, &fret);
             return fret;
         case ParamOverrideType::EYE_SEPARATION:
-            Profiling::NvAPI_Stereo_GetEyeSeparation(device->stereoHandle, &fret);
+            profiling::NvAPI_Stereo_GetEyeSeparation(device->stereoHandle, &fret);
             return fret;
         case ParamOverrideType::STEREO_ACTIVE:
-            Profiling::NvAPI_Stereo_IsActivated(device->stereoHandle, &stereo);
+            profiling::NvAPI_Stereo_IsActivated(device->stereoHandle, &stereo);
             return !!stereo;
         case ParamOverrideType::STEREO_AVAILABLE:
-            Profiling::NvAPI_Stereo_IsEnabled(&stereo);
+            profiling::NvAPI_Stereo_IsEnabled(&stereo);
             return !!stereo;
         case ParamOverrideType::SLI:
             return sli_enabled(device);
@@ -3083,14 +3083,14 @@ bool CommandListOperand::StaticEvaluate(float *ret, HackerDevice *device)
         case ParamOverrideType::EYE_SEPARATION:
         case ParamOverrideType::STEREO_ACTIVE:
             nvapi_override();
-            Profiling::NvAPI_Stereo_IsEnabled(&stereo);
+            profiling::NvAPI_Stereo_IsEnabled(&stereo);
             if (!stereo) {
                 *ret = 0.0;
                 return true;
             }
             break;
         case ParamOverrideType::STEREO_AVAILABLE:
-            Profiling::NvAPI_Stereo_IsEnabled(&stereo);
+            profiling::NvAPI_Stereo_IsEnabled(&stereo);
             *ret = stereo;
             return true;
         case ParamOverrideType::SLI:
@@ -4175,7 +4175,7 @@ static ResourceType* get_resource_from_pool(
     // doesn't matter what we use - just has to be fast.
     hash = crc32c_hw(0, desc, sizeof(DescType));
 
-    pool_i = Profiling::lookup_map(resource_pool->cache, hash, &Profiling::resource_pool_lookup_overhead);
+    pool_i = profiling::lookup_map(resource_pool->cache, hash, &profiling::resource_pool_lookup_overhead);
     if (pool_i != resource_pool->cache.end()) {
         resource = (ResourceType*)pool_i->second.first;
         old_device = pool_i->second.second;
@@ -4187,7 +4187,7 @@ static ResourceType* get_resource_from_pool(
                 return NULL;
 
             LOG_DEBUG("Switching cached resource %S\n", ini_line->c_str());
-            Profiling::resource_pool_swaps++;
+            profiling::resource_pool_swaps++;
             resource->AddRef();
             return resource;
         }
@@ -4198,7 +4198,7 @@ static ResourceType* get_resource_from_pool(
     }
 
     LOG_INFO("Creating cached resource %S\n", ini_line->c_str());
-    Profiling::resources_created++;
+    profiling::resources_created++;
 
     hr = (state->origDevice1->*CreateResource)(desc, NULL, &resource);
     if (FAILED(hr)) {
@@ -4272,19 +4272,19 @@ bool CustomResource::OverrideSurfaceCreationMode(StereoHandle stereo_handle, NVA
     if (overrideMode == CustomResourceMode::DEFAULT)
         return false;
 
-    Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereo_handle, orig_mode);
+    profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereo_handle, orig_mode);
 
     switch (overrideMode) {
         case CustomResourceMode::STEREO:
-            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
+            profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
                     NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
             return true;
         case CustomResourceMode::MONO:
-            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
+            profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
                     NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
             return true;
         case CustomResourceMode::AUTO:
-            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
+            profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
                     NVAPI_STEREO_SURFACECREATEMODE_AUTO);
             return true;
     }
@@ -4311,7 +4311,7 @@ void CustomResource::Substantiate(ID3D11Device *orig_device, StereoHandle stereo
     if (resource || view)
         return;
 
-    Profiling::resources_created++;
+    profiling::resources_created++;
 
     // Add any extra bind flags necessary for the current assignment. This
     // covers many (but not all) of the cases 3DMigoto cannot deduce
@@ -4357,7 +4357,7 @@ void CustomResource::Substantiate(ID3D11Device *orig_device, StereoHandle stereo
     }
 
     if (restore_create_mode)
-        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, orig_mode);
+        profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, orig_mode);
 
     UNLOCK_RESOURCE_CREATION_MODE();
 }
@@ -4768,7 +4768,7 @@ static ID3D11Resource * inter_device_resource_transfer(ID3D11Device *dst_dev, ID
     UINT item, level, index;
     const char *reason = "";
 
-    Profiling::inter_device_copies++;
+    profiling::inter_device_copies++;
 
     // Not really anything sensible we can do with the resource creation
     // mode in the general case here as yet - if we copy via the CPU we
@@ -6622,7 +6622,7 @@ static void recreate_compatible_resource(
     LOCK_RESOURCE_CREATION_MODE();
 
     if (options & ResourceCopyOptions::CREATEMODE_MASK) {
-        Profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereo_handle, &orig_mode);
+        profiling::NvAPI_Stereo_GetSurfaceCreationMode(stereo_handle, &orig_mode);
         restore_create_mode = true;
 
         // STEREO2MONO will force the final destination to mono since
@@ -6631,10 +6631,10 @@ static void recreate_compatible_resource(
         // forced to STEREO.
 
         if (options & ResourceCopyOptions::STEREO) {
-            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
+            profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
                     NVAPI_STEREO_SURFACECREATEMODE_FORCESTEREO);
         } else {
-            Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
+            profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle,
                     NVAPI_STEREO_SURFACECREATEMODE_FORCEMONO);
         }
     } else if (dst && dst->type == ResourceCopyTargetType::CUSTOM_RESOURCE) {
@@ -6665,7 +6665,7 @@ static void recreate_compatible_resource(
     }
 
     if (restore_create_mode)
-        Profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, orig_mode);
+        profiling::NvAPI_Stereo_SetSurfaceCreationMode(stereo_handle, orig_mode);
 
     UNLOCK_RESOURCE_CREATION_MODE();
 
@@ -7316,7 +7316,7 @@ static void reverse_stereo_blit(ID3D11Resource *dst_resource, ID3D11Resource *sr
     fallback = state->hackerDevice->paramTextureManager.mActive ? 0 : 1;
 
     if (!fallback) {
-        nvret = Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->hackerDevice->stereoHandle, true);
+        nvret = profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->hackerDevice->stereoHandle, true);
         if (nvret != NVAPI_OK) {
             LOG_INFO("Resource copying failed to enable reverse stereo blit\n");
             // Fallback path: Copy 2D resource to both sides of the 2x
@@ -7349,7 +7349,7 @@ static void reverse_stereo_blit(ID3D11Resource *dst_resource, ID3D11Resource *sr
     }
 
     if (!fallback)
-        Profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->hackerDevice->stereoHandle, false);
+        profiling::NvAPI_Stereo_ReverseStereoBlitControl(state->hackerDevice->stereoHandle, false);
 }
 
 static void special_copy_buffer_region(ID3D11Resource *dst_resource,ID3D11Resource *src_resource,
@@ -7505,13 +7505,13 @@ void ClearViewCommand::ClearUnknownView(ID3D11View *view, CommandListState *stat
 
     if (rtv) {
         COMMAND_LIST_LOG(state, "  clearing RTV\n");
-        Profiling::views_cleared++;
+        profiling::views_cleared++;
         state->origContext1->ClearRenderTargetView(rtv, fval);
     }
     if (dsv) {
         D3D11_CLEAR_FLAG flags = (D3D11_CLEAR_FLAG)0;
         COMMAND_LIST_LOG(state, "  clearing DSV\n");
-        Profiling::views_cleared++;
+        profiling::views_cleared++;
 
         if (!clearDepth && !clearStencil)
             flags = (D3D11_CLEAR_FLAG)(D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL);
@@ -7535,7 +7535,7 @@ void ClearViewCommand::ClearUnknownView(ID3D11View *view, CommandListState *stat
             COMMAND_LIST_LOG(state, "  clearing UAV (float)\n");
             state->origContext1->ClearUnorderedAccessViewFloat(uav, fval);
         }
-        Profiling::views_cleared++;
+        profiling::views_cleared++;
     }
 
     if (rtv)
@@ -7662,7 +7662,7 @@ void ResourceCopyOperation::Run(CommandListState *state)
                 dst.customResource->copiesThisFrame = 1;
             } else if (dst.customResource->copiesThisFrame++ >= dst.customResource->maxCopiesPerFrame) {
                 COMMAND_LIST_LOG(state, "  max_copies_per_frame exceeded\n");
-                Profiling::max_copies_per_frame_exceeded++;
+                profiling::max_copies_per_frame_exceeded++;
                 return;
             }
         }
@@ -7692,7 +7692,7 @@ void ResourceCopyOperation::Run(CommandListState *state)
             COMMAND_LIST_LOG(state, "  copying resource description\n");
         } else if (options & ResourceCopyOptions::STEREO2MONO) {
             COMMAND_LIST_LOG(state, "  performing reverse stereo blit\n");
-            Profiling::stereo2mono_copies++;
+            profiling::stereo2mono_copies++;
 
             // TODO: Resolve MSAA to an intermediate resource first
             // if necessary (but keep in mind this may have
@@ -7719,22 +7719,22 @@ void ResourceCopyOperation::Run(CommandListState *state)
             orig_context1->CopyResource(dst_resource, stereo2MonoIntermediate);
         } else if (options & ResourceCopyOptions::RESOLVE_MSAA) {
             COMMAND_LIST_LOG(state, "  resolving MSAA\n");
-            Profiling::msaa_resolutions++;
+            profiling::msaa_resolutions++;
             resolve_msaa(dst_resource, src_resource, state);
         } else if (buf_dst_size) {
             COMMAND_LIST_LOG(state, "  performing region copy\n");
-            Profiling::buffer_region_copies++;
+            profiling::buffer_region_copies++;
             special_copy_buffer_region(dst_resource, src_resource,
                     state, stride, &offset,
                     buf_src_size, buf_dst_size);
         } else {
             COMMAND_LIST_LOG(state, "  performing full copy\n");
-            Profiling::resource_full_copies++;
+            profiling::resource_full_copies++;
             orig_context1->CopyResource(dst_resource, src_resource);
         }
     } else {
         COMMAND_LIST_LOG(state, "  copying by reference\n");
-        Profiling::resource_reference_copies++;
+        profiling::resource_reference_copies++;
         dst_resource = src_resource;
         if (src_view && (equiv_target(src.type) == equiv_target(dst.type))) {
             dst_view = src_view;

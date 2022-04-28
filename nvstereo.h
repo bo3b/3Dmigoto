@@ -110,7 +110,7 @@ static void get_primary_display_resolution(
     NV_DISPLAYCONFIG_PATH_INFO* pathInfo  = nullptr;
 
     // Pass 1: Fetch pathCount, # of displays
-    ret = Profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, nullptr);
+    ret = profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, nullptr);
     if (ret != NVAPI_OK)
     {
         LOG_INFO(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***\n", ret);
@@ -141,7 +141,7 @@ static void get_primary_display_resolution(
     }
 
     // Pass 2: Retrieve the targetInfo struct count, and the source mode info, which is what we are interested in.
-    ret = Profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
+    ret = profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
     if (ret != NVAPI_OK)
     {
         LOG_INFO(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***\n", ret);
@@ -179,7 +179,7 @@ static void get_primary_display_resolution(
     //}
 
     // Memory allocated for return results, retrieve the full path info, filling in those targetModeInfo structs.
-    //ret = Profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
+    //ret = profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, pathInfo);
     //if (ret != NVAPI_OK)
     //{
     //    LOG_INFO(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***\n", ret);
@@ -284,7 +284,7 @@ inline void PopulateTextureData(
 inline bool IsStereoEnabled()
 {
     NvU8 stereoEnabled = 0;
-    if (NVAPI_OK != Profiling::NvAPI_Stereo_IsEnabled(&stereoEnabled))
+    if (NVAPI_OK != profiling::NvAPI_Stereo_IsEnabled(&stereoEnabled))
     {
         return false;
     }
@@ -550,7 +550,7 @@ public:
         // mDeviceLost is set to true to initialize the texture with good data at app startup.
 
         // The call to CreateConfigurationProfileRegistryKey must happen BEFORE device creation.
-        // Profiling::NvAPI_Stereo_CreateConfigurationProfileRegistryKey(D3DType::RegistryProfileType);
+        // profiling::NvAPI_Stereo_CreateConfigurationProfileRegistryKey(D3DType::RegistryProfileType);
     }
 
     // 3DMIGOTO REMOVAL ~ParamTextureManager()
@@ -579,7 +579,7 @@ public:
             *convergence = mKnownConvergence;
             return NVAPI_OK;
         }
-        return Profiling::NvAPI_Stereo_GetConvergence(stereoHandle, convergence);
+        return profiling::NvAPI_Stereo_GetConvergence(stereoHandle, convergence);
     }
 
     NvAPI_Status GetSeparation(
@@ -591,7 +591,7 @@ public:
             *separation = mKnownSeparation;
             return NVAPI_OK;
         }
-        return Profiling::NvAPI_Stereo_GetSeparation(stereoHandle, separation);
+        return profiling::NvAPI_Stereo_GetSeparation(stereoHandle, separation);
     }
 
     NvAPI_Status GetEyeSeparation(
@@ -603,7 +603,7 @@ public:
             *eyesep = mKnownEyeSeparation;
             return NVAPI_OK;
         }
-        return Profiling::NvAPI_Stereo_GetEyeSeparation(stereoHandle, eyesep);
+        return profiling::NvAPI_Stereo_GetEyeSeparation(stereoHandle, eyesep);
     }
 
     // ^^^^^ 3DMIGOTO ADDITION ^^^^^
@@ -666,7 +666,7 @@ public:
             return mKnownStereoActive;
         // ^^^^^ 3DMIGOTO ADDITION ^^^^^
         NvU8 stereoActive = 0;
-        if (NVAPI_OK != Profiling::NvAPI_Stereo_IsActivated(mStereoHandle, &stereoActive))
+        if (NVAPI_OK != profiling::NvAPI_Stereo_IsActivated(mStereoHandle, &stereoActive))
         {
             return false;
         }

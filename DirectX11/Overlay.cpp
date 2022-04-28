@@ -769,12 +769,12 @@ void Overlay::DrawProfiling(
 {
     Vector2 str_size;
 
-    Profiling::update_txt();
+    profiling::update_txt();
 
-    str_size = fontProfiling->MeasureString(Profiling::text.c_str());
+    str_size = fontProfiling->MeasureString(profiling::text.c_str());
     DrawRectangle(0, *y, str_size.x + 3, str_size.y, 0, 0, 0, 0.75);
 
-    fontProfiling->DrawString(spriteBatch.get(), Profiling::text.c_str(), Vector2(0, *y), DirectX::Colors::Goldenrod);
+    fontProfiling->DrawString(spriteBatch.get(), profiling::text.c_str(), Vector2(0, *y), DirectX::Colors::Goldenrod);
 }
 
 // Create a string for display on the bottom edge of the screen, that contains the current
@@ -793,14 +793,14 @@ static void create_stereo_info_string(
     if (stereo)
     {
         nvapi_override();
-        Profiling::NvAPI_Stereo_IsEnabled(&stereo);
+        profiling::NvAPI_Stereo_IsEnabled(&stereo);
         if (stereo)
         {
-            Profiling::NvAPI_Stereo_IsActivated(stereo_handle, &stereo);
+            profiling::NvAPI_Stereo_IsActivated(stereo_handle, &stereo);
             if (stereo)
             {
-                Profiling::NvAPI_Stereo_GetSeparation(stereo_handle, &separation);
-                Profiling::NvAPI_Stereo_GetConvergence(stereo_handle, &convergence);
+                profiling::NvAPI_Stereo_GetSeparation(stereo_handle, &separation);
+                profiling::NvAPI_Stereo_GetConvergence(stereo_handle, &convergence);
             }
         }
     }
@@ -813,14 +813,14 @@ static void create_stereo_info_string(
 
 void Overlay::DrawOverlay()
 {
-    Profiling::State profiling_state {};
+    profiling::State profiling_state {};
     HRESULT          hr;
 
-    if (G->hunting != Hunting_Mode::enabled && !has_notice && Profiling::profile_type == Profiling::mode::none)
+    if (G->hunting != Hunting_Mode::enabled && !has_notice && profiling::profile_type == profiling::mode::none)
         return;
 
-    if (Profiling::profile_type == Profiling::mode::summary)
-        Profiling::start(&profiling_state);
+    if (profiling::profile_type == profiling::mode::summary)
+        profiling::start(&profiling_state);
 
     // Since some games did not like having us change their drawing state from
     // SpriteBatch, we now save and restore all state information for the GPU
@@ -859,7 +859,7 @@ void Overlay::DrawOverlay()
             if (has_notice)
                 DrawNotices(&y);
 
-            if (Profiling::profile_type != Profiling::mode::none)
+            if (profiling::profile_type != profiling::mode::none)
                 DrawProfiling(&y);
         }
         spriteBatch->End();
@@ -869,8 +869,8 @@ fail_restore:
 
     flush_d3d11on12(origDevice, origContext);
 
-    if (Profiling::profile_type == Profiling::mode::summary)
-        Profiling::end(&profiling_state, &Profiling::overlay_overhead);
+    if (profiling::profile_type == profiling::mode::summary)
+        profiling::end(&profiling_state, &profiling::overlay_overhead);
 }
 
 OverlayNotice::OverlayNotice(
