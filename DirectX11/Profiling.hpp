@@ -10,14 +10,14 @@
 #include "nvapi.h"
 
 namespace Profiling {
-    enum class Mode {
-        NONE = 0,
-        SUMMARY,
-        TOP_COMMAND_LISTS,
-        TOP_COMMANDS,
-        CTO_WARNING,
+    enum class mode {
+        none = 0,
+        summary,
+        top_command_lists,
+        top_commands,
+        cto_warning,
 
-        INVALID, // Must be last
+        invalid, // Must be last
     };
 
     class Overhead {
@@ -40,12 +40,12 @@ namespace Profiling {
     {
         Profiling::State state;
 
-        if (Profiling::mode == Profiling::Mode::SUMMARY) {
+        if (Profiling::profile_type == Profiling::mode::summary) {
             overhead->count++;
             Profiling::start(&state);
         }
         auto ret = map.find(key);
-        if (Profiling::mode == Profiling::Mode::SUMMARY) {
+        if (Profiling::profile_type == Profiling::mode::summary) {
             Profiling::end(&state, overhead);
             if (ret != end(map))
                 overhead->hits++;
@@ -57,7 +57,7 @@ namespace Profiling {
     void update_cto_warning(bool warn);
     void clear();
 
-    extern Mode mode;
+    extern mode profile_type;
     extern Overhead present_overhead;
     extern Overhead overlay_overhead;
     extern Overhead draw_overhead;

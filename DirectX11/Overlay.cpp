@@ -816,10 +816,10 @@ void Overlay::DrawOverlay()
     Profiling::State profiling_state {};
     HRESULT          hr;
 
-    if (G->hunting != Hunting_Mode::enabled && !has_notice && Profiling::mode == Profiling::Mode::NONE)
+    if (G->hunting != Hunting_Mode::enabled && !has_notice && Profiling::profile_type == Profiling::mode::none)
         return;
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::start(&profiling_state);
 
     // Since some games did not like having us change their drawing state from
@@ -859,7 +859,7 @@ void Overlay::DrawOverlay()
             if (has_notice)
                 DrawNotices(&y);
 
-            if (Profiling::mode != Profiling::Mode::NONE)
+            if (Profiling::profile_type != Profiling::mode::none)
                 DrawProfiling(&y);
         }
         spriteBatch->End();
@@ -869,7 +869,7 @@ fail_restore:
 
     flush_d3d11on12(origDevice, origContext);
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::end(&profiling_state, &Profiling::overlay_overhead);
 }
 

@@ -53,8 +53,8 @@ static inline void profile_command_list_start(CommandList *command_list, Command
 {
     bool inserted;
 
-    if ((Profiling::mode != Profiling::Mode::SUMMARY)
-     && (Profiling::mode != Profiling::Mode::TOP_COMMAND_LISTS))
+    if ((Profiling::profile_type != Profiling::mode::summary)
+     && (Profiling::profile_type != Profiling::mode::top_command_lists))
         return;
 
     inserted = command_lists_profiling.insert(command_list).second;
@@ -75,8 +75,8 @@ static inline void profile_command_list_end(CommandList *command_list, CommandLi
 {
     LARGE_INTEGER list_end_time, duration;
 
-    if ((Profiling::mode != Profiling::Mode::SUMMARY)
-     && (Profiling::mode != Profiling::Mode::TOP_COMMAND_LISTS))
+    if ((Profiling::profile_type != Profiling::mode::summary)
+     && (Profiling::profile_type != Profiling::mode::top_command_lists))
         return;
 
     QueryPerformanceCounter(&list_end_time);
@@ -92,7 +92,7 @@ static inline void profile_command_list_cmd_start(CommandListCommand *cmd,
 {
     bool inserted;
 
-    if (Profiling::mode != Profiling::Mode::TOP_COMMANDS)
+    if (Profiling::profile_type != Profiling::mode::top_commands)
         return;
 
     inserted = command_lists_cmd_profiling.insert(cmd).second;
@@ -111,7 +111,7 @@ static inline void profile_command_list_cmd_end(CommandListCommand *cmd, Command
 {
     LARGE_INTEGER end_time;
 
-    if (Profiling::mode != Profiling::Mode::TOP_COMMANDS)
+    if (Profiling::profile_type != Profiling::mode::top_commands)
         return;
 
     QueryPerformanceCounter(&end_time);
@@ -2817,7 +2817,7 @@ static void update_cursor_resources(CommandListState *state)
     if (state->cursorMaskTex || state->cursorColorTex)
         return;
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::start(&profiling_state);
 
     update_cursor_info_ex(state);
@@ -2868,7 +2868,7 @@ static void update_cursor_resources(CommandListState *state)
 
     ReleaseDC(NULL, dc);
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::end(&profiling_state, &Profiling::cursor_overhead);
 }
 

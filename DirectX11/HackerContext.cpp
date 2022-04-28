@@ -261,7 +261,7 @@ void HackerContext::RecordGraphicsShaderStats()
     UINT                       i;
     Profiling::State           profiling_state;
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::start(&profiling_state);
 
     if (currentVertexShader)
@@ -325,7 +325,7 @@ void HackerContext::RecordGraphicsShaderStats()
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::end(&profiling_state, &Profiling::stat_overhead);
 }
 
@@ -340,7 +340,7 @@ void HackerContext::RecordComputeShaderStats()
     UINT                       i;
     Profiling::State           profiling_state;
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::start(&profiling_state);
 
     origContext1->CSGetShaderResources(0, D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT, srvs);
@@ -363,7 +363,7 @@ void HackerContext::RecordComputeShaderStats()
             }
         }
 
-        if (Profiling::mode == Profiling::Mode::SUMMARY)
+        if (Profiling::profile_type == Profiling::mode::summary)
             Profiling::end(&profiling_state, &Profiling::stat_overhead);
     }
     LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
@@ -717,7 +717,7 @@ void HackerContext::DeferredShaderReplacementBeforeDraw()
     if (shader_regex_groups.empty())
         return;
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::start(&profiling_state);
 
     if (currentVertexShaderHandle)
@@ -741,7 +741,7 @@ void HackerContext::DeferredShaderReplacementBeforeDraw()
         DeferredShaderReplacement<ID3D11PixelShader, &ID3D11DeviceContext::PSGetShader, &ID3D11DeviceContext::PSSetShader, &ID3D11Device::CreatePixelShader>(currentPixelShaderHandle, currentPixelShader, L"ps");
     }
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::end(&profiling_state, &Profiling::shaderregex_overhead);
 }
 
@@ -761,7 +761,7 @@ void HackerContext::BeforeDraw(
 {
     Profiling::State profiling_state;
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::start(&profiling_state);
 
     // If we are not hunting shaders, we should skip all of this shader management for a performance bump.
@@ -930,7 +930,7 @@ void HackerContext::BeforeDraw(
     }
 
 out_profile:
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::end(&profiling_state, &Profiling::draw_overhead);
 }
 
@@ -940,7 +940,7 @@ void HackerContext::AfterDraw(
     int              i;
     Profiling::State profiling_state;
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::start(&profiling_state);
 
     if (data.call_info.skip)
@@ -978,7 +978,7 @@ void HackerContext::AfterDraw(
             ret->Release();
     }
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::end(&profiling_state, &Profiling::draw_overhead);
 }
 
@@ -1215,7 +1215,7 @@ void HackerContext::TrackAndDivertMap(
     bool                     write = false, read = false, deny = false;
     Profiling::State         profiling_state;
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::start(&profiling_state);
 
     if (FAILED(map_hr) || !resource || !mapped_resource || !mapped_resource->pData)
@@ -1306,7 +1306,7 @@ void HackerContext::TrackAndDivertMap(
     mapped_resource->pData = replace;
 
 out_profile:
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::end(&profiling_state, &Profiling::map_overhead);
 }
 
@@ -1318,7 +1318,7 @@ void HackerContext::TrackAndDivertUnmap(
     mapped_resource_info*     map_info = nullptr;
     Profiling::State          profiling_state;
 
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::start(&profiling_state);
 
     if (mappedResources.empty())
@@ -1344,7 +1344,7 @@ void HackerContext::TrackAndDivertUnmap(
     mappedResources.erase(i);
 
 out_profile:
-    if (Profiling::mode == Profiling::Mode::SUMMARY)
+    if (Profiling::profile_type == Profiling::mode::summary)
         Profiling::end(&profiling_state, &Profiling::map_overhead);
 }
 
@@ -2721,7 +2721,7 @@ void STDMETHODCALLTYPE HackerContext::OMSetRenderTargets(
 
         if (G->DumpUsage)
         {
-            if (Profiling::mode == Profiling::Mode::SUMMARY)
+            if (Profiling::profile_type == Profiling::mode::summary)
                 Profiling::start(&profiling_state);
 
             if (ppRenderTargetViews)
@@ -2736,7 +2736,7 @@ void STDMETHODCALLTYPE HackerContext::OMSetRenderTargets(
 
             RecordDepthStencil(pDepthStencilView);
 
-            if (Profiling::mode == Profiling::Mode::SUMMARY)
+            if (Profiling::profile_type == Profiling::mode::summary)
                 Profiling::end(&profiling_state, &Profiling::stat_overhead);
         }
     }
@@ -2765,7 +2765,7 @@ void STDMETHODCALLTYPE HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(
                 currentDepthTarget = nullptr;
                 if (G->DumpUsage)
                 {
-                    if (Profiling::mode == Profiling::Mode::SUMMARY)
+                    if (Profiling::profile_type == Profiling::mode::summary)
                         Profiling::start(&profiling_state);
 
                     if (ppRenderTargetViews)
@@ -2778,7 +2778,7 @@ void STDMETHODCALLTYPE HackerContext::OMSetRenderTargetsAndUnorderedAccessViews(
                     }
                     RecordDepthStencil(pDepthStencilView);
 
-                    if (Profiling::mode == Profiling::Mode::SUMMARY)
+                    if (Profiling::profile_type == Profiling::mode::summary)
                         Profiling::end(&profiling_state, &Profiling::stat_overhead);
                 }
             }
