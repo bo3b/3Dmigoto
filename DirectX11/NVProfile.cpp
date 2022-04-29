@@ -17,6 +17,7 @@
 #include <unordered_set>
 
 using namespace std;
+using namespace overlay;
 
 
 ProfileSettings profile_settings;
@@ -1199,7 +1200,7 @@ int parse_ini_profile_line(wstring *lhs, wstring *rhs)
     // missed by the generic ini parsing code. Perform an extra duplicate
     // check here on the setting ID:
     if (profile_settings.count(setting.settingId)) {
-        log_overlay_w(Log_Level::warning, L"WARNING: Duplicate driver profile setting ID found in d3dx.ini: 0x%08x\n", setting.settingId);
+        log_overlay_w(log::warning, L"WARNING: Duplicate driver profile setting ID found in d3dx.ini: 0x%08x\n", setting.settingId);
         // Still doing an audible warning here, because this code path
         // is (also) called from the helper, which has no overlay, and
         // who knows what the result of a bad profile will be:
@@ -1803,7 +1804,7 @@ void log_check_and_update_nv_profiles()
     }
 
     if (need_profile_update(session, profile)) {
-        log_overlay(Log_Level::dire, "WARNING: Profile update failed!\n");
+        log_overlay(log::dire, "WARNING: Profile update failed!\n");
         // Also doing an audible warning to really drive home the point
         // the user was supposed to click OK to that UAC prompt and we
         // are not happy:

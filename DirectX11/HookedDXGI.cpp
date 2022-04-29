@@ -26,6 +26,9 @@
 
 #include <d3d11_1.h>
 
+using namespace overlay;
+
+
 // This class is for a different approach than the wrapping of the system objects
 // like we do with ID3D11Device for example.  When we wrap a COM object like that,
 // it's not a real C++ object, and consequently cannot use the superclass normally,
@@ -212,7 +215,7 @@ static HackerDevice* sort_out_swap_chain_device_mess(
         // has happened:
         hacker_device = prepare_devices_for_dx12_warning(*device);
         if (hacker_device)
-            log_overlay_w(Log_Level::dire, L"3DMigoto does not support DirectX 12\nPlease set the game to use DirectX 11\n");
+            log_overlay_w(log::dire, L"3DMigoto does not support DirectX 12\nPlease set the game to use DirectX 11\n");
         else
             beep_profile_fail();
     }
@@ -318,11 +321,11 @@ static void force_display_params1(
 
         if (G->SCREEN_WIDTH >= 0)
         {
-            log_overlay(Log_Level::dire, "*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
+            log_overlay(log::dire, "*** Unimplemented feature to force screen width in CreateSwapChainForHwnd\n");
         }
         if (G->SCREEN_HEIGHT >= 0)
         {
-            log_overlay(Log_Level::dire, "*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
+            log_overlay(log::dire, "*** Unimplemented feature to force screen height in CreateSwapChainForHwnd\n");
         }
     }
 }

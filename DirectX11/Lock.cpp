@@ -13,6 +13,9 @@
 #include <unordered_set>
 #include <Windows.h>
 
+using namespace overlay;
+
+
 // This implements a lock dependency checker to detect possible deadlock
 // scenarios even if no deadlock was actually hit. It is inspired by the
 // lockdep subsystem of the Linux Kernel, but is not derived from it.
@@ -310,7 +313,7 @@ static void validate_lock(
         char buf1[20], buf2[20];
         if (issue.second)
         {
-            log_overlay(Log_Level::notice, "%04x: Potential deadlock scenario detected: Lock %s taken after %s\n", GetCurrentThreadId(), lock_name(new_lock, buf1), lock_name(issue.first, buf2));
+            log_overlay(log::notice, "%04x: Potential deadlock scenario detected: Lock %s taken after %s\n", GetCurrentThreadId(), lock_name(new_lock, buf1), lock_name(issue.first, buf2));
         }
         else
         {

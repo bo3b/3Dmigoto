@@ -12,6 +12,8 @@
 #include <strsafe.h>
 
 using namespace std;
+using namespace overlay;
+
 
 PresetOverrideMap preset_overrides;
 
@@ -73,7 +75,7 @@ void Override::ParseIniSection(
         {
             if (!parse_command_list_var_name(entry->first, &entry->ini_namespace, &var))
             {
-                log_overlay(Log_Level::warning, "WARNING: Undeclared variable %S\n", entry->first.c_str());
+                log_overlay(log::warning, "WARNING: Undeclared variable %S\n", entry->first.c_str());
                 continue;
             }
 
@@ -99,7 +101,7 @@ void Override::ParseIniSection(
 
         if (!condition.Parse(&sbuf, &ini_namespace, nullptr))
         {
-            log_overlay(Log_Level::warning, "WARNING: Invalid condition=\"%S\"\n", buf);
+            log_overlay(log::warning, "WARNING: Invalid condition=\"%S\"\n", buf);
         }
         else
         {
@@ -120,7 +122,7 @@ void Override::ParseIniSection(
         wstring sbuf(buf);
 
         if (!parse_run_explicit_command_list(section, L"run", &sbuf, nullptr, &activateCommandList, &deactivateCommandList, &ini_namespace))
-            log_overlay(Log_Level::warning, "WARNING: Invalid run=\"%S\"\n", sbuf.c_str());
+            log_overlay(log::warning, "WARNING: Invalid run=\"%S\"\n", sbuf.c_str());
     }
 }
 
@@ -224,7 +226,7 @@ public:
         val = lookup_enum_val<T1, T2>(enum_names, cur.c_str(), static_cast<T2>(-1));
         if (val == static_cast<T2>(-1))
         {
-            log_overlay(Log_Level::warning, "WARNING: Unmatched value \"%s\"\n", cur.c_str());
+            log_overlay(log::warning, "WARNING: Unmatched value \"%s\"\n", cur.c_str());
             return default;
         }
 
@@ -251,7 +253,7 @@ public:
 
         if (!expression->Parse(&scur, &ini_namespace, nullptr))
         {
-            log_overlay(Log_Level::warning, "WARNING: Invalid condition=\"%s\"\n", cur.c_str());
+            log_overlay(log::warning, "WARNING: Invalid condition=\"%s\"\n", cur.c_str());
             return false;
         }
 
@@ -275,7 +277,7 @@ public:
         get_section_namespace(section, &ini_namespace);
 
         if (!parse_run_explicit_command_list(section, L"run", &scur, nullptr, pre_command_list, deactivate_command_list, &ini_namespace))
-            log_overlay(Log_Level::warning, "WARNING: Invalid run=\"%s\"\n", cur.c_str());
+            log_overlay(log::warning, "WARNING: Invalid run=\"%s\"\n", cur.c_str());
     }
 };
 
@@ -324,7 +326,7 @@ void KeyOverrideCycle::ParseIniSection(
         {
             if (!parse_command_list_var_name(entry->first, &entry->ini_namespace, &var))
             {
-                log_overlay(Log_Level::warning, "WARNING: Undeclared variable %S\n", entry->first.c_str());
+                log_overlay(log::warning, "WARNING: Undeclared variable %S\n", entry->first.c_str());
                 continue;
             }
 

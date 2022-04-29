@@ -20,6 +20,8 @@
 #include "DirectXTK/Src/LoaderHelpers.h"
 
 using namespace std;
+using namespace overlay;
+
 
 // Overloaded functions to log any kind of resource description (useful to call
 // from templates):
@@ -1401,7 +1403,7 @@ static UINT eval_field(FuzzyMatchOperandType type, UINT val, const DescType *des
             return G->mResolutionInfo.height;
     };
 
-    log_overlay(Log_Level::dire, "BUG: Invalid fuzzy field %u\n", type);
+    log_overlay(log::dire, "BUG: Invalid fuzzy field %u\n", type);
 
     return val;
 }

@@ -36,6 +36,8 @@
 
 
 using namespace std;
+using namespace overlay;
+
 
 // A map to look up the HackerDevice from an IUnknown. The reason for using an
 // IUnknown as the key is that an ID3D11Device and IDXGIDevice are actually two
@@ -358,7 +360,7 @@ HRESULT HackerDevice::CreateIniParamResources()
 
     if (G->iniParamsReserved > ini_params_size_warning)
     {
-        log_overlay(Log_Level::notice, "NOTICE: %d requested IniParams exceeds the recommended %d\n", G->iniParamsReserved, ini_params_size_warning);
+        log_overlay(log::notice, "NOTICE: %d requested IniParams exceeds the recommended %d\n", G->iniParamsReserved, ini_params_size_warning);
     }
 
     G->iniParams.resize(G->iniParamsReserved);
@@ -1020,7 +1022,7 @@ static bool replace_asm_shader(
                     // creation time replacement and ShaderRegex for backwards
                     // compatibility (live shader reload is fatal).
                     for (auto& parse_error : parse_errors)
-                        log_overlay(Log_Level::notice, "%S: %s\n", path, parse_error.what());
+                        log_overlay(log::notice, "%S: %s\n", path, parse_error.what());
 
                     // Do not record the timestamp so that F10 will reload the
                     // shader even if not touched in the meantime allowing the
@@ -1032,7 +1034,7 @@ static bool replace_asm_shader(
             }
             catch (const exception& e)
             {
-                log_overlay(Log_Level::warning, "Error assembling %S: %s\n", path, e.what());
+                log_overlay(log::warning, "Error assembling %S: %s\n", path, e.what());
             }
         }
     }

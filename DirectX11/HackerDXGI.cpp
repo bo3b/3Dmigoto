@@ -73,6 +73,9 @@
 #include <dxgi1_2.h>
 #include <windows.h>
 
+using namespace overlay;
+
+
 // -----------------------------------------------------------------------------
 // SetWindowPos hook, activated by full_screen=2 in d3dx.ini
 
@@ -122,7 +125,7 @@ void install_SetWindowPos_hook()
 
     if (fail)
     {
-        log_overlay(Log_Level::dire, "Failed to hook SetWindowPos for full_screen=2\n");
+        log_overlay(log::dire, "Failed to hook SetWindowPos for full_screen=2\n");
         return;
     }
 
@@ -304,7 +307,7 @@ void HackerSwapChain::RunFrameActions()
             G->analyse_frame = false;
             if (G->DumpUsage)
                 dump_usage(G->ANALYSIS_PATH);
-            log_overlay(Log_Level::info, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
+            log_overlay(log::info, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
         }
     }
 
@@ -1058,7 +1061,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(
             hr = origSwapChain1->GetParent(IID_PPV_ARGS(&factory));
             if (FAILED(hr))
             {
-                log_overlay(Log_Level::dire, "HackerUpscalingSwapChain::createRenderTarget failed to get DXGIFactory\n");
+                log_overlay(log::dire, "HackerUpscalingSwapChain::createRenderTarget failed to get DXGIFactory\n");
                 // Not positive if we will be able to get an overlay to
                 // display the error, so also issue an audible warning:
                 beep_sad_failure();
@@ -1086,7 +1089,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(
         }
         break;
         default:
-            log_overlay(Log_Level::dire, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed ==> provided upscaling mode is not valid.\n");
+            log_overlay(log::dire, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed ==> provided upscaling mode is not valid.\n");
             // Not positive if we will be able to get an overlay to
             // display the error, so also issue an audible warning:
             beep_sad_failure();
@@ -1097,7 +1100,7 @@ void HackerUpscalingSwapChain::CreateRenderTarget(
 
     if (FAILED(hr))
     {
-        log_overlay(Log_Level::dire, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed\n");
+        log_overlay(log::dire, "*** HackerUpscalingSwapChain::HackerUpscalingSwapChain() failed\n");
         // Not positive if we will be able to get an overlay to
         // display the error, so also issue an audible warning:
         beep_sad_failure();
