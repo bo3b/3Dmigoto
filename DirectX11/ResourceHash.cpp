@@ -11,6 +11,8 @@
 #include "util.h"
 
 using namespace std;
+using namespace overlay;
+
 
 // DirectXTK headers failed to include their own pre-requisites.
 // We just want GetSurfaceInfo from LoaderHelpers, so that is now
@@ -1411,7 +1413,7 @@ static UINT eval_field(FuzzyMatchOperandType type, UINT val, const DescType *des
             return G->mResolutionInfo.height;
     };
 
-    log_overlay(Log_Level::dire, "BUG: Invalid fuzzy field %u\n", type);
+    log_overlay(log::dire, "BUG: Invalid fuzzy field %u\n", type);
 
     return val;
 }
