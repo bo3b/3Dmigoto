@@ -12,7 +12,6 @@
 #include <memory>
 #include <wrl.h>
 
-
 // Using forward references for these needed initializer objects. We specifically
 // do not want to include HackerDevice.hpp or HackerContext.hpp here because it
 // sets up annoying and complicated circular dependencies.  For situations where
@@ -24,17 +23,17 @@ class HackerDevice;
 
 namespace overlay
 {
-    const enum class log
-    {
-        dire,
-        warning,
-        warning_monospace,
-        notice,
-        info,
+enum class log
+{
+    dire,
+    warning,
+    warning_monospace,
+    notice,
+    info,
 
-        num_levels
-    };
-}
+    num_levels
+};
+}  // namespace overlay
 
 class OverlayNotice
 {
