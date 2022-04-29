@@ -12,6 +12,7 @@
 #include <memory>
 #include <wrl.h>
 
+
 // Using forward references for these needed initializer objects. We specifically
 // do not want to include HackerDevice.hpp or HackerContext.hpp here because it
 // sets up annoying and complicated circular dependencies.  For situations where
@@ -21,16 +22,19 @@
 class HackerContext;
 class HackerDevice;
 
-const enum class Log_Level
+namespace overlay
 {
-    dire,
-    warning,
-    warning_monospace,
-    notice,
-    info,
+    const enum class log
+    {
+        dire,
+        warning,
+        warning_monospace,
+        notice,
+        info,
 
-    num_levels
-};
+        num_levels
+    };
+}
 
 class OverlayNotice
 {
@@ -66,7 +70,7 @@ private:
         FLOAT             BlendFactor[4];
         UINT              SampleMask;
 
-        om_state om_state;
+        struct om_state output_state;
 
         D3D11_VIEWPORT pViewPorts[D3D11_VIEWPORT_AND_SCISSORRECT_OBJECT_COUNT_PER_PIPELINE];
         UINT           RSNumViewPorts;
@@ -124,6 +128,9 @@ public:
     void DrawOverlay();
 };
 
+namespace overlay
+{
 void clear_notices();
-void log_overlay_w(Log_Level level, wchar_t* fmt, ...);
-void log_overlay(Log_Level level, char* fmt, ...);
+void log_overlay_w(log level, wchar_t* fmt, ...);
+void log_overlay(log level, char* fmt, ...);
+}  // namespace overlay
