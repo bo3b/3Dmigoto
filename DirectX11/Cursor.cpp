@@ -4,6 +4,9 @@
 #include "log.h"
 #include "Overlay.hpp"
 
+using namespace overlay;
+
+
 //////////////////////////// HARDWARE MOUSE CURSOR SUPPRESSION //////////////////////////
 // To suppress the hardware mouse cursor you would think we just have to call
 // ShowCursor(FALSE) somewhere to decrement the count by one, but doing so from
@@ -389,7 +392,7 @@ void install_mouse_hooks(
 
     if (fail)
     {
-        log_overlay(Log_Level::dire, "Failed to hook mouse cursor functions - hide_cursor will not work\n");
+        log_overlay(log::dire, "Failed to hook mouse cursor functions - hide_cursor will not work\n");
         return;
     }
 

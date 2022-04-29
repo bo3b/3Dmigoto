@@ -23,6 +23,8 @@
 #include <wincodec.h>
 
 using namespace std;
+using namespace overlay;
+
 
 // Hunting is considered enabled in either:
 //  1:showing overlay, or 2:soft disabled
@@ -342,7 +344,7 @@ static void simple_screen_shot(
 
     if (!hacker_swap_chain)
     {
-        log_overlay(Log_Level::dire, "marking_actions=mono_snapshot: Unable to get back buffer\n");
+        log_overlay(log::dire, "marking_actions=mono_snapshot: Unable to get back buffer\n");
         return;
     }
 
@@ -398,7 +400,7 @@ static void stereo_screen_shot(
 
     if (!hacker_swap_chain)
     {
-        log_overlay(Log_Level::dire, "marking_actions=stereo_snapshot: Unable to get back buffer\n");
+        log_overlay(log::dire, "marking_actions=stereo_snapshot: Unable to get back buffer\n");
         return;
     }
 
@@ -744,7 +746,7 @@ static bool regenerate_shader(
             if (FAILED(ret))
             {
                 // If there are errors they go to the overlay
-                log_overlay(Log_Level::notice, "%*s\n", err_size, err_msg);
+                log_overlay(log::notice, "%*s\n", err_size, err_msg);
             }
             else if (LogFile)
             {
@@ -787,7 +789,7 @@ static bool regenerate_shader(
         }
         catch (const exception& e)
         {
-            log_overlay(Log_Level::notice, "Error assembling %S: %s\n", file_name, e.what());
+            log_overlay(log::notice, "Error assembling %S: %s\n", file_name, e.what());
             return true;
         }
 
@@ -1141,11 +1143,11 @@ static bool check_shader_file_already_exists(
 
     if (bin)
     {
-        log_overlay(Log_Level::notice, "cached shader found, but lacks a matching .txt file: %S\n", path);
+        log_overlay(log::notice, "cached shader found, but lacks a matching .txt file: %S\n", path);
     }
     else
     {
-        log_overlay(Log_Level::info, "marked shader file already exists: %S\n", path);
+        log_overlay(log::info, "marked shader file already exists: %S\n", path);
         // Touch the file to make it easy to spot in explorer. We only
         // do this for .txt files so as not to risk making a stale .bin
         // file appear valid. This no longer requires modifying the
@@ -1231,7 +1233,7 @@ static void copy_to_fixes(
                 }
                 catch (...)
                 {
-                    log_overlay(Log_Level::warning, "Exception while patching shader\n");
+                    log_overlay(log::warning, "Exception while patching shader\n");
                 }
 
                 if (patched)
@@ -1254,7 +1256,7 @@ static void copy_to_fixes(
                 if (success)
                     break;
                 if (asm_enabled)
-                    log_overlay(Log_Level::notice, "> HLSL decompilation failed. Falling back to assembly\n");
+                    log_overlay(log::notice, "> HLSL decompilation failed. Falling back to assembly\n");
             }
 
             if (asm_enabled)
@@ -1273,7 +1275,7 @@ static void copy_to_fixes(
                 // out this would not be processed on the next config reload, so revert the
                 // changes to the ShaderOverride to ensure things are consistent:
                 if (unlink_shader_regex_command_lists_and_filter_index(hash))
-                    log_overlay(Log_Level::warning, "NOTICE: ShaderRegex command lists were dropped from the ShaderOverride\n");
+                    log_overlay(log::warning, "NOTICE: ShaderRegex command lists were dropped from the ShaderOverride\n");
             }
 
             // There can be more than one in the map with the same hash, but we only need a single copy to
@@ -1284,11 +1286,11 @@ static void copy_to_fixes(
 
     if (success)
     {
-        log_overlay(Log_Level::info, "> successfully copied Marked shader to ShaderFixes\n");
+        log_overlay(log::info, "> successfully copied Marked shader to ShaderFixes\n");
     }
     else
     {
-        log_overlay(Log_Level::warning, "> FAILED to copy Marked shader to ShaderFixes\n");
+        log_overlay(log::warning, "> FAILED to copy Marked shader to ShaderFixes\n");
         beep_failure();
     }
 }
@@ -1305,7 +1307,7 @@ static void take_screen_shot(
         err = NvAPI_Stereo_CapturePngImage(wrapped->stereoHandle);
         if (err != NVAPI_OK)
         {
-            log_overlay(Log_Level::warning, "> screenshot failed, error:%d\n", err);
+            log_overlay(log::warning, "> screenshot failed, error:%d\n", err);
         }
     }
 }
@@ -1406,11 +1408,11 @@ static void reload_fixes(
 
         if (success)
         {
-            log_overlay(Log_Level::info, "> successfully reloaded shaders from ShaderFixes\n");
+            log_overlay(log::info, "> successfully reloaded shaders from ShaderFixes\n");
         }
         else
         {
-            log_overlay(Log_Level::warning, "> FAILED to reload shaders from ShaderFixes\n");
+            log_overlay(log::warning, "> FAILED to reload shaders from ShaderFixes\n");
             beep_failure();
         }
     }
@@ -1449,7 +1451,7 @@ static void _analyse_frame_stop()
         }
         LEAVE_CRITICAL_SECTION(&G->mCriticalSection);
     }
-    log_overlay(Log_Level::info, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
+    log_overlay(log::info, "Frame analysis saved to %S\n", G->ANALYSIS_PATH);
 }
 
 static void analyse_frame(
@@ -1464,7 +1466,7 @@ static void analyse_frame(
 
     if (FAILED(device->GetHackerContext()->QueryInterface(IID_FrameAnalysisContext, reinterpret_cast<void**>(&factx))))
     {
-        log_overlay(Log_Level::dire, "Frame Analysis Context is missing: Restart the game with hunting enabled\n");
+        log_overlay(log::dire, "Frame Analysis Context is missing: Restart the game with hunting enabled\n");
         return;
     }
     factx->Release();
@@ -1474,7 +1476,7 @@ static void analyse_frame(
         // Frame analysis key has been pressed again while FA was
         // already in progress, abort:
         device->GetHackerContext()->FrameAnalysisLog("----- Frame analysis aborted -----\n");
-        log_overlay(Log_Level::notice, "Frame analysis aborted\n");
+        log_overlay(log::notice, "Frame analysis aborted\n");
         return _analyse_frame_stop();
     }
 
@@ -1524,7 +1526,7 @@ static void analyse_frame_stop(
         // not even have captured a complete frame. Report how many
         // complete frames it dumped so the user knows if they did it
         // right at a glance.
-        log_overlay(Log_Level::notice, "Frame analysis hold mode ended after %i complete frames\n", G->analyse_frame_no - 1);
+        log_overlay(log::notice, "Frame analysis hold mode ended after %i complete frames\n", G->analyse_frame_no - 1);
         _analyse_frame_stop();
     }
 }
@@ -1898,13 +1900,13 @@ static void hash_to_clipboard(
     // The system now owns hMem - we must not free it
     CloseClipboard();
 
-    log_overlay(Log_Level::info, "> %s hash %0*llx copied to clipboard\n", type, hash_len, static_cast<UINT64>(hash));
+    log_overlay(log::info, "> %s hash %0*llx copied to clipboard\n", type, hash_len, static_cast<UINT64>(hash));
     return;
 
 err_free:
     GlobalFree(mem);
 err:
-    log_overlay(Log_Level::warning, "> error copying %s hash %0*llx to clipboard\n", type, hash_len, static_cast<UINT64>(hash));
+    log_overlay(log::warning, "> error copying %s hash %0*llx to clipboard\n", type, hash_len, static_cast<UINT64>(hash));
 }
 
 static void mark_vertex_buffer(
@@ -2300,7 +2302,7 @@ void parse_hunting_section()
     int mark_snapshot = get_ini_int(L"Hunting", L"mark_snapshot", 0, nullptr);
     if (mark_snapshot)
     {
-        log_overlay(Log_Level::notice, "Deprecation warning: \"mark_snapshot\" will be removed in the future. Use \"marking_actions\" instead.\n");
+        log_overlay(log::notice, "Deprecation warning: \"mark_snapshot\" will be removed in the future. Use \"marking_actions\" instead.\n");
         if (mark_snapshot == 1)
             G->marking_actions |= MarkingAction::MONO_SS;
         else

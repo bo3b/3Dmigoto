@@ -15,6 +15,9 @@
 #include <io.h>
 #include <sddl.h>
 
+using namespace overlay;
+
+
 // Sometimes game directories get funny permissions that cause us problems. I
 // have no clue how or why this happens, and the usual way to deal with it is
 // to recursively reset the permissions and ownership on the game directory
@@ -973,7 +976,7 @@ static void warn_if_conflicting_file_exists(
     if (attrib == INVALID_FILE_ATTRIBUTES)
         return;
 
-    log_overlay(Log_Level::dire, "WARNING: %s\"%S\" conflicts with \"%S\"\n", message, conflicting_path, path);
+    log_overlay(log::dire, "WARNING: %s\"%S\" conflicts with \"%S\"\n", message, conflicting_path, path);
 }
 
 void warn_if_conflicting_shader_exists(

@@ -11,6 +11,7 @@
 #include <Xinput.h>
 
 using namespace std;
+using namespace overlay;
 
 
 // Set a function pointer to the xinput get state call. By default, set it to
@@ -453,7 +454,7 @@ void RegisterKeyBinding(LPCWSTR iniKey, const wchar_t *keyName,
             try {
                 button = new InputButtonList(keyName);
             } catch (KeyParseError) {
-                log_overlay_w(Log_Level::warning, L"WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n",
+                log_overlay_w(log::warning, L"WARNING: UNABLE TO PARSE KEY BINDING %s=%s\n",
                         iniKey, keyName);
                 return;
             }
