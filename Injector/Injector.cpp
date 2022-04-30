@@ -3,7 +3,8 @@
 
 #include "stdafx.h"
 #include "Injector.h"
-#include "util_min.h"
+
+#include "ini_parser_lite.h"
 
 #include <Windows.h>
 #include <cstdio>
