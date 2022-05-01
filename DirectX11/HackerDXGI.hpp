@@ -1,7 +1,21 @@
 #pragma once
 
+#include "EnumNames.hpp"
+
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
+
+enum class GetResolutionFrom
+{
+    INVALID = -1,
+    SWAP_CHAIN,
+    DEPTH_STENCIL,
+};
+static Enum_Name_t<const wchar_t*, GetResolutionFrom> GetResolutionFromNames[] = {
+    { L"swap_chain", GetResolutionFrom::SWAP_CHAIN },
+    { L"depth_stencil", GetResolutionFrom::DEPTH_STENCIL },
+    { NULL, GetResolutionFrom::INVALID }  // End of list marker
+};
 
 // Forward references required because of circular references from the
 // other 'Hacker' objects.

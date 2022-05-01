@@ -3,12 +3,16 @@
 #include "CommandList.hpp"
 #include "pcre2.h"
 
+#include <Windows.h>
+
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
 
-enum class ShaderRegexCache {
+
+enum class ShaderRegexCache
+{
     NO_CACHE,
     NO_MATCH,
     MATCH,
