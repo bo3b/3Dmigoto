@@ -46,6 +46,7 @@
     <ClCompile Include="Cursor.cpp" />
     <ClCompile Include="D3D11Wrapper.cpp" />
     <ClCompile Include="DLLMainHook.cpp" />
+    <ClCompile Include="EnumNames.cpp" />
     <ClCompile Include="FrameAnalysis.cpp" />
     <ClCompile Include="HackerContext.cpp" />
     <ClCompile Include="HackerDevice.cpp" />
@@ -77,12 +78,13 @@
     <ClInclude Include="..\nvstereo.h" />
     <ClInclude Include="..\shader.h" />
     <ClInclude Include="..\util.h" />
-    <ClInclude Include="..\util_min.h" />
+    <ClInclude Include="..\ini_parser_lite.h" />
     <ClInclude Include="..\version.h" />
     <ClInclude Include="Cursor.h" />
     <ClInclude Include="D3D11Wrapper.h" />
     <ClInclude Include="DLLMainHook.h" />
     <ClInclude Include="DrawCallInfo.h" />
+    <ClInclude Include="EnumNames.hpp" />
     <ClInclude Include="FrameAnalysis.hpp" />
     <ClInclude Include="Globals.h" />
     <ClInclude Include="HackerContext.hpp" />

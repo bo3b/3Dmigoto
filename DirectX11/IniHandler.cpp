@@ -2,6 +2,7 @@
 
 #include "CommandList.hpp"
 #include "Cursor.h"
+#include "EnumNames.hpp"
 #include "Globals.h"
 #include "HackerContext.hpp"
 #include "HackerDevice.hpp"
@@ -33,6 +34,7 @@
 using namespace std;
 using namespace overlay;
 
+//--------------------------------------------------------------------------------------------------
 
 // List all the section prefixes which may contain a command list here and
 // whether they are a prefix or an exact match. Listing a section here will not
@@ -96,6 +98,8 @@ static section_prefix allow_lines_without_equals[] = {
     { L"Profile", false },
     { L"ShaderRegex", true },
 };
+
+//--------------------------------------------------------------------------------------------------
 
 static bool whitelisted_duplicate_key(
     const wchar_t* section,
@@ -273,28 +277,6 @@ static IniSections::iterator prefix_upper_bound(
 
     return sections.end();
 }
-
-// We now emit a single warning tone after the config file is [re]loaded to get
-// the shaderhackers attention if something needs to be addressed, since their
-// eyes may be focussed elsewhere and may miss the notification message[s].
-static bool ini_warned = false;
-#define INI_WARNING(fmt, ...)                              \
-    do                                                     \
-    {                                                      \
-        ini_warned = true;                                 \
-        log_overlay(log::warning, fmt, __VA_ARGS__); \
-    } while (0)
-#define INI_WARNING_W(fmt, ...)                              \
-    do                                                       \
-    {                                                        \
-        ini_warned = true;                                   \
-        log_overlay_w(log::warning, fmt, __VA_ARGS__); \
-    } while (0)
-#define INI_WARNING_BEEP() \
-    do                     \
-    {                      \
-        ini_warned = true; \
-    } while (0)
 
 static void emit_ini_warning_tone()
 {
@@ -1365,102 +1347,6 @@ static int get_ini_enum(
 
     return ret;
 }
-
-// wchar_t* specialisation. Has character limit
-// Want to remove this eventually, though since MarkingMode uses it and
-// the DirectXTK API uses wide characters we might keep it around.
-template <class T1, class T>
-T get_ini_enum_class(
-    const wchar_t*                         section,
-    const wchar_t*                         key,
-    T                                      def,
-    bool*                                  found,
-    struct Enum_Name_t<const wchar_t*, T>* enum_names)
-{
-    wchar_t val[MAX_PATH];
-    T       ret = def;
-    bool    tmp_found;
-
-    if (found)
-        *found = false;
-
-    if (get_ini_string(section, key, nullptr, val, MAX_PATH))
-    {
-        ret = lookup_enum_val<const wchar_t*, T>(enum_names, val, def, &tmp_found);
-        if (tmp_found)
-        {
-            if (found)
-                *found = tmp_found;
-            LOG_INFO("  %S=%S\n", key, val);
-        }
-        else
-        {
-            INI_WARNING("WARNING: Unknown %S=%S\n", key, val);
-        }
-    }
-
-    return ret;
-}
-
-template <class T>
-T get_ini_enum_class(
-    const wchar_t*                         section,
-    const wchar_t*                         key,
-    T                                      def,
-    bool*                                  found,
-    struct Enum_Name_t<const wchar_t*, T>* enum_names)
-{
-    return get_ini_enum_class<const wchar_t*, T>(section, key, def, found, enum_names);
-}
-
-// char* specialisation of the above. No character limit
-template <class T1, class T>
-T get_ini_enum_class(
-    const wchar_t*                      section,
-    const wchar_t*                      key,
-    T                                   def,
-    bool*                               found,
-    struct Enum_Name_t<const char*, T>* enum_names)
-{
-    string val;
-    T      ret = def;
-    bool   tmp_found;
-
-    if (found)
-        *found = false;
-
-    if (get_ini_string(section, key, nullptr, &val))
-    {
-        ret = lookup_enum_val<const char*, T>(enum_names, val.c_str(), def, &tmp_found);
-        if (tmp_found)
-        {
-            if (found)
-                *found = tmp_found;
-            LOG_INFO("  %S=%s\n", key, val.c_str());
-        }
-        else
-        {
-            INI_WARNING("WARNING: Unknown %S=%s\n", key, val.c_str());
-        }
-    }
-
-    return ret;
-}
-
-// Explicit template expansion is necessary to generate these functions for
-// the compiler to generate them so they can be used from other source files:
-template Transition_Type get_ini_enum_class<const char*, Transition_Type>(
-    const wchar_t*                                    section,
-    const wchar_t*                                    key,
-    Transition_Type                                   def,
-    bool*                                             found,
-    struct Enum_Name_t<const char*, Transition_Type>* enum_names);
-template MarkingMode get_ini_enum_class<const wchar_t*, MarkingMode>(
-    const wchar_t*                                   section,
-    const wchar_t*                                   key,
-    MarkingMode                                      def,
-    bool*                                            found,
-    struct Enum_Name_t<const wchar_t*, MarkingMode>* enum_names);
 
 // For options that used to be booleans and are now integers. Boolean values
 // (0/1/true/false/yes/no/on/off) will continue retuning 0/1 for backwards
