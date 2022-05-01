@@ -1,6 +1,6 @@
 #pragma once
 
-#include "util_min.h"
+#include "EnumNames.hpp"
 
 #include <d3d11_1.h>
 #include <string>
@@ -11,6 +11,85 @@
 #include "nvapi.h"
 
 class HackerDevice;
+
+//--------------------------------------------------------------------------------------------------
+
+// We now emit a single warning tone after the config file is [re]loaded to get
+// the shaderhackers attention if something needs to be addressed, since their
+// eyes may be focussed elsewhere and may miss the notification message[s].
+
+static bool ini_warned = false;
+#define INI_WARNING(fmt, ...)                        \
+    do                                               \
+    {                                                \
+        ini_warned = true;                           \
+        log_overlay(overlay::log::warning, fmt, __VA_ARGS__); \
+    } while (0)
+#define INI_WARNING_W(fmt, ...)                        \
+    do                                                 \
+    {                                                  \
+        ini_warned = true;                             \
+        log_overlay_w(overlay::log::warning, fmt, __VA_ARGS__); \
+    } while (0)
+#define INI_WARNING_BEEP() \
+    do                     \
+    {                      \
+        ini_warned = true; \
+    } while (0)
+
+
+// Since these are found via d3dx.ini parameters, we've moved the declaration
+// here to IniHandler.h.  There is no more obvious client of these. In
+// general we want these Enum_Name_t to be defined by their owner.
+
+enum class EnableHooks
+{
+    INVALID           = 0,
+    DEFERRED_CONTEXTS = 0x00000001,
+    IMMEDIATE_CONTEXT = 0x00000002,
+    CONTEXT           = 0x00000003,
+    DEVICE            = 0x00000004,
+    ALL               = 0x0000ffff,
+    DEPRECATED        = 0x00010000,
+
+    // All recommended hooks and workarounds. Does not include
+    // skip_dxgi_factory as that could lead to us missing the present call:
+    // No longer enables workarounds - now fixed in updated Deviare library
+    RECOMMENDED = 0x00000007,
+};
+SENSIBLE_ENUM(EnableHooks);
+static Enum_Name_t<wchar_t*, EnableHooks> EnableHooksNames[] = {
+    { L"deferred_contexts", EnableHooks::DEFERRED_CONTEXTS },
+    { L"immediate_context", EnableHooks::IMMEDIATE_CONTEXT },
+    { L"context", EnableHooks::IMMEDIATE_CONTEXT },
+    { L"device", EnableHooks::DEVICE },
+    { L"all", EnableHooks::ALL },
+    { L"recommended", EnableHooks::RECOMMENDED },
+
+    // These options are no longer necessary, but kept here to avoid beep
+    // notifications when using new DLLs with old d3dx.ini files.
+    { L"except_set_shader_resources", EnableHooks::DEPRECATED },
+    { L"except_set_samplers", EnableHooks::DEPRECATED },
+    { L"except_set_rasterizer_state", EnableHooks::DEPRECATED },
+    { L"skip_dxgi_factory", EnableHooks::DEPRECATED },
+    { L"skip_dxgi_device", EnableHooks::DEPRECATED },
+
+    { NULL, EnableHooks::INVALID }  // End of list marker
+};
+
+enum class ShaderHashType
+{
+    INVALID = -1,
+    FNV,
+    EMBEDDED,
+    BYTECODE,
+};
+static Enum_Name_t<const wchar_t*, ShaderHashType> ShaderHashNames[] = {
+    { L"3dmigoto", ShaderHashType::FNV },
+    { L"embedded", ShaderHashType::EMBEDDED },
+    { L"bytecode", ShaderHashType::BYTECODE },
+    { NULL, ShaderHashType::INVALID }  // End of list marker
+};
 
 NvAPI_Status check_stereo();
 void         flag_config_reload(HackerDevice* device, void* private_data);
@@ -56,9 +135,6 @@ float get_ini_float(const wchar_t* section, const wchar_t* key, float def, bool*
 int   get_ini_string(const wchar_t* section, const wchar_t* key, const wchar_t* def, wchar_t* ret, unsigned size);
 bool  get_ini_string(const wchar_t* section, const wchar_t* key, const wchar_t* def, std::string* ret);
 int   get_ini_string_and_log(const wchar_t* section, const wchar_t* key, const wchar_t* def, wchar_t* ret, unsigned size);
-
-template <class T1, class T2>
-T2 get_ini_enum_class(const wchar_t* section, const wchar_t* key, T2 def, bool* found, struct Enum_Name_t<T1, T2>* enum_names);
 
 bool         get_namespaced_section_name_lower(const std::wstring* section, const std::wstring* ini_namespace, std::wstring* ret);
 bool         get_section_namespace(const wchar_t* section, std::wstring* ret);
