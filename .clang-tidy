@@ -47,6 +47,6 @@ CheckOptions:
  - { key: readability-identifier-naming.GlobalVariableIgnoredRegexp,   value: "fn_orig_.*|trampoline_.*|gLogDebug|LogFile|_?D3DKMT.*|_?D3D11.*|_?OpenAdapter.*" }
  - { key: readability-identifier-naming.UnionCase,                     value: lower_case }
  - { key: readability-identifier-naming.NamespaceCase,                 value: lower_case }
- - { key: readability-identifier-naming.EnumCase,                      value: Camel_Snake_Case }
+ - { key: readability-identifier-naming.EnumCase,                      value: camel_Snake_Back }
  - { key: readability-identifier-naming.ScopedEnumConstantCase,        value: lower_case }
  - { key: readability-identifier-naming.EnumConstantCase,              value: lower_case }
