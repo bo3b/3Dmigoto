@@ -1,5 +1,7 @@
 #include "Assembler.h"
 
+#include <d3dcommon.h>
+#include <d3dcompiler.h>
 #include <stdexcept>
 #include <unordered_map>
 
