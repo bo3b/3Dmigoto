@@ -1,6 +1,6 @@
 #pragma once
 
-#include "util.h"
+#include "DirectX11/EnumNames.hpp"
 
 #include <string>
 
