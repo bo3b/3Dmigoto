@@ -5,9 +5,9 @@
 
 #pragma once
 
-#include <d3dcompiler.h>
 #include <string>
 #include <vector>
+#include <windows.h>
 
 // VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
 class AssemblerParseError : public std::exception
