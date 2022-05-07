@@ -1,17 +1,18 @@
 // cmd_Decompiler.cpp : Defines the entry point for the console application.
 //
 
+#include "stdafx.h"
+
 #include "DecompileHLSL.h"
 #include "log.h"
-#include "stdafx.h"
+#include "shader.h"
 #include "version.h"
 
 #include <d3dcompiler.h>
 #define MIGOTO_DX 11 // Selects the DX11 disassembler in util.h - the DX9 dis/assembler is not very
                      // interesting since it is just Microsoft's - we can add it later, but low priority.
                      // The DX9 decompiler is more interesting, which is unrelated to this flag.
-#include "shader.h"
-#include "util.h"
+#include "Assembler.h"
 
 using namespace std;
 

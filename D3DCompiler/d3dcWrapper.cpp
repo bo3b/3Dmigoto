@@ -5,6 +5,7 @@
 #include <ctime>
 #include <d3d11shadertracing.h>
 #include <d3d11_1.h>
+#include <d3dcompiler.h>
 #include <ShlObj.h>
 
 #define COMPILER_DLL_VERSION "46"
