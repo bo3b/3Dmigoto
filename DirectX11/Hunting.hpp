@@ -5,6 +5,7 @@
 #include <d3dcommon.h>
 #include <string>
 #include <vector>
+#include <Windows.h>
 
 // Hunting
 //  This code is to implement the Hunting mechanism as a separate compilation from the main wrapper code.

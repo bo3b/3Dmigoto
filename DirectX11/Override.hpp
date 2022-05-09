@@ -1,11 +1,16 @@
 #pragma once
 
 #include "CommandList.hpp"
+#include "EnumNames.hpp"
 #include "Input.hpp"
 
 #include <DirectXMath.h>
 #include <map>
+#include <memory>
+#include <string>
+#include <unordered_set>
 #include <vector>
+#include <Windows.h>
 
 // We only need forward declaration here instead of including the
 // HackerDevice.hpp file, which brings in a lot of other includes

@@ -9,7 +9,10 @@
 #include "VertexTypes.h"
 
 #include <d3d11_1.h>
+#include <DirectXMath.h>
 #include <memory>
+#include <string>
+#include <Windows.h>
 #include <wrl.h>
 
 // Using forward references for these needed initializer objects. We specifically

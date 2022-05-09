@@ -3,12 +3,12 @@
 #include "CommandList.hpp"
 #include "pcre2.h"
 
-#include <Windows.h>
-
 #include <map>
+#include <memory>
 #include <set>
 #include <string>
 #include <vector>
+#include <Windows.h>
 
 
 enum class ShaderRegexCache
@@ -52,7 +52,7 @@ public:
 // These are sorted to make sure we get consistent results between runs
 // in case the user does something that winds up depending on the order:
 typedef std::map<std::wstring, ShaderRegexPattern> ShaderRegexPatterns;
-typedef std::vector<std::string> ShaderRegexDeclarations;
+typedef std::vector<std::string>                   ShaderRegexDeclarations;
 
 class ShaderRegexGroup {
 public:
@@ -65,8 +65,8 @@ public:
     ShaderRegexTemps temp_regs;
     float filter_index;
 
-    CommandList command_list;
-    CommandList post_command_list;
+    CommandList                           command_list;
+    CommandList                           post_command_list;
     std::shared_ptr<RunLinkedCommandList> link;
     std::shared_ptr<RunLinkedCommandList> post_link;
 
