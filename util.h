@@ -1,13 +1,11 @@
 #pragma once
 
-#include <cctype>
 #include <d3d11_1.h>
 #include <DirectXMath.h>
 #include <dxgi1_2.h>
 #include <string>
 #include <vcruntime_typeinfo.h>
 #include <Windows.h>
-
 
 // Sets the threshold for warning about IniParams size. The larger IniParams is
 // the more CPU -> GPU bandwidth we will require to update it, so we want to
