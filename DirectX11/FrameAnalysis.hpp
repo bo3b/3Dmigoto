@@ -2,15 +2,15 @@
 
 #include "DrawCallInfo.h"
 #include "EnumNames.hpp"
-//#include "Globals.h"
 #include "HackerContext.hpp"
 
 #include <d3d11_1.h>
-#include <initguid.h>
+#include <dxgi1_2.h>
+#include <memory>
 #include <string>
 #include <vector>
+#include <Windows.h>
 #include <wrl.h>
-
 
 // {2AEE5B3A-68ED-44E9-AA4D-9EAA6315D72B}
 DEFINE_GUID(IID_FrameAnalysisContext,
@@ -195,9 +195,9 @@ struct frame_analysis_deferred_dump_tex_2d_args {
 // executed before finally being garbage collected. They move around, but they
 // are only ever have one owner at a time.
 typedef std::vector<frame_analysis_deferred_dump_buffer_args> FrameAnalysisDeferredBuffers;
-typedef std::unique_ptr<FrameAnalysisDeferredBuffers> FrameAnalysisDeferredBuffersPtr;
-typedef std::vector<frame_analysis_deferred_dump_tex_2d_args>  FrameAnalysisDeferredTex2D;
-typedef std::unique_ptr<FrameAnalysisDeferredTex2D> FrameAnalysisDeferredTex2DPtr;
+typedef std::unique_ptr<FrameAnalysisDeferredBuffers>         FrameAnalysisDeferredBuffersPtr;
+typedef std::vector<frame_analysis_deferred_dump_tex_2d_args> FrameAnalysisDeferredTex2D;
+typedef std::unique_ptr<FrameAnalysisDeferredTex2D>           FrameAnalysisDeferredTex2DPtr;
 
 // We make the frame analysis context directly implement ID3D11DeviceContext1 -
 // no funky implementation inheritance or alternate versions here, just a

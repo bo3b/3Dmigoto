@@ -1,27 +1,27 @@
 #pragma once
 
-#include "CommandList.hpp"
 #include "DrawCallInfo.h"
-#include "Globals.h"
 
 #include <d3d11_1.h>
-#include <initguid.h>
+#include <map>
+#include <set>
+#include <unordered_map>
+#include <vector>
+#include <Windows.h>
 
-// {A3046B1E-336B-4D90-9FD6-234BC09B8687}
-DEFINE_GUID(IID_HackerContext, 0xa3046b1e, 0x336b, 0x4d90, 0x9f, 0xd6, 0x23, 0x4b, 0xc0, 0x9b, 0x86, 0x87);
-
-// Self forward reference for the factory interface.
+// Because these are referenced by pointer, we can forward declare these
+// and avoid the circular dependencies through CommandList or Globals, or
+// HackerContext and HackerDevice
+class CommandList;
+class HackerDevice;
 class HackerContext;
+struct shader_override;
+struct shader_info_data;
+enum class FrameAnalysisOptions;
+
+// -----------------------------------------------------------------------------------------------
 
 HackerContext* HackerContextFactory(ID3D11Device1* device1, ID3D11DeviceContext1* context1);
-
-// Forward declaration to allow circular reference between HackerContext and HackerDevice.
-// We need this to allow each to reference the other as needed.
-
-class HackerDevice;
-
-enum class FrameAnalysisOptions;
-struct shader_override;
 
 struct draw_context
 {
@@ -73,6 +73,8 @@ struct mapped_resource_info
     {}
 };
 
+// -----------------------------------------------------------------------------------------------
+
 // 1-6-18:  Current approach will be to only create one level of wrapping,
 // specifically HackerDevice and HackerContext, based on the ID3D11Device1,
 // and ID3D11DeviceContext1.  ID3D11Device1/ID3D11DeviceContext1 is supported
@@ -95,6 +97,9 @@ struct mapped_resource_info
 
 // Hierarchy:
 //  HackerContext <- ID3D11DeviceContext1 <- ID3D11DeviceContext <- ID3D11DeviceChild <- IUnknown
+
+// {A3046B1E-336B-4D90-9FD6-234BC09B8687}
+DEFINE_GUID(IID_HackerContext, 0xa3046b1e, 0x336b, 0x4d90, 0x9f, 0xd6, 0x23, 0x4b, 0xc0, 0x9b, 0x86, 0x87);
 
 class HackerContext : public ID3D11DeviceContext1
 {

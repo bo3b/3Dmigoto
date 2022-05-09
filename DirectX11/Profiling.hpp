@@ -3,7 +3,7 @@
 
 #include <d3d11_1.h>
 #include <string>
-#include <wrl.h>
+#include <Windows.h>
 
 // We need to have __d3d11_h__ defined before nvapi.h so that it can pick up optional
 // calls in the nvapi.  It is defined by d3d11.h.
