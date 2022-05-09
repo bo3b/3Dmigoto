@@ -9,15 +9,18 @@
 #include "IniHandler.h"
 #include "Lock.h"
 #include "Profiling.hpp"
+#include "ResourceHash.hpp"
 
 #include <ctime>
 #include <d3d11_1.h>
 #include <DirectXMath.h>
 #include <map>
 #include <set>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <Windows.h>
 
 extern HINSTANCE migoto_handle;
 

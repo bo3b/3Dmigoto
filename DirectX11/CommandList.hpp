@@ -1,15 +1,20 @@
 #pragma once
 
 #include "DrawCallInfo.h"
+#include "EnumNames.hpp"
 #include "ResourceHash.hpp"
-#include "util_min.h"
+
 
 #include <d3d11_1.h>
 #include <DirectXMath.h>
+#include <dxgi1_2.h>
 #include <forward_list>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
+#include <vector>
 #include <Windows.h>
 
 // We include this specifically after d3d11.h so that it can define

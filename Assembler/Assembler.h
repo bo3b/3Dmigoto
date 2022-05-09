@@ -1,13 +1,13 @@
+#pragma once
+
 // Assembler.h : include file for standard system include files,
 // or project specific include files that are used frequently, but
 // are changed infrequently
-//
 
-#pragma once
-
+#include <exception>
 #include <string>
 #include <vector>
-#include <windows.h>
+#include <Windows.h>
 
 // VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
 class AssemblerParseError : public std::exception

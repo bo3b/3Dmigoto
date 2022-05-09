@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d11_1.h>
+#include <Windows.h>
 
 // These values can now be exposed through draw_type and their values should
 // not be changed. Any additions should be added to the end of the list.

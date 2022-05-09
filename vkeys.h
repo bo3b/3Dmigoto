@@ -1,8 +1,9 @@
 #pragma once
 
-#include "DirectX11/EnumNames.hpp"
+#include "EnumNames.hpp"
 
 #include <string>
+#include <Windows.h>
 
 // clang-format off
 // http://msdn.microsoft.com/en-us/library/windows/desktop/dd375731(v=vs.85).aspx

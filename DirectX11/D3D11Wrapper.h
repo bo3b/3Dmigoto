@@ -5,7 +5,6 @@
 
 void init_d3d11();
 void destroy_dll();
-
 void nvapi_override();
 
 extern "C" HMODULE(__stdcall* fn_orig_LoadLibraryExW)(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags);

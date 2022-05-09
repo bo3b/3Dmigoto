@@ -1,14 +1,16 @@
 #pragma once
 
 #include "DrawCallInfo.h"
-#include "util_min.h"
+#include "EnumNames.hpp"
+#include "log.h"
 
 #include <atomic>
-#include <cstdint>
 #include <d3d11_1.h>
+#include <functional>
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 #include <tuple>
 #include <unordered_map>
 #include <Windows.h>

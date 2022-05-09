@@ -1,6 +1,7 @@
 #pragma once
 
-#include <d3d11_1.h>
+#include <string>
+#include <Windows.h>
 
 bool check_interface_supported(IUnknown* unknown, REFIID riid);
 void analyse_iunknown(IUnknown* unknown);
