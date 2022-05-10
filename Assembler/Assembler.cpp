@@ -1,9 +1,15 @@
 #include "Assembler.h"
 
+#include <cmath>
+#include <cstdint>
 #include <d3dcommon.h>
 #include <d3dcompiler.h>
 #include <stdexcept>
+#include <stdio.h>
+#include <string>
 #include <unordered_map>
+#include <vector>
+#include <Windows.h>
 
 #if MIGOTO_DX == 9
     #include <d3dx9shader.h>

@@ -1,5 +1,4 @@
 // cmd_Decompiler.cpp : Defines the entry point for the console application.
-//
 
 #include "stdafx.h"
 
@@ -8,9 +7,19 @@
 #include "shader.h"
 #include "version.h"
 
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <d3dcommon.h>
 #include <d3dcompiler.h>
-#define MIGOTO_DX 11 // Selects the DX11 disassembler in util.h - the DX9 dis/assembler is not very
-                     // interesting since it is just Microsoft's - we can add it later, but low priority.
+#include <exception>
+#include <stdio.h>
+#include <string>
+#include <vector>
+#include <Windows.h>
+
+#define MIGOTO_DX 11  // Selects the DX11 disassembler in util.h - the DX9 dis/assembler is not very
+// interesting since it is just Microsoft's - we can add it later, but low priority.
                      // The DX9 decompiler is more interesting, which is unrelated to this flag.
 #include "Assembler.h"
 
@@ -638,7 +647,7 @@ int main(int argc, char *argv[])
     for (string const &filename : args.files) {
         try {
             rc = process(&filename) || rc;
-        } catch (const exception & e) {
+        } catch (const std::exception & e) {
             LOG_INFO("\n*** UNHANDLED EXCEPTION: %s\n", e.what());
             rc = EXIT_FAILURE;
         }
