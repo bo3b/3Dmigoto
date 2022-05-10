@@ -156,9 +156,20 @@ public:
 
 	//dx9
 	map<int, string> mUniformNames;
+	map<int, int> mUniformSizes;
 	map<int, string> mBoolUniformNames;
 	map<int, ConstantValue> mConstantValues;
 	map<int, string> mInputNames;
+
+	struct Variable {
+		std::string type;
+		std::string name;
+		int arraySize;
+		std::string registerId;
+		int registerSize;
+	};
+
+	vector<Variable> mGlobalDecl;
 	//dx9
 
 	// Output register tracking.
@@ -256,6 +267,27 @@ public:
 		while (c[pos] != 0x0a && pos < max)
 			pos++;
 		pos++;
+	}
+
+	void AddToMainSignature(const char* buffer)
+	{
+		char* main_ptr = strstr(mOutput.data(), "void main(");
+		size_t offset = main_ptr - mOutput.data();
+		NextLine(mOutput.data(), offset, mOutput.size());
+		mOutput.insert(mOutput.begin() + offset, buffer, buffer + strlen(buffer));
+	}
+
+	// TODO: Convert other parsers to use this helper
+	static void find_next_header(const char* headerid, const char* c, size_t& pos, size_t size)
+	{
+		size_t header_len = strlen(headerid);
+
+		while (pos < size - header_len) {
+			if (!strncmp(c + pos, headerid, header_len))
+				break;
+			else
+				NextLine(c, pos, size);
+		}
 	}
 
 	// Just take the current input line, and copy it to the output.
@@ -410,6 +442,19 @@ public:
 		return interpolation;
 	}
 
+	void DeclareTempRegisters(int numTemps, char* buffer)
+	{
+		const char* varDecl = "  float4 ";
+		mOutput.insert(mOutput.end(), varDecl, varDecl + strlen(varDecl));
+		for (int i = 0; i < numTemps; ++i)
+		{
+			sprintf(buffer, "r%d,", i);
+			mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+		}
+		mOutput.pop_back();
+		mOutput.push_back(';');
+		mOutput.push_back('\n');
+	}
 
 	// Input signature:
 	//
@@ -419,29 +464,18 @@ public:
 	// TEXCOORD                 1   xy          1     NONE   float   xy  
 	// COLOR                    3   xyz         2     NONE   float   xyz 
 
-	void ParseInputSignature(Shader* shader, const char* c, size_t size)
+	bool ParseInputSignature(Shader* shader, const char* c, size_t size)
 	{
 		// DataType is not used here, just a convenience for calling SkipPacking.
 		map<string, DataType> usedInputRegisters;
 
 		mRemappedInputRegisters.clear();
-		// Write header.  Extra space handles odd case for no input and no output sections.
-		const char* inputHeader = "\nvoid main(\n";
-		mOutput.insert(mOutput.end(), inputHeader, inputHeader + strlen(inputHeader));
 
 		// Read until header.
 		const char* headerid = "// Input signature:";
 		size_t pos = 0;
-		while (pos < size - strlen(headerid))
-		{
-			if (!strncmp(c + pos, headerid, strlen(headerid)))
-				break;
-			else
-			{
-				NextLine(c, pos, size);
-			}
-		}
-		if (pos >= size - strlen(headerid)) return;
+		find_next_header(headerid, c, pos, size);
+		if (pos >= size - strlen(headerid)) return false;
 		// Skip header.
 		for (int i = 0; i < 4; ++i)
 		{
@@ -459,7 +493,7 @@ public:
 			if (numRead != 6)
 			{
 				logDecompileError("Error parsing input signature: " + string(c + pos, 80));
-				return;
+				return false;
 			}
 			// finish type.
 			if (SkipPacking(c + pos, usedInputRegisters))
@@ -512,9 +546,10 @@ public:
 			if (!strncmp(c + pos, "//\n", 3) || !strncmp(c + pos, "//\r", 3))
 				break;
 		}
+		return true;
 	}
 
-	void ParseOutputSignature(const char* c, size_t size)
+	bool ParseOutputSignature(const char* c, size_t size)
 	{
 		mOutputRegisterType.clear();
 		mRemappedOutputRegisters.clear();
@@ -522,16 +557,8 @@ public:
 		// Read until header.
 		const char* headerid = "// Output signature:";
 		size_t pos = 0;
-		while (pos < size - strlen(headerid))
-		{
-			if (!strncmp(c + pos, headerid, strlen(headerid)))
-				break;
-			else
-			{
-				NextLine(c, pos, size);
-			}
-		}
-		if (pos >= size - strlen(headerid)) return;
+		find_next_header(headerid, c, pos, size);
+		if (pos >= size - strlen(headerid)) return false;
 		// Skip header.
 		for (int i = 0; i < 4; ++i)
 		{
@@ -617,11 +644,41 @@ public:
 			if (!strncmp(c + pos, "//\n", 3) || !strncmp(c + pos, "//\r", 3))
 				break;
 		}
+		return true;
+	}
+
+	void ParseMainSignature(Shader* shader, const char* c, size_t size)
+	{
+		// Write header.  Extra space handles odd case for no input and no output sections.
+		const char* inputHeader = "\nvoid main(\n";
+		mOutput.insert(mOutput.end(), inputHeader, inputHeader + strlen(inputHeader));
+
+		if (ParseInputSignature(shader, c, size) || ParseOutputSignature(c, size))
+		{
+			// Remove last comma and space
+			mOutput.pop_back();
+			mOutput.pop_back();
+		} else if (shader->dx9Shader && shader->ui32MajorVersion < 3) {
+			// SM 1-2 ASM does not require declaring outputs since they are fixed, but we need the variable names for a valid hlsl file.
+			auto output = shader->eShaderType == SHADER_TYPE::VERTEX_SHADER
+				? "  out float4 oPos : POSITION, out float oFog : FOG, out float oPts : PSIZE, out float3 oD0 : COLOR0, out float3 oD1 : COLOR1,\n"
+				"  out float4 oT0 : TEXCOORD0, out float4 oT1 : TEXCOORD1, out float4 oT2 : TEXCOORD2, out float4 oT3 : TEXCOORD3,\n"
+				"  out float4 oT4 : TEXCOORD4, out float4 oT5 : TEXCOORD5, out float4 oT6 : TEXCOORD6, out float4 oT7 : TEXCOORD7\n"
+				: shader->eShaderType == SHADER_TYPE::PIXEL_SHADER
+				? shader->ui32MajorVersion == 1 ? "/* Output color stored in r0 */"
+				: "  out float4 oC0 : COLOR0, out float4 oC1 : COLOR1, out float4 oC2 : COLOR2, out float4 oC3 : COLOR3, out float oDepth : DEPTH\n"
+				: "/* Unknown shader output (version < 3 and not a VS or PS) */";
+
+			mOutput.insert(mOutput.end(), output, output + strlen(output));
+		}
+
 		// Write footer.
-		mOutput.pop_back();
-		mOutput.pop_back();
 		const char* mainFooter = ")\n{\n";
 		mOutput.insert(mOutput.end(), mainFooter, mainFooter + strlen(mainFooter));
+		if (shader->dx9Shader) {
+			char buffer[512];
+			DeclareTempRegisters(12, buffer);
+		}
 	}
 
 	void WriteZeroOutputSignature(const char* c, size_t size)
@@ -629,15 +686,7 @@ public:
 		// Read until header.
 		const char* headerid = "// Output signature:";
 		size_t pos = 0;
-		while (pos < size - strlen(headerid))
-		{
-			if (!strncmp(c + pos, headerid, strlen(headerid)))
-				break;
-			else
-			{
-				NextLine(c, pos, size);
-			}
-		}
+		find_next_header(headerid, c, pos, size);
 		if (pos >= size - strlen(headerid)) return;
 		// Skip header.
 		for (int i = 0; i < 4; ++i)
@@ -754,6 +803,7 @@ public:
 		mSamplerComparisonNamesArraySize.clear();
 		mTextureNames.clear();
 		mTextureNamesArraySize.clear();
+		mGlobalDecl.clear();
 
 		size_t pos = 0;
 		bool parseParameters = false;
@@ -761,28 +811,19 @@ public:
 
 		while (pos < size)
 		{
-
 			const char* lineStart = c + pos;
 			bool foundLineEnd = false;
 			size_t lineSize = getLineEnd(c, size, pos, foundLineEnd);
 
-
-			if (lineSize < 2)
-			{
-				break;
-			}
-
 			//code start
-			if (lineStart[0] != '/' || lineStart[1] != '/')
-			{
-				break;
-			}
+			if (lineSize < 2 || lineStart[0] != '/' || lineStart[1] != '/') break;
 
 			const char* headerid = "// Parameters:";
 			if (!strncmp(lineStart, headerid, strlen(headerid)))
 			{
 				parseParameters = true;
 				parseRegisters = false;
+				continue;
 			}
 
 			headerid = "// Registers:";
@@ -793,45 +834,110 @@ public:
 				continue;
 			}
 
+			// The parameters section is equivalent to the HLSL global declarations, so let's just print it.
+			if (parseParameters && lineSize > 5)
+			{
+				char type[10];
+				char name[32];
+				int size = 1;
+				auto var = new Variable();
+				auto result = sscanf_s(lineStart, "//   %s %[^[;][%d];", type, sizeof(type), name, sizeof(name), &size);
 
+				if (result < 2) continue;
+
+				var->type = std::string(type);
+				var->name = std::string(name);
+				var->arraySize = size;
+
+				mGlobalDecl.push_back(*var);
+			}
+
+			// The registers section contains the c/b/s register IDs which we can replace with the variable names when they're used.
 			if (parseRegisters)
 			{
-				char* lineStr = new char[lineSize + 1];
-				memcpy(lineStr, lineStart, lineSize);
-				lineStr[lineSize] = 0;
+				char name[32];
+				char reg[5];
+				int size;
+				if (lineSize < 5 || sscanf_s(lineStart, "//   %s %s %d", name, sizeof(name), reg, sizeof(reg), &size) != 3) continue;
 
-				vector<string> result;
-				SplitString(lineStr, result, " ");
+				int slot = atoi(&reg[1]);
+				auto nameStr = std::string(name);
 
-				if (result.size() != 4)
+				for (auto& decl : mGlobalDecl)
 				{
-					delete[] lineStr;
-					continue;
+					if (decl.name == nameStr)
+					{
+						decl.registerSize = size;
+						decl.registerId = std::string(reg);
+						int row, column;
+						if (decl.arraySize > 1 && decl.type.length() > 6 && sscanf_s(decl.type.c_str(), "float%dx%d", &row, &column) == 2)
+						{
+							// if row multiplied by the arraySize is larger than 
+							// the register size, then there's a mistake to correct.
+							if (row * decl.arraySize > size) {
+								// cModel from portal 2 was declared as float4x3 but used as float3x4.
+								if (column == size) {
+									char type[9];
+									sprintf(type, "float%dx%d", column, row); // swap row and column
+									decl.type = std::string(type);
+									decl.arraySize = 1;
+								} else
+								{
+									decl.arraySize = size / row;
+								}
+							}
+						}
+						break;
+					}
 				}
 
-				if (result[1] == "Name" || result[3] == "----")
+				// Sampler
+				if (reg[0] == 's')
 				{
-					delete[] lineStr;
-					continue;
-				}
+					mSamplerNames[slot] = nameStr;
 
-				if (result[2].c_str()[0] == 's')
-				{
-					int slot = atoi(&result[2].c_str()[1]);
-					mTextureNames[slot] = result[1];
-					mTextureNamesArraySize[slot] = 1;
-					mTextureType[slot] = "Texture2D<float4>";
-				} else if (result[2].c_str()[0] == 'c')
-				{
-					int index = atoi(&result[2].c_str()[1]);
-					mUniformNames[index] = result[1];
+					// Samplers have to sample something, so we also map the texture.
+					mTextureNames[slot] = nameStr.substr(0, nameStr.length() - strlen("Sampler"));
 				}
-				if (result[2].c_str()[0] == 'b')
+				// Constant
+				else if (reg[0] == 'c')
 				{
-					int index = atoi(&result[2].c_str()[1]);
-					mBoolUniformNames[index] = result[2];
+					if (size == 1) {
+						mUniformNames[slot] = nameStr;
+					} else // Array
+					{
+						char buffer[128];
+						for (int i = 0; i < size; i++) {
+							sprintf(buffer, "%s[%d]", name, i);
+							mUniformNames[slot + i] = std::string(buffer);
+						}
+					}
+				}
+				// Bool Constant
+				if (reg[0] == 'b')
+				{
+					mBoolUniformNames[slot] = nameStr;
 				}
 			}
+		}
+	}
+
+	void WriteResourceDefinitionsDX9()
+	{
+		char buffer[256];
+		for (auto& uniform : mSamplerNames)
+		{
+			sprintf(buffer, "texture tex%d; // %s\n", uniform.first, uniform.second.c_str());
+			mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
+		}
+		for (auto& var : mGlobalDecl)
+		{
+			if (var.arraySize > 1)
+				sprintf(buffer, "%s %s[%d] : register(%s);\n", var.type.c_str(), var.name.c_str(), var.arraySize, var.registerId.c_str());
+			else
+				sprintf(buffer, "%s %s : register(%s);\n", var.type.c_str(), var.name.c_str(), var.registerId.c_str());
+
+			mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 		}
 	}
 	//dx9
@@ -850,15 +956,7 @@ public:
 		// Read until header.
 		const char* headerid = "// Resource Bindings:";
 		size_t pos = 0;
-		while (pos < size - strlen(headerid))
-		{
-			if (!strncmp(c + pos, headerid, strlen(headerid)))
-				break;
-			else
-			{
-				NextLine(c, pos, size);
-			}
-		}
+		find_next_header(headerid, c, pos, size);
 		if (pos >= size - strlen(headerid)) return;
 		// Skip header.
 		for (int i = 0; i < 4; ++i)
@@ -1127,15 +1225,7 @@ public:
 		while (pos < size - strlen(headerid))
 		{
 			// Read next buffer.
-			while (pos < size - strlen(headerid))
-			{
-				if (!strncmp(c + pos, headerid, strlen(headerid)))
-					break;
-				else
-				{
-					NextLine(c, pos, size);
-				}
-			}
+			find_next_header(headerid, c, pos, size);
 			if (pos >= size - strlen(headerid)) return;
 			char name[256];
 			int numRead = sscanf_s(c + pos, "// cbuffer %s", name, UCOUNTOF(name));
@@ -1600,21 +1690,6 @@ public:
 		}
 	}
 
-	// TODO: Convert other parsers to use this helper
-	static size_t find_next_header(const char* headerid, const char* c, size_t pos, size_t size)
-	{
-		size_t header_len = strlen(headerid);
-
-		while (pos < size - header_len) {
-			if (!strncmp(c + pos, headerid, header_len))
-				return pos;
-			else
-				NextLine(c, pos, size);
-		}
-
-		return 0;
-	}
-
 	bool warn_if_line_is_not(const char* expect, const char* c)
 	{
 		if (strncmp(c, expect, strlen(expect))) {
@@ -1652,7 +1727,8 @@ public:
 		int n;
 		string hlsl;
 
-		while (pos = find_next_header("// Resource bind info for ", c, pos, size)) {
+		find_next_header("// Resource bind info for ", c, pos, size);
+		while (pos) {
 			n = sscanf_s(c + pos, "// Resource bind info for %s", bind_name, UCOUNTOF(bind_name));
 			if (n != 1) {
 				logDecompileError("Error parsing structure bind name: " + string(c + pos, 80));
@@ -1752,6 +1828,7 @@ public:
 			}
 			hlsl += "};\n";
 			mOutput.insert(mOutput.end(), hlsl.begin(), hlsl.end());
+			find_next_header("// Resource bind info for ", c, pos, size);
 		}
 	}
 
@@ -1925,9 +2002,7 @@ public:
 			std::map<int, ConstantValue>::iterator cit = mConstantValues.find(index);
 			if (cit != mConstantValues.end())
 			{
-
 				sprintf_s(buff, opcodeSize, "%s", right2);
-
 
 				for (int i = 0; idx1[i] >= 0 && i < 4; ++i)
 				{
@@ -4229,7 +4304,7 @@ public:
 			}
 			// Create new map entries if there aren't any for dcl_sampler.  This can happen if
 			// there is no Resource Binding section in the shader.  TODO: probably needs to handle arrays too.
-			else if (!strcmp(statement, "dcl_sampler"))
+			else if (!strcmp(statement, "dcl_sampler") || /*dx9*/ (shader->dx9Shader && (!strcmp(statement, "dcl_2d") || !strcmp(statement, "dcl_cube") || !strcmp(statement, "dcl_volume"))))
 			{
 				if (op1[0] == 's')
 				{
@@ -4239,7 +4314,7 @@ public:
 						logDecompileError("Error parsing sampler register index: " + string(op1));
 						return;
 					}
-					if (!strcmp(op2, "mode_default"))
+					if (!strcmp(op2, "mode_default") || shader->dx9Shader)
 					{
 						map<int, string>::iterator i = mSamplerNames.find(bufIndex);
 						if (i == mSamplerNames.end())
@@ -4276,9 +4351,24 @@ public:
 			// as the most common use case. But only for this case where the game is being hostile.
 			// It will probably require hand tuning to correct usage of those texture registers.
 			// Also unlikely to work for the (mixed,mixed,mixed,mixed) case.  <mixed4> will be wrong.
-			else if (!strcmp(statement, "dcl_resource_texture2d"))
+			else if (!strcmp(statement, "dcl") && op1[0] == 't') // DX9
 			{
-				if (op2[0] == 't')
+				int bufIndex = 0;
+				if (sscanf_s(op1 + 1, "%d", &bufIndex) != 1)
+				{
+					logDecompileError("Error parsing texture register index: " + string(op2));
+					return;
+				}
+				// Create if not existing.  e.g. if no ResourceBinding section in ASM.
+				map<int, string>::iterator i = mTextureNames.find(bufIndex);
+				if (i == mTextureNames.end())
+				{
+					CreateRawFormat("Texture2D", bufIndex);
+				}
+			} else if (!strncmp(statement, "dcl_resource", strlen("dcl_resource")) && op2[0] == 't')
+			{
+				auto declType = (char*)(statement + 13);
+				if (!strcmp(declType, "texture2d"))
 				{
 					int bufIndex = 0;
 					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
@@ -4292,10 +4382,7 @@ public:
 					{
 						CreateRawFormat("Texture2D", bufIndex);
 					}
-				}
-			} else if (!strcmp(statement, "dcl_resource_texture2darray"))	// dcl_resource_texture2darray (float,float,float,float) t0
-			{
-				if (op2[0] == 't')
+				} else if (!strcmp(declType, "texture2darray"))	// dcl_resource_texture2darray (float,float,float,float) t0
 				{
 					int bufIndex = 0;
 					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
@@ -4309,10 +4396,7 @@ public:
 					{
 						CreateRawFormat("Texture2DArray", bufIndex);
 					}
-				}
-			} else if (!strncmp(statement, "dcl_resource_texture2dms", strlen("dcl_resource_texture2dms")))	// dcl_resource_texture2dms(8) (float,float,float,float) t4
-			{
-				if (op2[0] == 't')
+				} else if (!strncmp(declType, "texture2dms", strlen("texture2dms")))	// dcl_resource_texture2dms(8) (float,float,float,float) t4
 				{
 					int bufIndex = 0;
 					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
@@ -4345,10 +4429,7 @@ public:
 						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
 						mCodeStartPos += strlen(buffer);
 					}
-				}
-			} else if (!strcmp(statement, "dcl_resource_texture3d"))
-			{
-				if (op2[0] == 't')
+				} else if (!strcmp(declType, "texture3d"))
 				{
 					int bufIndex = 0;
 					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
@@ -4362,10 +4443,7 @@ public:
 					{
 						CreateRawFormat("Texture3D", bufIndex);
 					}
-				}
-			} else if (!strcmp(statement, "dcl_resource_texturecube"))
-			{
-				if (op2[0] == 't')
+				} else if (!strcmp(declType, "texturecube"))
 				{
 					int bufIndex = 0;
 					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
@@ -4379,10 +4457,7 @@ public:
 					{
 						CreateRawFormat("TextureCube", bufIndex);
 					}
-				}
-			} else if (!strcmp(statement, "dcl_resource_texturecubearray"))
-			{
-				if (op2[0] == 't')
+				} else if (!strcmp(declType, "texturecubearray"))
 				{
 					int bufIndex = 0;
 					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
@@ -4396,10 +4471,7 @@ public:
 					{
 						CreateRawFormat("TextureCubeArray", bufIndex);
 					}
-				}
-			} else if (!strcmp(statement, "dcl_resource_buffer"))		// dcl_resource_buffer (sint,sint,sint,sint) t2
-			{
-				if (op2[0] == 't')
+				} else if (!strcmp(declType, "buffer"))		// dcl_resource_buffer (sint,sint,sint,sint) t2
 				{
 					int bufIndex = 0;
 					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
@@ -4452,25 +4524,13 @@ public:
 				// not in input signature when reflection is stripped.
 				if (!strcmp(op1, "vCoverage"))
 				{
-					char* pos = strstr(mOutput.data(), "void main(");
-					while (*pos != 0x0a) pos++; pos++;
-					sprintf(buffer, "  uint vCoverage : SV_Coverage,\n");
-					mOutput.insert(mOutput.begin() + (pos - mOutput.data()), buffer, buffer + strlen(buffer));
+					AddToMainSignature("  uint vCoverage : SV_Coverage,\n");
 				}
 			} else if (!strcmp(statement, "dcl_temps"))
 			{
-				const char* varDecl = "  float4 ";
-				mOutput.insert(mOutput.end(), varDecl, varDecl + strlen(varDecl));
 				int numTemps;
 				sscanf_s(c + pos, "%s %d", statement, UCOUNTOF(statement), &numTemps);
-				for (int i = 0; i < numTemps; ++i)
-				{
-					sprintf(buffer, "r%d,", i);
-					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
-				}
-				mOutput.pop_back();
-				mOutput.push_back(';');
-				mOutput.push_back('\n');
+				DeclareTempRegisters(numTemps, buffer);
 				const char* helperDecl = "  uint4 bitmask, uiDest;\n  float4 fDest;\n\n";
 				mOutput.insert(mOutput.end(), helperDecl, helperDecl + strlen(helperDecl));
 			}
@@ -4482,11 +4542,7 @@ public:
 				mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 				ASMLineOut(c, pos, size);
 				// Move back to input section and output something close to right
-				char* main_ptr = strstr(mOutput.data(), "void main(");
-				size_t offset = main_ptr - mOutput.data();
-				NextLine(mOutput.data(), offset, mOutput.size());
-				sprintf(buffer, "  inout TriangleStream<float> m0,\n");
-				mOutput.insert(mOutput.begin() + offset, buffer, buffer + strlen(buffer));
+				AddToMainSignature("  inout TriangleStream<float> m0,\n");
 			}
 			// For Geometry Shaders, e.g. dcl_maxout n
 			else if (!strcmp(statement, "dcl_maxout"))
@@ -4497,8 +4553,20 @@ public:
 				mOutput.insert(mOutput.begin() + offset, buffer, buffer + strlen(buffer));
 			} else if (!strncmp(statement, "dcl_", 4))
 			{
+				// We don't have header comments to detail the inputs or outputs, so have to read the DCLs
+				if (shader->dx9Shader)
+				{
+					auto str = std::string(statement);
+					for (auto& c : statement) c = toupper(c);
+					auto type = (char*)(&statement) + 4;
+					if (op1[0] == 'v')
+						sprintf(buffer, "  float4 %s : %s,\n", op1, type);
+					else if (op1[0] == 'o')
+						sprintf(buffer, "  out float4 %s : %s,\n", op1, type);
+					AddToMainSignature(buffer);
+				}
 				// Hateful strcmp logic is upside down, only output for ones we aren't already handling.
-				if (strcmp(statement, "dcl_output") &&
+				else if (strcmp(statement, "dcl_output") &&
 					strcmp(statement, "dcl_output_siv") &&
 					strcmp(statement, "dcl_globalFlags") &&
 					//strcmp(statement, "dcl_input_siv") && 
@@ -4513,13 +4581,7 @@ public:
 					mOutput.insert(mOutput.end(), buffer, buffer + strlen(buffer));
 					ASMLineOut(c, pos, size);
 				}
-			} else if (!strcmp(statement, "dcl"))		//dx9 dcl vFace
-			{
-				// Ummm... why is this empty block here? Is this here
-				// intentionally to avoid the next else block, or was it
-				// forgotten about? -DSS
-			}//dx9
-			else
+			} else
 			{
 				switch (instr->eOpcode)
 				{
@@ -6726,17 +6788,18 @@ const string DecompileBinaryHLSL(ParseParameters& params, bool& patched, std::st
 		if (shader->dx9Shader)
 		{
 			d.ReadResourceBindingsDX9(params.decompiled, params.decompiledSize);
+			d.WriteResourceDefinitionsDX9();
 		} else
 		{
 			d.ParseStructureDefinitions(shader, params.decompiled, params.decompiledSize);
 			d.ReadResourceBindings(params.decompiled, params.decompiledSize);
+			d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
+			d.WriteResourceDefinitions();
+			d.WriteAddOnDeclarations();
 		}
 
-		d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
-		d.WriteResourceDefinitions();
-		d.WriteAddOnDeclarations();
-		d.ParseInputSignature(shader, params.decompiled, params.decompiledSize);
-		d.ParseOutputSignature(params.decompiled, params.decompiledSize);
+		d.ParseMainSignature(shader, params.decompiled, params.decompiledSize);
+
 		if (!params.ZeroOutput)
 		{
 			d.ParseCode(shader, params.decompiled, params.decompiledSize);
