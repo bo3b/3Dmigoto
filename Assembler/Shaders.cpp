@@ -1,14 +1,14 @@
 // Shaders.cpp : Defines the entry point for the console application.
-//
 
 #include "Assembler.h"
 
+#include <cstdio>
 #include <direct.h>
 #include <iostream>
-#include <map>
 #include <string>
 #include <tchar.h>
 #include <vector>
+#include <Windows.h>
 
 using namespace std;
 
@@ -173,7 +173,7 @@ int _tmain(
         files = enumerate_files(path_name, "*.bin");
         if (files.size() > 0)
         {
-            cout << "bin->asm validate: ";
+            std::cout << "bin->asm validate: ";
             for (DWORD i = 0; i < files.size(); i++)
             {
                 string file_name = files[i];

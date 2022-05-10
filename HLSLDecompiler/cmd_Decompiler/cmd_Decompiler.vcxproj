@@ -330,9 +330,6 @@
     <ProjectReference Include="..\..\BinaryDecompiler\BinaryDecompiler.vcxproj">
       <Project>{258d0ad2-b762-41e3-a0c1-cf831d859da4}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\..\D3D_Shaders\D3D_Shaders.vcxproj">
-      <Project>{59a9b0c6-8302-48a9-96e0-126fb32fb9ed}</Project>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

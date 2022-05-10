@@ -11,6 +11,9 @@
 #include <map>
 #include <ShlObj.h>
 #include <tchar.h>
+#include <corecrt_share.h>
+#include <corecrt_wstdio.h>
+#include <Windows.h>
 
 extern "C"
 {
