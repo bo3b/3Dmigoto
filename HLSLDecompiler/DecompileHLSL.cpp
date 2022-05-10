@@ -31,6 +31,8 @@
 #include <excpt.h>
 #include <map>
 #include <set>
+#include <cstring>
+#include <stdio.h>
 #include <string>
 #include <vector>
 

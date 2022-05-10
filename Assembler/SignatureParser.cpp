@@ -2,6 +2,13 @@
 #include "log.h"
 #include "shader.h"
 
+#include <cstdint>
+#include <cstring>
+#include <exception>
+#include <string>
+#include <vector>
+#include <Windows.h>
+
 using namespace std;
 
 #define SFI_RAW_STRUCT_BUF (1LL << 1)
@@ -12,11 +19,11 @@ using namespace std;
 #define SFI_FORCE_SHEX (SFI_RAW_STRUCT_BUF | SFI_MIN_PRECISION)
 
 // VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
-class AsmSignatureParseError : public exception
+class AsmSignatureParseError : public std::exception
 {
 } parse_error;
 
-static string next_line(
+static std::string next_line(
     string* shader,
     size_t* pos)
 {
@@ -261,12 +268,12 @@ static uint32_t pad(
 }
 
 static void* serialise_signature_section(
-    char*                                  section24,
-    char*                                  section28,
-    char*                                  section32,
-    int                                    entry_size,
-    vector<struct sgn_entry_unserialised>* entries,
-    uint32_t                               name_len)
+    char*                                       section24,
+    char*                                       section28,
+    char*                                       section32,
+    int                                         entry_size,
+    std::vector<struct sgn_entry_unserialised>* entries,
+    uint32_t                                    name_len)
 {
     void*                  section;
     uint32_t               section_size, padding, alloc_size, name_off;
