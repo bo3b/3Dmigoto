@@ -1,6 +1,9 @@
 #include "Hunting.hpp"
 
+#include "Assembler.h"
 #include "D3D11Wrapper.h"
+#include "DecompileHLSL.h"
+#include "EnumNames.hpp"
 #include "FrameAnalysis.hpp"
 #include "Globals.h"
 #include "HackerContext.hpp"
@@ -8,23 +11,35 @@
 #include "HackerDXGI.hpp"
 #include "IniHandler.h"
 #include "Input.hpp"
+#include "Lock.h"
 #include "log.h"
 #include "Overlay.hpp"
+#include "Profiling.hpp"
+#include "ResourceHash.hpp"
 #include "ScreenGrab.h"
 #include "ShaderRegex.hpp"
+#include "util.h"
 
 #include <codecvt>
 #include <d3d11_1.h>
+#include <d3dcommon.h>
 #include <d3dcompiler.h>
+#include <locale>
 #include <map>
 #include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string>
+#include <utility>
+#include <vector>
 #include <wincodec.h>
+#include <Windows.h>
+
+// Included after <d3d11_1.h> to define macro.
+#include "nvapi.h"
 
 using namespace std;
 using namespace overlay;
-
 
 // Hunting is considered enabled in either:
 //  1:showing overlay, or 2:soft disabled
@@ -44,13 +59,13 @@ DWORD cast_str_len(
 }
 
 static void dump_usage_resource_info(
-    HANDLE              f,
-    std::set<uint32_t>* hashes,
-    char*               tag)
+    HANDLE         f,
+    set<uint32_t>* hashes,
+    char*          tag)
 {
-    std::set<uint32_t>::iterator                    orig_hash;
-    std::set<uint32_t>::iterator                    copy_iter;
-    std::set<UINT>::iterator                        mu_iter;
+    set<uint32_t>::iterator                         orig_hash;
+    set<uint32_t>::iterator                         copy_iter;
+    set<UINT>::iterator                             mu_iter;
     CopySubresourceRegionContaminationMap::iterator region_iter;
     CopySubresourceRegionContaminationMap::key_type region_key;
     CopySubresourceRegionContamination*             region;
@@ -224,12 +239,12 @@ static void dump_shader_usage_info(
     map<UINT64, shader_info_data>* info_map,
     char*                          tag)
 {
-    std::map<UINT64, shader_info_data>::iterator               i;
-    std::set<UINT64>::iterator                                 j;
-    std::map<int, std::set<resource_snapshot>>::const_iterator k;
-    std::set<resource_snapshot>::const_iterator                o;
-    std::vector<std::set<resource_snapshot>>::iterator         m;
-    std::set<resource_snapshot>::iterator                      n;
+    map<UINT64, shader_info_data>::iterator          i;
+    set<UINT64>::iterator                            j;
+    map<int, set<resource_snapshot>>::const_iterator k;
+    set<resource_snapshot>::const_iterator           o;
+    vector<set<resource_snapshot>>::iterator         m;
+    set<resource_snapshot>::iterator                 n;
 
     char  buf[256];
     DWORD written;
@@ -1012,10 +1027,10 @@ static bool write_asm(
     HackerDevice*        device,
     wstring*             tagline = nullptr)
 {
-    wchar_t     file_name[MAX_PATH];
-    wchar_t     full_name[MAX_PATH];
-    std::string token;
-    FILE*       f;
+    wchar_t file_name[MAX_PATH];
+    wchar_t full_name[MAX_PATH];
+    string  token;
+    FILE*   f;
 
     swprintf_s(file_name, MAX_PATH, L"%016llx-%ls.txt", hash, shader_info.shaderType.c_str());
     swprintf_s(full_name, MAX_PATH, L"%ls\\%ls", G->SHADER_PATH, file_name);
@@ -1597,20 +1612,20 @@ static void next_marking_mode(
 
 template <typename ItemType>
 static void hunt_next(
-    char*               type,
-    std::set<ItemType>* visited,
-    ItemType*           selected,
-    int*                selected_pos)
+    char*          type,
+    set<ItemType>* visited,
+    ItemType*      selected,
+    int*           selected_pos)
 {
     if (G->hunting != Hunting_Mode::enabled)
         return;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
-        std::set<ItemType>::iterator loc   = visited->find(*selected);
-        std::set<ItemType>::iterator end   = visited->end();
-        bool                         found = (loc != end);
-        int                          size  = static_cast<int>(visited->size());
+        set<ItemType>::iterator loc   = visited->find(*selected);
+        set<ItemType>::iterator end   = visited->end();
+        bool                    found = (loc != end);
+        int                     size  = static_cast<int>(visited->size());
 
         if (size == 0)
             goto out;
@@ -1734,21 +1749,21 @@ static void next_render_target(
 
 template <typename ItemType>
 static void hunt_prev(
-    char*               type,
-    std::set<ItemType>* visited,
-    ItemType*           selected,
-    int*                selected_pos)
+    char*          type,
+    set<ItemType>* visited,
+    ItemType*      selected,
+    int*           selected_pos)
 {
     if (G->hunting != Hunting_Mode::enabled)
         return;
 
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
-        std::set<ItemType>::iterator loc   = visited->find(*selected);
-        std::set<ItemType>::iterator end   = visited->end();
-        std::set<ItemType>::iterator front = visited->begin();
-        bool                         found = (loc != end);
-        int                          size  = static_cast<int>(visited->size());
+        set<ItemType>::iterator loc   = visited->find(*selected);
+        set<ItemType>::iterator end   = visited->end();
+        set<ItemType>::iterator front = visited->begin();
+        bool                    found = (loc != end);
+        int                     size  = static_cast<int>(visited->size());
 
         if (size == 0)
             goto out;
@@ -1924,9 +1939,9 @@ static void mark_vertex_buffer(
         marking_screen_shots(device, G->mSelectedVertexBuffer, "vb");
 
         LOG_INFO(">>>> Vertex buffer marked: vertex buffer hash = %08x\n", G->mSelectedVertexBuffer);
-        for (std::set<UINT64>::iterator i = G->mSelectedVertexBuffer_PixelShader.begin(); i != G->mSelectedVertexBuffer_PixelShader.end(); ++i)
+        for (set<UINT64>::iterator i = G->mSelectedVertexBuffer_PixelShader.begin(); i != G->mSelectedVertexBuffer_PixelShader.end(); ++i)
             LOG_INFO("     visited pixel shader hash = %016I64x\n", *i);
-        for (std::set<UINT64>::iterator i = G->mSelectedVertexBuffer_VertexShader.begin(); i != G->mSelectedVertexBuffer_VertexShader.end(); ++i)
+        for (set<UINT64>::iterator i = G->mSelectedVertexBuffer_VertexShader.begin(); i != G->mSelectedVertexBuffer_VertexShader.end(); ++i)
             LOG_INFO("     visited vertex shader hash = %016I64x\n", *i);
 
         if (G->DumpUsage)
@@ -1950,9 +1965,9 @@ static void mark_index_buffer(
         marking_screen_shots(device, G->mSelectedIndexBuffer, "ib");
 
         LOG_INFO(">>>> Index buffer marked: index buffer hash = %08x\n", G->mSelectedIndexBuffer);
-        for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
+        for (set<UINT64>::iterator i = G->mSelectedIndexBuffer_PixelShader.begin(); i != G->mSelectedIndexBuffer_PixelShader.end(); ++i)
             LOG_INFO("     visited pixel shader hash = %016I64x\n", *i);
-        for (std::set<UINT64>::iterator i = G->mSelectedIndexBuffer_VertexShader.begin(); i != G->mSelectedIndexBuffer_VertexShader.end(); ++i)
+        for (set<UINT64>::iterator i = G->mSelectedIndexBuffer_VertexShader.begin(); i != G->mSelectedIndexBuffer_VertexShader.end(); ++i)
             LOG_INFO("     visited vertex shader hash = %016I64x\n", *i);
 
         if (G->DumpUsage)
@@ -2017,11 +2032,11 @@ static void mark_pixel_shader(
     if (!mark_shader_begin("pixel shader", G->mSelectedPixelShader))
         return;
     {
-        for (std::set<uint32_t>::iterator i = G->mSelectedPixelShader_VertexBuffer.begin(); i != G->mSelectedPixelShader_VertexBuffer.end(); ++i)
+        for (set<uint32_t>::iterator i = G->mSelectedPixelShader_VertexBuffer.begin(); i != G->mSelectedPixelShader_VertexBuffer.end(); ++i)
             LOG_INFO("     visited vertex buffer hash = %08x\n", *i);
-        for (std::set<uint32_t>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
+        for (set<uint32_t>::iterator i = G->mSelectedPixelShader_IndexBuffer.begin(); i != G->mSelectedPixelShader_IndexBuffer.end(); ++i)
             LOG_INFO("     visited index buffer hash = %08x\n", *i);
-        for (std::set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PeerShaders.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PeerShaders.end(); ++i)
+        for (set<UINT64>::iterator i = G->mPixelShaderInfo[G->mSelectedPixelShader].PeerShaders.begin(); i != G->mPixelShaderInfo[G->mSelectedPixelShader].PeerShaders.end(); ++i)
             LOG_INFO("     visited peer shader hash = %016I64x\n", *i);
     }
     mark_shader_end(device, "pixel shader", "ps", G->mSelectedPixelShader);
@@ -2034,11 +2049,11 @@ static void mark_vertex_shader(
     if (!mark_shader_begin("vertex shader", G->mSelectedVertexShader))
         return;
     {
-        for (std::set<uint32_t>::iterator i = G->mSelectedVertexShader_VertexBuffer.begin(); i != G->mSelectedVertexShader_VertexBuffer.end(); ++i)
+        for (set<uint32_t>::iterator i = G->mSelectedVertexShader_VertexBuffer.begin(); i != G->mSelectedVertexShader_VertexBuffer.end(); ++i)
             LOG_INFO("     visited vertex buffer hash = %08lx\n", *i);
-        for (std::set<uint32_t>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
+        for (set<uint32_t>::iterator i = G->mSelectedVertexShader_IndexBuffer.begin(); i != G->mSelectedVertexShader_IndexBuffer.end(); ++i)
             LOG_INFO("     visited index buffer hash = %08lx\n", *i);
-        for (std::set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PeerShaders.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PeerShaders.end(); ++i)
+        for (set<UINT64>::iterator i = G->mVertexShaderInfo[G->mSelectedVertexShader].PeerShaders.begin(); i != G->mVertexShaderInfo[G->mSelectedVertexShader].PeerShaders.end(); ++i)
             LOG_INFO("     visited peer shader hash = %016I64x\n", *i);
     }
     mark_shader_end(device, "vertex shader", "vs", G->mSelectedVertexShader);
@@ -2060,7 +2075,7 @@ static void mark_geometry_shader(
     if (!mark_shader_begin("geometry shader", G->mSelectedGeometryShader))
         return;
     {
-        for (std::set<UINT64>::iterator i = G->mGeometryShaderInfo[G->mSelectedGeometryShader].PeerShaders.begin(); i != G->mGeometryShaderInfo[G->mSelectedGeometryShader].PeerShaders.end(); ++i)
+        for (set<UINT64>::iterator i = G->mGeometryShaderInfo[G->mSelectedGeometryShader].PeerShaders.begin(); i != G->mGeometryShaderInfo[G->mSelectedGeometryShader].PeerShaders.end(); ++i)
             LOG_INFO("     visited peer shader hash = %016I64x\n", *i);
     }
     mark_shader_end(device, "geometry shader", "gs", G->mSelectedGeometryShader);
@@ -2073,7 +2088,7 @@ static void mark_domain_shader(
     if (!mark_shader_begin("domain shader", G->mSelectedDomainShader))
         return;
     {
-        for (std::set<UINT64>::iterator i = G->mDomainShaderInfo[G->mSelectedDomainShader].PeerShaders.begin(); i != G->mDomainShaderInfo[G->mSelectedDomainShader].PeerShaders.end(); ++i)
+        for (set<UINT64>::iterator i = G->mDomainShaderInfo[G->mSelectedDomainShader].PeerShaders.begin(); i != G->mDomainShaderInfo[G->mSelectedDomainShader].PeerShaders.end(); ++i)
             LOG_INFO("     visited peer shader hash = %016I64x\n", *i);
     }
     mark_shader_end(device, "domain shader", "ds", G->mSelectedDomainShader);
@@ -2086,7 +2101,7 @@ static void mark_hull_shader(
     if (!mark_shader_begin("hull shader", G->mSelectedHullShader))
         return;
     {
-        for (std::set<UINT64>::iterator i = G->mHullShaderInfo[G->mSelectedHullShader].PeerShaders.begin(); i != G->mHullShaderInfo[G->mSelectedHullShader].PeerShaders.end(); ++i)
+        for (set<UINT64>::iterator i = G->mHullShaderInfo[G->mSelectedHullShader].PeerShaders.begin(); i != G->mHullShaderInfo[G->mSelectedHullShader].PeerShaders.end(); ++i)
             LOG_INFO("     visited peer shader hash = %016I64x\n", *i);
     }
     mark_shader_end(device, "hull shader", "hs", G->mSelectedHullShader);
@@ -2131,7 +2146,7 @@ static void mark_render_target(
     ENTER_CRITICAL_SECTION(&G->mCriticalSection);
     {
         hash = log_render_target(G->mSelectedRenderTarget, ">>>> Render target marked: ");
-        for (std::set<ID3D11Resource*>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
+        for (set<ID3D11Resource*>::iterator i = G->mSelectedRenderTargetSnapshotList.begin(); i != G->mSelectedRenderTargetSnapshotList.end(); ++i)
             log_render_target(*i, "       ");
 
         if (G->DumpUsage)

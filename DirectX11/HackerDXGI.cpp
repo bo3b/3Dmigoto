@@ -57,24 +57,30 @@
 // version of LOCK_RESOURCE_CREATION_MODE:
 #include "HackerDXGI.hpp"
 
+#include "CommandList.hpp"
 #include "Cursor.h"
+#include "FrameAnalysis.hpp"
+#include "Globals.h"
 #include "HackerContext.hpp"
 #include "HackerDevice.hpp"
+#include "Hunting.hpp"
 #include "iid.h"
 #include "IniHandler.h"
+#include "Input.hpp"
+#include "Lock.h"
 #include "log.h"
 #include "Overlay.hpp"
 #include "Override.hpp"
 #include "Profiling.hpp"
+#include "util.h"
 
 #include "Nektra/NktHookLib.h"
 
 #include <d3d11_1.h>
 #include <dxgi1_2.h>
-#include <windows.h>
+#include <Windows.h>
 
 using namespace overlay;
-
 
 // -----------------------------------------------------------------------------
 // SetWindowPos hook, activated by full_screen=2 in d3dx.ini

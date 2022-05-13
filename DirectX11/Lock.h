@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <windows.h>
+#include <Windows.h>
 
 // This version of EnterCriticalSection will use the function and line number
 // in any lock stacks dumped when potential deadlock hazards are detected:

@@ -1,11 +1,15 @@
 #include "Cursor.h"
 
+#include "DLLMainHook.h"
 #include "Globals.h"
 #include "log.h"
 #include "Overlay.hpp"
 
-using namespace overlay;
+#include "Nektra/NktHookLib.h"
 
+#include <Windows.h>
+
+using namespace overlay;
 
 //////////////////////////// HARDWARE MOUSE CURSOR SUPPRESSION //////////////////////////
 // To suppress the hardware mouse cursor you would think we just have to call

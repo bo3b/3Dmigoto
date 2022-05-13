@@ -4,6 +4,8 @@
 #include "Overlay.hpp"
 
 #include "D3D11Wrapper.h"
+#include "DirectXMath.h"
+#include "EnumNames.hpp"
 #include "Globals.h"
 #include "HackerContext.hpp"
 #include "HackerDevice.hpp"
@@ -11,12 +13,35 @@
 #include "Lock.h"
 #include "log.h"
 #include "Profiling.hpp"
-#include "SimpleMath.h"
-#include "SpriteBatch.h"
+#include "ResourceHash.hpp"
+#include "util.h"
 #include "version.h"
 
+#include "DirectXTK/Inc/CommonStates.h"
+#include "DirectXTK/Inc/Effects.h"
+#include "DirectXTK/Inc/PrimitiveBatch.h"
+#include "DirectXTK/Inc/SimpleMath.h"
+#include "DirectXTK/Inc/SpriteBatch.h"
+#include "DirectXTK/Inc/SpriteFont.h"
+#include "DirectXTK/Inc/VertexTypes.h"
+
+#include <cstdio>
+#include <d3d11_1.h>
 #include <DirectXColors.h>
+#include <memory>
 #include <stdexcept>
+#include <string>
+#include <vector>
+#include <Windows.h>
+
+#ifdef NTDDI_WIN10
+    #include <d3d11on12.h>
+    #include <dxgi1_4.h>
+#endif
+
+// We include this specifically after d3d11.h so that it can define
+// the __d3d11_h__ preprocessor and pick up extra calls.
+#include "nvapi.h"
 
 using namespace std;
 using namespace overlay;
@@ -304,8 +329,6 @@ void Overlay::RestoreState()
 }
 
 #ifdef NTDDI_WIN10
-    #include <d3d11on12.h>
-    #include <dxgi1_4.h>
 
 static ID3D11Texture2D* get_11on12_backbuffer(
     ID3D11Device*   orig_device,
@@ -441,7 +464,7 @@ static void flush_d3d11on12(ID3D11Device* origDevice, ID3D11DeviceContext* origC
 {
 }
 
-#endif
+#endif  // NTDDI_WIN10
 
 // We can't trust the game to have a proper drawing environment for DirectXTK.
 //
@@ -493,7 +516,7 @@ HRESULT Overlay::InitDrawState()
     backbuffer->Release();
 
     // Make sure there is at least one open viewport for DirectXTK to use.
-    D3D11_VIEWPORT open_view = CD3D11_VIEWPORT(0.0, 0.0, resolution.x, resolution.y);
+    D3D11_VIEWPORT open_view = CD3D11_VIEWPORT(0.0, 0.0, static_cast<FLOAT>(resolution.x), static_cast<FLOAT>(resolution.y));
     origContext->RSSetViewports(1, &open_view);
 
     return S_OK;

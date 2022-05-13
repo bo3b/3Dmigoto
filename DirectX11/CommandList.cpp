@@ -4,36 +4,63 @@
 
 #include "Cursor.h"
 #include "D3D11Wrapper.h"
+#include "DrawCallInfo.h"
+#include "EnumNames.hpp"
+#include "FrameAnalysis.hpp"
+#include "Globals.h"
 #include "HackerContext.hpp"
 #include "HackerDevice.hpp"
 #include "HackerDXGI.hpp"
+#include "Hunting.hpp"
 #include "IniHandler.h"
 #include "log.h"
 #include "Overlay.hpp"
 #include "Override.hpp"
 #include "Profiling.hpp"
 #include "ResourceHash.hpp"
+#include "util.h"
+
+#include "DirectXTK/Inc/DDSTextureLoader.h"
+#include "DirectXTK/Inc/WICTextureLoader.h"
 
 #include <algorithm>
+#include <cfloat>
+#include <cmath>
+#include <corecrt_wstdio.h>
+#include <cstdint>
+#include <cstdio>
+#include <cwchar>
+#include <d3d11_1.h>
 #include <d3dcompiler.h>
-#include <DDSTextureLoader.h>
+#include <DirectXMath.h>
+#include <dxgi1_2.h>
+#include <exception>
+#include <memory>
 #include <sstream>
-#include <WICTextureLoader.h>
+#include <string>
+#include <unordered_set>
+#include <utility>
+#include <vector>
+#include <Windows.h>
+
+// We include this specifically after d3d11.h so that it can define
+// the __d3d11_h__ preprocessor and pick up extra calls.
+#include "nvapi.h"
 
 using namespace std;
 using namespace overlay;
 
+CustomResources                    custom_resources;
+CustomShaders                      custom_shaders;
+ExplicitCommandListSections        explicit_command_list_sections;
+CommandListVariables               command_list_globals;
+vector<CommandListVariable*>       persistent_variables;
+vector<CommandList*>               registered_command_lists;
+unordered_set<CommandList*>        command_lists_profiling;
+unordered_set<CommandListCommand*> command_lists_cmd_profiling;
+vector<shared_ptr<CommandList>>    dynamically_allocated_command_lists;
 
-CustomResources custom_resources;
-CustomShaders custom_shaders;
-ExplicitCommandListSections explicit_command_list_sections;
-CommandListVariables command_list_globals;
-std::vector<CommandListVariable*> persistent_variables;
-std::vector<CommandList*> registered_command_lists;
-std::unordered_set<CommandList*> command_lists_profiling;
-std::unordered_set<CommandListCommand*> command_lists_cmd_profiling;
-std::vector<std::shared_ptr<CommandList>> dynamically_allocated_command_lists;
-
+template wstring lookup_enum_bit_names(struct Enum_Name_t<const wchar_t*, CustomResourceBindFlags>* enum_names, CustomResourceBindFlags val);
 
 // Adds consistent "3DMigoto" prefix to frame analysis log with appropriate
 // level of indentation for the current recursion level. Using a
@@ -334,12 +361,12 @@ static bool add_command_to_list(CommandListCommand *command,
     if (explicit_command_list) {
         // User explicitly specified "pre" or "post", so only add the
         // command to that list
-        explicit_command_list->commands.push_back(std::shared_ptr<CommandListCommand>(command));
+        explicit_command_list->commands.push_back(shared_ptr<CommandListCommand>(command));
     } else if (sensible_command_list) {
         // User did not specify which command list to add it to, but
         // the command they specified has a sensible default, so add it
         // to that list:
-        sensible_command_list->commands.push_back(std::shared_ptr<CommandListCommand>(command));
+        sensible_command_list->commands.push_back(shared_ptr<CommandListCommand>(command));
     } else {
         // The command's default is to add it to both lists (e.g. the
         // checktextureoverride directive will call command lists in
@@ -350,7 +377,7 @@ static bool add_command_to_list(CommandListCommand *command,
         // Using a std::shared_ptr here to handle adding the same
         // pointer to two lists and have it garbage collected only once
         // both are destroyed:
-        std::shared_ptr<CommandListCommand> p(command);
+        shared_ptr<CommandListCommand> p(command);
         pre_command_list->commands.push_back(p);
         if (post_command_list)
             post_command_list->commands.push_back(p);
@@ -453,7 +480,7 @@ static bool parse_clear_view(const wchar_t *section,
 
     ClearViewCommand *operation = new ClearViewCommand();
 
-    while (getline(token_stream, token, L' ')) {
+    while (std::getline(token_stream, token, L' ')) {
         if (operation->target.type == ResourceCopyTargetType::INVALID) {
             ret = operation->target.ParseTarget(token.c_str(), true, ini_namespace);
             if (ret)
@@ -2383,11 +2410,11 @@ bool RunExplicitCommandList::Noop(bool post, bool ignore_cto_pre, bool ignore_ct
     return commandListSection->commandList.commands.empty();
 }
 
-std::shared_ptr<RunLinkedCommandList> link_command_lists(CommandList *dst, CommandList *link, const wstring *ini_line)
+shared_ptr<RunLinkedCommandList> link_command_lists(CommandList *dst, CommandList *link, const wstring *ini_line)
 {
     RunLinkedCommandList *operation = new RunLinkedCommandList(link);
     operation->iniLine = *ini_line;
-    std::shared_ptr<RunLinkedCommandList> p(operation);
+    shared_ptr<RunLinkedCommandList> p(operation);
     dst->commands.push_back(p);
     return p;
 }
@@ -3112,7 +3139,7 @@ bool CommandListOperand::StaticEvaluate(float *ret, HackerDevice *device)
     return false;
 }
 
-bool CommandListOperand::Optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement)
+bool CommandListOperand::Optimise(HackerDevice *device, shared_ptr<CommandListEvaluatable> *replacement)
 {
     if (type == ParamOverrideType::VALUE)
         return false;
@@ -3176,7 +3203,7 @@ next_token:
         for (i = 0; i < ARRAYSIZE(operator_tokens); i++) {
             if (!remain.compare(0, wcslen(operator_tokens[i]), operator_tokens[i])) {
                 pos = wcslen(operator_tokens[i]);
-                tree->tokens.emplace_back(make_shared<CommandListOperatorToken>(friendly_pos, remain.substr(0, pos)));
+                tree->tokens.emplace_back(std::make_shared<CommandListOperatorToken>(friendly_pos, remain.substr(0, pos)));
                 LOG_DEBUG("      Operator: \"%S\"\n", tree->tokens.back()->token.c_str());
                 last_was_operand = false;
                 goto next_token; // continue would continue wrong loop
@@ -3203,7 +3230,7 @@ next_token:
             token = remain.substr(0, pos);
             ret = texture_filter_target.ParseTarget(token.c_str(), true, ini_namespace);
             if (ret) {
-                operand = make_shared<CommandListOperand>(friendly_pos, token);
+                operand = std::make_shared<CommandListOperand>(friendly_pos, token);
                 if (operand->Parse(&token, ini_namespace, scope)) {
                     tree->tokens.emplace_back(std::move(operand));
                     LOG_DEBUG("      Resource Slot: \"%S\"\n", tree->tokens.back()->token.c_str());
@@ -3234,7 +3261,7 @@ next_token:
             pos = remain.find_first_not_of(L"abcdefghijklmnopqrstuvwxyz_0123456789$\\.");
             if (pos) {
                 token = remain.substr(0, pos);
-                operand = make_shared<CommandListOperand>(friendly_pos, token);
+                operand = std::make_shared<CommandListOperand>(friendly_pos, token);
                 if (operand->Parse(&token, ini_namespace, scope)) {
                     tree->tokens.emplace_back(std::move(operand));
                     LOG_DEBUG("      Identifier: \"%S\"\n", tree->tokens.back()->token.c_str());
@@ -3260,7 +3287,7 @@ next_token:
             pos = ipos;
 
             token = remain.substr(0, ipos);
-            operand = make_shared<CommandListOperand>(friendly_pos, token);
+            operand = std::make_shared<CommandListOperand>(friendly_pos, token);
             if (operand->Parse(&token, ini_namespace, scope)) {
                 tree->tokens.emplace_back(std::move(operand));
                 LOG_DEBUG("      Float: \"%S\"\n", tree->tokens.back()->token.c_str());
@@ -3283,7 +3310,7 @@ static void group_parenthesis(CommandListSyntaxTree *tree)
     CommandListSyntaxTree::Tokens::iterator i;
     CommandListSyntaxTree::Tokens::reverse_iterator rit;
     CommandListOperatorToken *rbracket, *lbracket;
-    std::shared_ptr<CommandListSyntaxTree> inner;
+    shared_ptr<CommandListSyntaxTree> inner;
 
     for (i = tree->tokens.begin(); i != tree->tokens.end(); i++) {
         rbracket = dynamic_cast<CommandListOperatorToken*>(i->get());
@@ -3316,9 +3343,9 @@ static void group_parenthesis(CommandListSyntaxTree *tree)
 class name##T : public CommandListOperator { \
 public: \
     name##T( \
-            std::shared_ptr<CommandListToken> lhs, \
+            shared_ptr<CommandListToken> lhs, \
             CommandListOperatorToken &t, \
-            std::shared_ptr<CommandListToken> rhs \
+            shared_ptr<CommandListToken> rhs \
         ) : CommandListOperator(lhs, t, rhs) \
     {} \
     static const wchar_t* pattern() { return L##operator_pattern; } \
@@ -3408,13 +3435,13 @@ static CommandListSyntaxTree::Tokens::iterator transform_operators_token(
         CommandListOperatorFactoryBase *factories[], int num_factories,
         bool unary)
 {
-    std::shared_ptr<CommandListOperatorToken> token;
-    std::shared_ptr<CommandListOperator> op;
-    std::shared_ptr<CommandListOperandBase> lhs;
-    std::shared_ptr<CommandListOperandBase> rhs;
+    shared_ptr<CommandListOperatorToken> token;
+    shared_ptr<CommandListOperator> op;
+    shared_ptr<CommandListOperandBase> lhs;
+    shared_ptr<CommandListOperandBase> rhs;
     int f;
 
-    token = dynamic_pointer_cast<CommandListOperatorToken>(*i);
+    token = std::dynamic_pointer_cast<CommandListOperatorToken>(*i);
     if (!token)
         return i;
 
@@ -3425,9 +3452,9 @@ static CommandListSyntaxTree::Tokens::iterator transform_operators_token(
         lhs = nullptr;
         rhs = nullptr;
         if (i > tree->tokens.begin())
-            lhs = dynamic_pointer_cast<CommandListOperandBase>(*(i-1));
+            lhs = std::dynamic_pointer_cast<CommandListOperandBase>(*(i-1));
         if (i < tree->tokens.end() - 1)
-            rhs = dynamic_pointer_cast<CommandListOperandBase>(*(i+1));
+            rhs = std::dynamic_pointer_cast<CommandListOperandBase>(*(i+1));
 
         if (unary) {
             // It is particularly important that we check that the
@@ -3625,7 +3652,7 @@ bool CommandListExpression::StaticEvaluate(float *ret, HackerDevice *device)
 
 bool CommandListExpression::Optimise(HackerDevice *device)
 {
-    std::shared_ptr<CommandListEvaluatable> replacement;
+    shared_ptr<CommandListEvaluatable> replacement;
     bool ret;
 
     if (!evaluatable) {
@@ -3644,12 +3671,12 @@ bool CommandListExpression::Optimise(HackerDevice *device)
 
 // Finalises the syntax trees in the operator into evaluatable operands,
 // thereby making this operator also evaluatable.
-std::shared_ptr<CommandListEvaluatable> CommandListOperator::Finalise()
+shared_ptr<CommandListEvaluatable> CommandListOperator::Finalise()
 {
-    auto lhs_finalisable = dynamic_pointer_cast<CommandListFinalisable>(lhsTree);
-    auto rhs_finalisable = dynamic_pointer_cast<CommandListFinalisable>(rhsTree);
-    auto lhs_evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(lhsTree);
-    auto rhs_evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(rhsTree);
+    auto lhs_finalisable = std::dynamic_pointer_cast<CommandListFinalisable>(lhsTree);
+    auto rhs_finalisable = std::dynamic_pointer_cast<CommandListFinalisable>(rhsTree);
+    auto lhs_evaluatable = std::dynamic_pointer_cast<CommandListEvaluatable>(lhsTree);
+    auto rhs_evaluatable = std::dynamic_pointer_cast<CommandListEvaluatable>(rhsTree);
 
     if (lhs || rhs) {
         LOG_INFO("BUG: Attempted to finalise already final operator\n");
@@ -3686,22 +3713,22 @@ std::shared_ptr<CommandListEvaluatable> CommandListOperator::Finalise()
 // valid the tree should be left with a single evaluatable node, which will be
 // returned to the caller so that it can replace this tree with just the node.
 // Throws a syntax error if the finalised nodes are not right.
-std::shared_ptr<CommandListEvaluatable> CommandListSyntaxTree::Finalise()
+shared_ptr<CommandListEvaluatable> CommandListSyntaxTree::Finalise()
 {
-    std::shared_ptr<CommandListFinalisable> finalisable;
-    std::shared_ptr<CommandListEvaluatable> evaluatable;
-    std::shared_ptr<CommandListToken> token;
+    shared_ptr<CommandListFinalisable> finalisable;
+    shared_ptr<CommandListEvaluatable> evaluatable;
+    shared_ptr<CommandListToken> token;
     Tokens::iterator i;
 
     for (i = tokens.begin(); i != tokens.end(); i++) {
-        finalisable = dynamic_pointer_cast<CommandListFinalisable>(*i);
+        finalisable = std::dynamic_pointer_cast<CommandListFinalisable>(*i);
         if (finalisable) {
             evaluatable = finalisable->Finalise();
             if (evaluatable) {
                 // A recursive syntax tree has been finalised
                 // and we replace it with its sole evaluatable
                 // contents:
-                token = dynamic_pointer_cast<CommandListToken>(evaluatable);
+                token = std::dynamic_pointer_cast<CommandListToken>(evaluatable);
                 if (!token) {
                     LOG_INFO("BUG: finalised token did not cast back\n");
                     throw CommandListSyntaxError(L"BUG", tokenPos);
@@ -3721,7 +3748,7 @@ std::shared_ptr<CommandListEvaluatable> CommandListSyntaxTree::Finalise()
     if (tokens.size() > 1)
         throw CommandListSyntaxError(L"Unexpected", tokens[1]->tokenPos);
 
-    evaluatable = dynamic_pointer_cast<CommandListEvaluatable>(tokens[0]);
+    evaluatable = std::dynamic_pointer_cast<CommandListEvaluatable>(tokens[0]);
     if (!evaluatable)
         throw CommandListSyntaxError(L"Non-evaluatable", tokens[0]->tokenPos);
 
@@ -3731,11 +3758,11 @@ std::shared_ptr<CommandListEvaluatable> CommandListSyntaxTree::Finalise()
 CommandListSyntaxTree::Walks CommandListSyntaxTree::Walk()
 {
     Walks ret;
-    std::shared_ptr<CommandListWalkable> inner;
+    shared_ptr<CommandListWalkable> inner;
     Tokens::iterator i;
 
     for (i = tokens.begin(); i != tokens.end(); i++) {
-        inner = dynamic_pointer_cast<CommandListWalkable>(*i);
+        inner = std::dynamic_pointer_cast<CommandListWalkable>(*i);
         if (inner)
             ret.push_back(std::move(inner));
     }
@@ -3768,10 +3795,10 @@ bool CommandListOperator::StaticEvaluate(float *ret, HackerDevice *device)
     return false;
 }
 
-bool CommandListOperator::Optimise(HackerDevice *device, std::shared_ptr<CommandListEvaluatable> *replacement)
+bool CommandListOperator::Optimise(HackerDevice *device, shared_ptr<CommandListEvaluatable> *replacement)
 {
-    std::shared_ptr<CommandListEvaluatable> lhs_replacement;
-    std::shared_ptr<CommandListEvaluatable> rhs_replacement;
+    shared_ptr<CommandListEvaluatable> lhs_replacement;
+    shared_ptr<CommandListEvaluatable> rhs_replacement;
     shared_ptr<CommandListOperand> operand;
     bool making_progress = false;
     float static_val;
@@ -3796,21 +3823,21 @@ bool CommandListOperator::Optimise(HackerDevice *device, std::shared_ptr<Command
     LOG_INFO("\" as %f\n", static_val);
     static_val_str = std::to_wstring(static_val);
 
-    operand = make_shared<CommandListOperand>(tokenPos, static_val_str.c_str());
+    operand = std::make_shared<CommandListOperand>(tokenPos, static_val_str.c_str());
     operand->type = ParamOverrideType::VALUE;
     operand->val = static_val;
-    *replacement = dynamic_pointer_cast<CommandListEvaluatable>(operand);
+    *replacement = std::dynamic_pointer_cast<CommandListEvaluatable>(operand);
     return true;
 }
 
 CommandListSyntaxTree::Walks CommandListOperator::Walk()
 {
     Walks ret;
-    std::shared_ptr<CommandListWalkable> lhs;
-    std::shared_ptr<CommandListWalkable> rhs;
+    shared_ptr<CommandListWalkable> lhs;
+    shared_ptr<CommandListWalkable> rhs;
 
-    lhs = dynamic_pointer_cast<CommandListWalkable>(lhsTree);
-    rhs = dynamic_pointer_cast<CommandListWalkable>(rhsTree);
+    lhs = std::dynamic_pointer_cast<CommandListWalkable>(lhsTree);
+    rhs = std::dynamic_pointer_cast<CommandListWalkable>(rhsTree);
 
     if (lhs)
         ret.push_back(std::move(lhs));
@@ -4080,7 +4107,7 @@ bool parse_command_list_ini_param_override(const wchar_t *section,
     G->iniParamsReserved = max(G->iniParamsReserved, param->paramIdx + 1);
 
     param->iniLine = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-    command_list->commands.push_back(std::shared_ptr<CommandListCommand>(param));
+    command_list->commands.push_back(shared_ptr<CommandListCommand>(param));
     return true;
 bail:
     delete param;
@@ -4122,7 +4149,7 @@ bool parse_command_list_variable_assignment(const wchar_t *section,
         goto bail;
 
     command->iniLine = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-    command_list->commands.push_back(std::shared_ptr<CommandListCommand>(command));
+    command_list->commands.push_back(shared_ptr<CommandListCommand>(command));
     return true;
 bail:
     delete command;
@@ -5329,7 +5356,7 @@ bool parse_command_list_resource_copy_directive(const wchar_t *section,
     }
 
     operation->iniLine = L"[" + wstring(section) + L"] " + wstring(key) + L" = " + *val;
-    command_list->commands.push_back(std::shared_ptr<CommandListCommand>(operation));
+    command_list->commands.push_back(shared_ptr<CommandListCommand>(operation));
     return true;
 bail:
     delete operation;

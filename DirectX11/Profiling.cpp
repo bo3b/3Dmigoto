@@ -5,17 +5,24 @@
 #include "log.h"
 
 #include <algorithm>
+#include <d3d11_1.h>
 #include <DirectXMath.h>
+#include <string>
 #include <unordered_set>
+#include <vector>
+#include <Windows.h>
+
+// We include this specifically after d3d11.h so that it can define
+// the __d3d11_h__ preprocessor and pick up extra calls.
+#include "nvapi.h"
 
 using namespace std;
-
 
 void profiling::Overhead::clear()
 {
     cpu.QuadPart = 0;
-    count = 0;
-    hits = 0;
+    count        = 0;
+    hits         = 0;
 }
 
 void profiling::start(

@@ -1,22 +1,35 @@
 #include "util.h"
 
+#include "Assembler.h"
 #include "crc32c.h"
+#include "log.h"
 #include "version.h"
 
-#include "DirectX11/HackerContext.hpp"
-#include "DirectX11/HackerDevice.hpp"
 #include "DirectX11/HookedContext.h"
 #include "DirectX11/HookedDevice.h"
 #include "DirectX11/Lock.h"
 #include "DirectX11/Overlay.hpp"
 
+#include <cstdlib>
+#include <cwchar>
+#include <cwctype>
+#include <d3d11_1.h>
+#include <d3d9types.h>
 #include <DbgHelp.h>
+#include <DirectXMath.h>
+#include <dxgi1_2.h>
 #include <fcntl.h>
 #include <io.h>
+#include <locale>
+#include <map>
 #include <sddl.h>
+#include <string>
+#include <vcruntime_typeinfo.h>
+#include <vector>
+#include <Windows.h>
 
+using namespace std;
 using namespace overlay;
-
 
 // Sometimes game directories get funny permissions that cause us problems. I
 // have no clue how or why this happens, and the usual way to deal with it is
@@ -614,7 +627,7 @@ const char* type_name_dx9(IUnknown* object)
 // New version using Flugan's wrapper around D3DDisassemble to replace the
 // problematic %f floating point values with %.9e, which is enough that a 32bit
 // floating point value will be reproduced exactly:
-std::string binary_to_asm_text(
+string binary_to_asm_text(
     const void* shader_bytecode,
     size_t      bytecode_length,
     bool        patch_cb_offsets,
@@ -622,12 +635,12 @@ std::string binary_to_asm_text(
     int         hexdump,
     bool        d3dcompiler_46_compat)
 {
-    std::string       comments;
-    std::vector<byte> byte_code(bytecode_length);
-    std::vector<byte> disassembly;
-    HRESULT           r;
+    string       comments;
+    vector<byte> byte_code(bytecode_length);
+    vector<byte> disassembly;
+    HRESULT      r;
 
-    comments = "//   using 3Dmigoto v" + std::string(VER_FILE_VERSION_STR) + " on " + log_time() + "//\n";
+    comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + log_time() + "//\n";
     memcpy(byte_code.data(), shader_bytecode, bytecode_length);
 
 #if MIGOTO_DX == 9
@@ -641,7 +654,7 @@ std::string binary_to_asm_text(
         return "";
     }
 
-    return std::string(disassembly.begin(), disassembly.end());
+    return string(disassembly.begin(), disassembly.end());
 }
 
 // Get the shader model from the binary shader bytecode.
@@ -651,11 +664,11 @@ std::string binary_to_asm_text(
 // The other reason to do it this way is that we have seen multiple shader versions
 // in Unity games, and the old technique of searching for the first uncommented line
 // would fail.
-std::string get_shader_model(
+string get_shader_model(
     const void* shader_bytecode,
     size_t      bytecode_length)
 {
-    std::string asm_text = binary_to_asm_text(shader_bytecode, bytecode_length, false);
+    string asm_text = binary_to_asm_text(shader_bytecode, bytecode_length, false);
     if (asm_text.empty())
         return "";
 
@@ -676,7 +689,7 @@ std::string get_shader_model(
     {
         eol++;
     }
-    std::string shader_model(pos, eol);
+    string shader_model(pos, eol);
 
     return shader_model;
 }
@@ -732,9 +745,9 @@ std::string get_shader_model(
 // We previously would overwrite the file only after checking if the contents were different,
 // this relaxes that to just being same file name.
 HRESULT create_text_file(
-    wchar_t*     full_path,
-    std::string* asm_text,
-    bool         overwrite)
+    wchar_t* full_path,
+    string*  asm_text,
+    bool     overwrite)
 {
     FILE* f;
 
@@ -771,7 +784,7 @@ HRESULT create_asm_text_file(
     size_t         bytecode_length,
     bool           patch_cb_offsets)
 {
-    std::string asm_text = binary_to_asm_text(shader_bytecode, bytecode_length, patch_cb_offsets);
+    string asm_text = binary_to_asm_text(shader_bytecode, bytecode_length, patch_cb_offsets);
     if (asm_text.empty())
         return E_OUTOFMEMORY;
 
@@ -789,8 +802,8 @@ HRESULT create_asm_text_file(
 }
 
 HRESULT create_hlsl_text_file(
-    UINT64      hash,
-    std::string hlsl_text)
+    UINT64 hash,
+    string hlsl_text)
 {
     return 0;
 }
@@ -1112,7 +1125,7 @@ void restore_om_state(
 // -----------------------------------------------------------------------------------------------
 
 // clang-format off
-static std::map<int, char*> d3d_formats = {
+static map<int, char*> d3d_formats = {
     { 0, "UNKNOWN" },
     { 20, "R8G8B8" },
     { 21, "A8R8G8B8" },
@@ -1197,7 +1210,7 @@ char* tex_format_str_dx9(
         case MAKEFOURCC('M', 'E', 'T', '1'):
             return "MULTI2_ARGB8";
         default:
-            std::map<int, char*>::iterator it;
+            map<int, char*>::iterator it;
             it = d3d_formats.find(format);
             if (it != d3d_formats.end())
                 return it->second;
@@ -1224,7 +1237,7 @@ D3DFORMAT parse_format_string_dx9(
         fmt += 7;
 
     // Look up format string:
-    std::map<int, char*>::iterator it;
+    map<int, char*>::iterator it;
     for (it = d3d_formats.begin(); it != d3d_formats.end(); it++)
     {
         if (!_strnicmp(fmt, it->second, 30))

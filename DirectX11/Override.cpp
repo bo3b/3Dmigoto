@@ -1,15 +1,32 @@
 #include "Override.hpp"
 
+#include "CommandList.hpp"
 #include "D3D11Wrapper.h"
+#include "EnumNames.hpp"
 #include "Globals.h"
 #include "HackerDevice.hpp"
 #include "IniHandler.h"
 #include "log.h"
 #include "Overlay.hpp"
+#include "Profiling.hpp"
+#include "util.h"
 
 #include <algorithm>
+#include <cfloat>
 #include <cmath>
+#include <d3d11_1.h>
+#include <DirectXMath.h>
+#include <iterator>
+#include <map>
+#include <string>
 #include <strsafe.h>
+#include <vector>
+#include <Windows.h>
+
+// We include this specifically after d3d11.h so that it can define
+// the __d3d11_h__ preprocessor and pick up extra calls.
+#include "nvapi.h"
+
 
 using namespace std;
 using namespace overlay;
@@ -413,7 +430,7 @@ bool Override::MatchesCurrent(
     NvAPI_Status             err;
     float                    val;
 
-    for (i = begin(overrideParams); i != end(overrideParams); i++)
+    for (i = std::begin(overrideParams); i != std::end(overrideParams); i++)
     {
         map<OverrideParam, override_transition_param>::iterator transition = current_transition.params.find(i->first);
         if (transition != current_transition.params.end() && transition->second.time != -1)
@@ -425,7 +442,7 @@ bool Override::MatchesCurrent(
             return false;
     }
 
-    for (j = begin(overrideVars); j != end(overrideVars); j++)
+    for (j = std::begin(overrideVars); j != std::end(overrideVars); j++)
     {
         map<CommandListVariable*, override_transition_param>::iterator transition = current_transition.vars.find(j->first);
         if (transition != current_transition.vars.end() && transition->second.time != -1)

@@ -1,18 +1,23 @@
 #include "Input.hpp"
 
+#include "EnumNames.hpp"
 #include "Globals.h"
 #include "IniHandler.h"
 #include "log.h"
 #include "Overlay.hpp"
 #include "vkeys.h"
 
+#include <memory>
 #include <algorithm>
+#include <ctime>
 #include <sstream>
+#include <string>
+#include <vector>
+#include <Windows.h>
 #include <Xinput.h>
 
 using namespace std;
 using namespace overlay;
-
 
 // Set a function pointer to the xinput get state call. By default, set it to
 // XInputGetState() in whichever xinput we are linked to (xinput9_1_0.dll). If
@@ -432,7 +437,7 @@ bool InputButtonList::CheckState()
     return true;
 }
 
-static std::vector<class InputAction *> actions;
+static vector<class InputAction *> actions;
 
 void RegisterKeyBinding(LPCWSTR iniKey, const wchar_t *keyName,
         shared_ptr<InputListener> listener, int auto_repeat, int down_delay,
@@ -499,9 +504,9 @@ wstring user_friendly_ini_key_binding(LPCWSTR app, LPCWSTR iniKey)
         return L"<None>";
 
     std::wistringstream tokens(keyName);
-    std::wstring token;
+    wstring token;
 
-    while (std::getline(tokens, token, L' ')) {
+    while (getline(tokens, token, L' ')) {
         if (!_wcsnicmp(token.c_str(), L"no_", 3))
             continue;
 
@@ -525,7 +530,7 @@ wstring user_friendly_ini_key_binding(LPCWSTR app, LPCWSTR iniKey)
 
 void ClearKeyBindings()
 {
-    std::vector<class InputAction *>::iterator i;
+    vector<class InputAction *>::iterator i;
 
     for (i = actions.begin(); i != actions.end(); i++)
         delete *i;
@@ -547,7 +552,7 @@ static bool CheckForegroundWindow()
 
 bool DispatchInputEvents(HackerDevice *device)
 {
-    std::vector<class InputAction *>::iterator i;
+    vector<class InputAction *>::iterator i;
     class InputAction *action;
     bool input_processed = false;
     static time_t last_time = 0;

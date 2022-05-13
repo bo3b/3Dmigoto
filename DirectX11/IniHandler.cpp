@@ -7,27 +7,39 @@
 #include "HackerContext.hpp"
 #include "HackerDevice.hpp"
 #include "HackerDXGI.hpp"
+#include "Hunting.hpp"
+#include "Input.hpp"
 #include "Lock.h"
 #include "log.h"
 #include "NVProfile.h"
 #include "Overlay.hpp"
 #include "Override.hpp"
 #include "pcre2.h"
+#include "ResourceHash.hpp"
 #include "ShaderRegex.hpp"
+#include "util.h"
 #include "version.h"
 
 #include <algorithm>
 #include <codecvt>
+#include <d3d11_1.h>
 #include <fstream>
+#include <functional>
 #include <iterator>
+#include <locale>
 #include <map>
 #include <memory>
+#include <set>
 #include <sstream>
+#include <stdexcept>
 #include <string>
-#include <strsafe.h>
 #include <unordered_map>
 #include <unordered_set>
-#include <winnt.h>
+#include <vector>
+#include <Windows.h>
+
+// Always included after d3d11_1.h to define __d3d11_h__
+#include <nvapi.h>
 
 #define INI_FILENAME L"d3dx.ini"
 
@@ -844,7 +856,7 @@ static bool matches_globbing_vector(
     // eliminate all unecessary uses of wchar_t/wstring). Since this is a
     // filename, it can contain legitimate unicode characters, so we should
     // convert it properly to UTF8:
-    wstring_convert<std::codecvt_utf8_utf16<wchar_t>> codec;
+    std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> codec;
     afilename = codec.to_bytes(filename);  // to_bytes = to utf8
 
     for (pcre2_code* regex : patterns)

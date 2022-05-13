@@ -12,22 +12,38 @@
 
 #include "HackerContext.hpp"
 
+#include "Assembler.h"
+#include "CommandList.hpp"
 #include "D3D11Wrapper.h"
+#include "DrawCallInfo.h"
 #include "FrameAnalysis.hpp"
 #include "Globals.h"
 #include "HackerDevice.hpp"
 #include "HookedContext.h"
 #include "Hunting.hpp"
 #include "iid.h"
+#include "IniHandler.h"
+#include "Lock.h"
 #include "log.h"
 #include "Overlay.hpp"
 #include "Profiling.hpp"
+#include "ResourceHash.hpp"
 #include "ShaderRegex.hpp"
 #include "util.h"
 
+#include <d3d11_1.h>
+#include <DirectXMath.h>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
+#include <Windows.h>
+
+// Must come after any <d3d11_1.h> include, in order to setup __d3d11_h__
+#include "nvapi.h"
+
 using namespace std;
 using namespace overlay;
-
 
 // -----------------------------------------------------------------------------------------------
 
@@ -148,8 +164,8 @@ void HackerContext::HookContext()
 // handle to the resource, but be aware that it no longer has a reference and
 // should only be used for map lookups.
 ID3D11Resource* HackerContext::RecordResourceViewStats(
-    ID3D11View*         view,
-    std::set<uint32_t>* resource_info)
+    ID3D11View*    view,
+    set<uint32_t>* resource_info)
 {
     ID3D11Resource* resource  = nullptr;
     uint32_t        orig_hash = 0;
@@ -212,8 +228,8 @@ void HackerContext::_RecordShaderResourceUsage(
 }
 
 void HackerContext::RecordPeerShaders(
-    std::set<UINT64>* peer_shaders,
-    UINT64            shader_hash)
+    set<UINT64>* peer_shaders,
+    UINT64       shader_hash)
 {
     if (currentVertexShader && currentVertexShader != shader_hash)
         peer_shaders->insert(currentVertexShader);
@@ -237,8 +253,8 @@ template <
         UINT                       NumViews,
         ID3D11ShaderResourceView** ppShaderResourceViews)>
 void HackerContext::RecordShaderResourceUsage(
-    std::map<UINT64, shader_info_data>& shader_info,
-    UINT64                              current_shader)
+    map<UINT64, shader_info_data>& shader_info,
+    UINT64                         current_shader)
 {
     ID3D11ShaderResourceView* views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT];
     shader_info_data*         info;
@@ -301,7 +317,7 @@ void HackerContext::RecordGraphicsShaderStats()
             for (selected_render_target_pos = 0; selected_render_target_pos < currentRenderTargets.size(); ++selected_render_target_pos)
             {
                 if (selected_render_target_pos >= info->RenderTargets.size())
-                    info->RenderTargets.push_back(std::set<resource_snapshot>());
+                    info->RenderTargets.push_back(set<resource_snapshot>());
 
                 info->RenderTargets[selected_render_target_pos].insert(snapshot_resource(currentRenderTargets[selected_render_target_pos]));
             }
@@ -391,7 +407,7 @@ void HackerContext::RecordRenderTargetInfo(
     {
         // We are using the original resource hash for stat collection - things
         // get tricky otherwise
-        orig_hash = GetOrigResourceHash((ID3D11Texture2D*)resource);
+        orig_hash = GetOrigResourceHash(static_cast<ID3D11Texture2D*>(resource));
 
         resource->Release();
 
@@ -1935,7 +1951,7 @@ void STDMETHODCALLTYPE HackerContext::SetShader(
     ID3D11Shader*               shader,
     ID3D11ClassInstance* const* class_instances,
     UINT                        num_class_instances,
-    std::set<UINT64>*           visited_shaders,
+    set<UINT64>*                visited_shaders,
     UINT64                      selected_shader,
     UINT64*                     current_shader_hash,
     ID3D11Shader**              current_shader_handle)
