@@ -12,32 +12,45 @@
 // version of LOCK_RESOURCE_CREATION_MODE:
 #include "HackerDevice.hpp"
 
+#include "Assembler.h"
+#include "CommandList.hpp"
 #include "D3D11Wrapper.h"
+#include "DecompileHLSL.h"
 #include "FrameAnalysis.hpp"
 #include "Globals.h"
 #include "HackerContext.hpp"
+#include "HackerDXGI.hpp"
 #include "HookedDevice.h"
+#include "Hunting.hpp"
+#include "iid.h"
+#include "IniHandler.h"
 #include "Lock.h"
 #include "log.h"
+#include "nvstereo.h"
 #include "Overlay.hpp"
+#include "Profiling.hpp"
+#include "ResourceHash.hpp"
 #include "shader.h"
 #include "ShaderRegex.hpp"
+#include "util.h"
 
 #include <codecvt>
 #include <d3d11_1.h>
 #include <d3dcompiler.h>
+#include <DirectXMath.h>
+#include <dxgi1_2.h>
+#include <locale>
+#include <string>
 #include <unordered_map>
-
-#include <DirectX11/iid.h>
+#include <vector>
+#include <Windows.h>
 
 // We include this specifically after d3d11.h so that it can define
 // the __d3d11_h__ preprocessor and pick up extra calls.
 #include "nvapi.h"
 
-
 using namespace std;
 using namespace overlay;
-
 
 // A map to look up the HackerDevice from an IUnknown. The reason for using an
 // IUnknown as the key is that an ID3D11Device and IDXGIDevice are actually two
@@ -79,7 +92,7 @@ using namespace overlay;
 // IDXGIDevice in the first place and hoping that it has a fallback path (it
 // won't).
 typedef unordered_map<IUnknown*, HackerDevice*> DeviceMap;
-static DeviceMap                                     device_map;
+static DeviceMap                                device_map;
 
 // This will look up a HackerDevice corresponding to some unknown device object
 // (ID3D11Device*, IDXGIDevice*, etc). It will bump the refcount on the
@@ -1032,7 +1045,7 @@ static bool replace_asm_shader(
                     time_stamp = {};
                 }
             }
-            catch (const exception& e)
+            catch (const std::exception& e)
             {
                 log_overlay(log::warning, "Error assembling %S: %s\n", path, e.what());
             }
@@ -1998,8 +2011,8 @@ static bool check_texture_override_iteration(
     if (texture_override->iterations.empty())
         return true;
 
-    std::vector<int>::iterator k                 = texture_override->iterations.begin();
-    int                        current_iteration = texture_override->iterations[0] = texture_override->iterations[0] + 1;
+    vector<int>::iterator k                 = texture_override->iterations.begin();
+    int                   current_iteration = texture_override->iterations[0] = texture_override->iterations[0] + 1;
     LOG_INFO("  current iteration = %d\n", current_iteration);
 
     while (++k != texture_override->iterations.end())
