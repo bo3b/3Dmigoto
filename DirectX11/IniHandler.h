@@ -1,6 +1,7 @@
 #pragma once
 
 #include "EnumNames.hpp"
+#include "Overlay.hpp"
 
 #include <d3d11_1.h>
 #include <string>

@@ -1,7 +1,10 @@
 #include "ResourceHash.hpp"
 
 #include "CommandList.hpp"
+#include "DrawCallInfo.h"
+#include "EnumNames.hpp"
 #include "Globals.h"
+#include "HackerDXGI.hpp"
 #include "Hunting.hpp"
 #include "iid.h"
 #include "Lock.h"
@@ -9,6 +12,16 @@
 #include "Overlay.hpp"
 #include "Profiling.hpp"
 #include "util.h"
+
+#include <cstdint>
+#include <cstdio>
+#include <d3d11_1.h>
+#include <initguid.h>
+#include <memory>
+#include <string>
+#include <tuple>
+#include <unordered_map>
+#include <Windows.h>
 
 using namespace std;
 using namespace overlay;
@@ -31,7 +44,6 @@ namespace DirectX
 			_Out_opt_ size_t* outNumRows) noexcept;
 	}
 }
-
 
 // Overloaded functions to log any kind of resource description (useful to call
 // from templates):
@@ -834,7 +846,7 @@ uint32_t CalcTexture2DDataHashAccurate(
 // lockdep to statically prove this is called with the lock held?
 ResourceHandleInfo* GetResourceHandleInfo(ID3D11Resource *resource)
 {
-    std::unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
+    unordered_map<ID3D11Resource *, ResourceHandleInfo>::iterator j;
     ResourceHandleInfo* ret = NULL;
 
     ENTER_CRITICAL_SECTION(&G->mResourcesLock);
@@ -1475,7 +1487,7 @@ bool FuzzyMatch::matches_common(UINT lhs, UINT effective) const
     return false;
 }
 
-FuzzyMatchResourceDesc::FuzzyMatchResourceDesc(std::wstring section) :
+FuzzyMatchResourceDesc::FuzzyMatchResourceDesc(wstring section) :
     matches_buffer(true),
     matches_tex1d(true),
     matches_tex2d(true),
@@ -1776,7 +1788,7 @@ bool TextureOverrideLess(const struct texture_override &lhs, const struct textur
         return lhs.priority < rhs.priority;
     return lhs.ini_section < rhs.ini_section;
 }
-bool FuzzyMatchResourceDescLess::operator() (const std::shared_ptr<FuzzyMatchResourceDesc> &lhs, const std::shared_ptr<FuzzyMatchResourceDesc> &rhs) const
+bool FuzzyMatchResourceDescLess::operator() (const shared_ptr<FuzzyMatchResourceDesc> & lhs, const shared_ptr<FuzzyMatchResourceDesc> & rhs) const
 {
     return TextureOverrideLess(*lhs->textureOverride, *rhs->textureOverride);
 }

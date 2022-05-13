@@ -1,19 +1,22 @@
 #include "ShaderRegex.hpp"
 
 #include "CommandList.hpp"
-#include "Globals.h" // For ShaderOverride FIXME: This should be in a separate header
+#include "Globals.h"  // For ShaderOverride FIXME: This should be in a separate header
 #include "log.h"
+#include "pcre2.h"
 #include "util.h"
 
 #include <algorithm>
 #include <iterator>
+#include <string>
+#include <vector>
+#include <Windows.h>
 
 using namespace std;
 
-
 ShaderRegexGroups              shader_regex_groups;
 std::vector<ShaderRegexGroup*> shader_regex_group_index;
-uint32_t shader_regex_hash;
+uint32_t                       shader_regex_hash;
 
 static void log_pcre2_error_nonl(int err, char *fmt, ...)
 {

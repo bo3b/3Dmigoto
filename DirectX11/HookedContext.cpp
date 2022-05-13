@@ -45,6 +45,7 @@
 #include "log.h"
 
 #include <unordered_map>
+#include <Windows.h>
 
 // Change this to 1 to enable debug logging of hooks and the trampolines back
 // to the original context. Disabled by default as debug logging will already
