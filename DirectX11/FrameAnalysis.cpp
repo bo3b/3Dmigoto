@@ -3,30 +3,45 @@
 #include "FrameAnalysis.hpp"
 
 #include "D3D11Wrapper.h"
+#include "DrawCallInfo.h"
 #include "Globals.h"
+#include "HackerContext.hpp"
 #include "HackerDevice.hpp"
 #include "Input.hpp"
+#include "Lock.h"
 #include "log.h"
+#include "Profiling.hpp"
+#include "ResourceHash.hpp"
 #include "util.h"
 
-#include <cstdarg>
-#include <ScreenGrab.h>
-#include <Shlwapi.h>
+#include "DirectXTK/Inc/ScreenGrab.h"
+
+#include <algorithm>
+#include <cstdint>
+#include <cstdio>
+#include <d3d11_1.h>
+#include <memory>
+#include <share.h>
+#include <ShlGuid.h>  // For windows shortcuts
+#include <Shlwapi.h>  // For windows shortcuts
+#include <shobjidl_core.h>
+#include <stdexcept>
+#include <string>
 #include <strsafe.h>
+#include <unordered_map>
 #include <wincodec.h>
+#include <Windows.h>
 
-// For windows shortcuts:
-
-#include <ShlGuid.h>
-#include <ShObjIdl.h>
+// We include this specifically after d3d11.h so that it can define
+// the __d3d11_h__ preprocessor and pick up extra calls.
+#include "nvapi.h"
 
 using namespace std;
-
 
 // Flag introduced in Windows 10 Fall Creators Update
 // Someone was clearly on crack when they decided this flag was necessary
 #ifndef SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE
-#define SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE 0x2
+    #define SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE 0x2
 #endif
 
 static unordered_map<ID3D11CommandList*, FrameAnalysisDeferredBuffersPtr> frame_analysis_deferred_buffer_lists;
@@ -1541,7 +1556,7 @@ bool FrameAnalysisContext::DeferDump2DResource(ID3D11Texture2D *staging,
         return false;
 
     if (!deferred_tex2d) {
-        deferred_tex2d = make_unique<FrameAnalysisDeferredTex2D>();
+        deferred_tex2d = std::make_unique<FrameAnalysisDeferredTex2D>();
         FA_LOG_INFO("Creating deferred staging Texture2D list %p on context %p\n", deferred_tex2d.get(), this);
     }
 
@@ -1565,7 +1580,7 @@ bool FrameAnalysisContext::DeferDumpBuffer(ID3D11Buffer *staging,
         return false;
 
     if (!deferred_buffers) {
-        deferred_buffers = make_unique<FrameAnalysisDeferredBuffers>();
+        deferred_buffers = std::make_unique<FrameAnalysisDeferredBuffers>();
         FA_LOG_INFO("Creating deferred staging Buffer list %p on context %p\n", deferred_buffers.get(), this);
     }
 

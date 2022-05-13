@@ -1,9 +1,13 @@
 #include "DLLMainHook.h"
 
 #include "D3D11Wrapper.h"
-#include "Globals.h"
 #include "HookedDXGI.h"
 #include "ini_parser_lite.h"
+
+#include "Nektra/NktHookLib.h"
+
+#include <d3d11_1.h>
+#include <Windows.h>
 
 HINSTANCE migoto_handle;
 

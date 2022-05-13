@@ -13,6 +13,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_map>
+#include <vector>
 #include <Windows.h>
 
 // Tracks info about specific resource instances:

@@ -8,6 +8,11 @@
 #include "util.h"
 
 #include <d3d11_1.h>
+#include <fstream>
+#include <iosfwd>
+#include <string>
+#include <unordered_set>
+#include <Windows.h>
 
 // Including this after the d3d11 header so the nvapi.h include will pick up
 // the d3d11.h pre-processor defines to avoid mis-matches with Profiling.hpp:
@@ -19,7 +24,6 @@
 
 using namespace std;
 using namespace overlay;
-
 
 ProfileSettings profile_settings;
 
@@ -591,7 +595,7 @@ static NvAPI_Status NvAPI_DRS_SaveSettingsToFileEx(NvDRSSessionHandle hSession, 
     return (*_NvAPI_DRS_SaveSettingsToFileEx)(hSession, fileName);
 }
 
-static bool next_broken_utf16_line(std::ifstream *fp, std::wstring *line)
+static bool next_broken_utf16_line(std::ifstream *fp, wstring *line)
 {
     char c[2];
 
@@ -612,7 +616,7 @@ static bool next_broken_utf16_line(std::ifstream *fp, std::wstring *line)
     return false;
 }
 
-typedef std::unordered_map<wstring, unordered_set<unsigned>> internal_setting_map_type;
+typedef unordered_map<wstring, unordered_set<unsigned>> internal_setting_map_type;
 internal_setting_map_type internal_setting_map;
 
 // Any settings with the internal flag are specially encoded, so we have to
@@ -686,7 +690,7 @@ static void destroy_internal_setting_map()
 
 static void _identify_internal_settings(NvDRSSessionHandle session,
         wchar_t *profile_name,
-        std::unordered_set<unsigned> **internal_settings)
+        unordered_set<unsigned> **internal_settings)
 {
     internal_setting_map_type::iterator i;
 
@@ -701,7 +705,7 @@ static void _identify_internal_settings(NvDRSSessionHandle session,
 
 static void identify_internal_settings(NvDRSSessionHandle session,
         NvDRSProfileHandle profile,
-        std::unordered_set<unsigned> **internal_settings)
+        unordered_set<unsigned> **internal_settings)
 {
     NvAPI_Status status = NVAPI_OK;
     NVDRS_PROFILE info = {};
@@ -776,7 +780,7 @@ void decode_internal_string(unsigned id, NvAPI_UnicodeString val)
 // opened in anything more sophisticated than notepad!
 void _log_nv_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile, NVDRS_PROFILE *info)
 {
-    std::unordered_set<unsigned> *internal_settings = NULL;
+    unordered_set<unsigned> *internal_settings = NULL;
     NvAPI_Status status = NVAPI_OK;
     NVDRS_APPLICATION *apps = NULL;
     NVDRS_SETTING *settings = NULL;
@@ -1441,7 +1445,7 @@ static bool compare_setting(NvDRSSessionHandle session,
         NvDRSProfileHandle profile,
         NVDRS_SETTING *migoto_setting,
         bool allow_user_customisation,
-        std::unordered_set<unsigned> *internal_settings,
+        unordered_set<unsigned> *internal_settings,
         bool log)
 {
     NVDRS_SETTING driver_setting = {};
@@ -1511,7 +1515,7 @@ static bool compare_setting(NvDRSSessionHandle session,
 
 static bool need_profile_update(NvDRSSessionHandle session, NvDRSProfileHandle profile)
 {
-    std::unordered_set<unsigned> *internal_settings = NULL;
+    unordered_set<unsigned> *internal_settings = NULL;
     ProfileSettings::iterator i;
 
     if (profile_settings.empty())
@@ -1622,7 +1626,7 @@ static NvDRSProfileHandle create_profile(NvDRSSessionHandle session)
 
 static int update_profile(NvDRSSessionHandle session, NvDRSProfileHandle profile)
 {
-    std::unordered_set<unsigned> *internal_settings = NULL;
+    unordered_set<unsigned> *internal_settings = NULL;
     ProfileSettings::iterator i;
     NvAPI_Status status = NVAPI_OK;
     NVDRS_SETTING *migoto_setting;

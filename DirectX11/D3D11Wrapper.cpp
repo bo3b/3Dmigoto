@@ -1,6 +1,5 @@
 #include "D3D11Wrapper.h"
 
-#include "DLLMainHook.h"
 #include "Globals.h"
 #include "HackerContext.hpp"
 #include "HackerDevice.hpp"
@@ -9,12 +8,18 @@
 #include "IniHandler.h"
 #include "Lock.h"
 #include "log.h"
-#include "nvapi.h"
 #include "NVProfile.h"
+#include "Profiling.hpp"
 #include "util.h"
 
 #include <cstdio>
 #include <d3d11_1.h>
+#include <Windows.h>
+
+#ifdef NTDDI_WIN10
+    // 11On12 requires Win 10 SDK
+    #include <d3d11on12.h>
+#endif
 
 // We include this specifically after d3d11.h so that it can define
 // the __d3d11_h__ preprocessor and pick up extra calls.

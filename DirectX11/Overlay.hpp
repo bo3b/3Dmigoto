@@ -1,12 +1,13 @@
 #pragma once
 
-#include "CommonStates.h"
-#include "Effects.h"
-#include "PrimitiveBatch.h"
-#include "SpriteBatch.h"
-#include "SpriteFont.h"
 #include "util.h"
-#include "VertexTypes.h"
+
+#include "DirectXTK/Inc/CommonStates.h"
+#include "DirectXTK/Inc/Effects.h"
+#include "DirectXTK/Inc/PrimitiveBatch.h"
+#include "DirectXTK/Inc/SpriteBatch.h"
+#include "DirectXTK/Inc/SpriteFont.h"
+#include "DirectXTK/Inc/VertexTypes.h"
 
 #include <d3d11_1.h>
 #include <DirectXMath.h>

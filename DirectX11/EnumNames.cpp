@@ -11,7 +11,7 @@
 // So, rather that put up with all that, let's define the templates as
 // prototypes in a EnumNames.hpp file, which will act as forward declarations
 // wherever the template is used, but not have any code behind it that
-// can require other includes.  Then, we'll put the implemenations of
+// can require other includes.  Then, we'll put the implementations of
 // those prototypes in this .cpp file, where we are free to include any
 // headers necessary.  Lastly, we need to define the actual routines
 // so that at link time we can find the implementations. This is done
@@ -39,6 +39,7 @@
 #include "log.h"
 #include "Overlay.hpp"
 #include "Override.hpp"
+#include "ResourceHash.hpp"
 
 #include <string>
 
