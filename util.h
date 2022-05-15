@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <typeinfo>
 
 #include <d3d11_1.h>
 #include <dxgi1_2.h>

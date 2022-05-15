@@ -2,6 +2,7 @@
 #define HLSLCC_H_
 
 #include <vector>
+#include <string>
 #include <map>
 
 #if defined (_WIN32) && defined(HLSLCC_DYNLIB)

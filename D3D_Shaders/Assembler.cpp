@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "float.h"
+#include <stdexcept>
 
 #if MIGOTO_DX == 9
 #include <d3dx9shader.h>

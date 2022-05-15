@@ -11,6 +11,7 @@
 #include <wincodec.h>
 #include <Strsafe.h>
 #include <stdarg.h>
+#include <stdexcept>
 #include <Shlwapi.h>
 
 // For windows shortcuts:
