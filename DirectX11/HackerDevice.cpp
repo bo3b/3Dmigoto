@@ -24,12 +24,12 @@
 #include "util.h"
 #include "shader.h"
 #include "DecompileHLSL.h"
+#include "SignatureParser.h"
 #include "HackerContext.h"
 #include "HackerDXGI.h"
 
 #include "D3D11Wrapper.h"
 #include "SpriteFont.h"
-#include "D3D_Shaders\stdafx.h"
 #include "ResourceHash.h"
 #include "ShaderRegex.h"
 #include "CommandList.h"

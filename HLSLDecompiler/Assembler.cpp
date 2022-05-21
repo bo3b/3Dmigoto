@@ -1,6 +1,11 @@
-#include "stdafx.h"
-#include "float.h"
 #include <stdexcept>
+#include <d3dx9shader.h>
+
+#include "Assembler.h"
+#include "D3Dcompiler.h"
+#include "float.h"
+#include "..\log.h"
+#include "..\util.h"
 
 using namespace std;
 
@@ -12,7 +17,48 @@ using namespace std;
 // for sscanf_s convinience. Explanation in DecompileHLSL.cpp
 #define UCOUNTOF(...) (unsigned)_countof(__VA_ARGS__)
 
-static unordered_map<string, vector<DWORD>> codeBin;
+struct token_operand
+{
+	union {
+		struct {
+			// XXX Beware that bitfield packing is not defined in
+			// the C/C++ standards and this is relying on compiler
+			// specific packing. This approach is not recommended.
+
+			unsigned comps_enum : 2; /* sm4_operands_comps */
+			unsigned mode : 2; /* sm4_operand_mode */
+			unsigned sel : 8;
+			unsigned file : 8; /* SM_FILE */
+			unsigned num_indices : 2;
+			unsigned index0_repr : 3; /* sm4_operand_index_repr */
+			unsigned index1_repr : 3; /* sm4_operand_index_repr */
+			unsigned index2_repr : 3; /* sm4_operand_index_repr */
+			unsigned extended : 1;
+		};
+		DWORD op;
+	};
+};
+
+inline AssemblerParseError::AssemblerParseError(string context, string desc) :
+	context(context),
+	desc(desc),
+	line_no(0)
+{
+	update_msg();
+}
+
+inline void AssemblerParseError::update_msg()
+{
+	msg = "Assembly parse error";
+	if (line_no > 0)
+		msg += string(" on line ") + to_string(line_no);
+	msg += ", " + desc + ":\n\"" + context + "\"";
+}
+
+inline const char* AssemblerParseError::what() const
+{
+	return msg.c_str();
+}
 
 static DWORD strToDWORD(string s)
 {
@@ -173,46 +219,6 @@ static string convertD(DWORD v1, DWORD v2)
 	return buf;
 }
 
-void writeLUT()
-{
-	FILE* f;
-
-	fopen_s(&f, "lut.asm", "wb");
-	if (!f)
-		return;
-
-	for (unordered_map<string, vector<DWORD>>::iterator it = codeBin.begin(); it != codeBin.end(); ++it) {
-		fputs(it->first.c_str(), f);
-		fputs(":->", f);
-		vector<DWORD> b = it->second;
-		int nextOperand = 1;
-		for (DWORD i = 0; i < b.size(); i++) {
-			if (i == 0) {
-				char hex[40];
-				shader_ins* ins = (shader_ins*)&b[0];
-				if (ins->_11_23 > 0) {
-					if (ins->extended)
-						sprintf_s(hex, "0x%08X: %d,%d,%d<>%d->", b[0], ins->opcode, ins->_11_23, ins->length, ins->extended);
-					else
-						sprintf_s(hex, "0x%08X: %d,%d,%d->", b[0], ins->opcode, ins->_11_23, ins->length);
-				} else {
-					if (ins->extended)
-						sprintf_s(hex, "0x%08X: %d,%d<>%d->", b[0], ins->opcode, ins->length, ins->extended);
-					else
-						sprintf_s(hex, "0x%08X: %d,%d->", b[0], ins->opcode, ins->length);
-				}
-				fputs(hex, f);
-			} else {
-				char hex[20];
-				sprintf_s(hex, " 0x%08X", b[i]);
-				fputs(hex, f);
-			}
-		}
-		fputs("\n", f);
-	}
-	fclose(f);
-}
-
 static void handleSwizzle(string s, token_operand* tOp, bool special = false)
 {
 	if (special == true) {
@@ -304,7 +310,7 @@ struct special_purpose_register
 	// may interact with this, but this is at least passing all test cases.
 	unsigned comps_enum;
 
-	char* name;
+	const char* name;
 };
 
 static struct special_purpose_register special_purpose_registers[] = {
@@ -1451,7 +1457,7 @@ static vector<DWORD> assemble_printf(string& s, vector<DWORD>& v, vector<string>
 	return v;
 }
 
-static vector<DWORD> assemble_undecipherable_custom_data(string& s, vector<DWORD>& v, vector<string>& w)
+const vector<DWORD> assemble_undecipherable_custom_data(string& s, vector<DWORD>& v, vector<string>& w)
 {
 	uint32_t numOps, word, i;
 
@@ -1473,7 +1479,7 @@ static vector<DWORD> assemble_undecipherable_custom_data(string& s, vector<DWORD
 	return v;
 }
 
-static vector<DWORD>& assembleIns(string s)
+static vector<DWORD> assembleIns(string s)
 {
 	unsigned msaa_samples = 0;
 
@@ -2278,7 +2284,7 @@ static vector<DWORD>& assembleIns(string s)
 	return v;
 }
 
-static string assembleAndCompare(string s, vector<DWORD> v)
+static string assembleAndCompare(string s, vector<DWORD> v, unordered_map<string, vector<DWORD>>& codeBin)
 {
 	string s2;
 	int numSpaces = 0;
@@ -2800,7 +2806,7 @@ static inline void replace_cb_offsets_with_indices(string* line)
 	*line += suffix;
 }
 
-HRESULT disassembler(vector<byte>* buffer, vector<byte>* ret, const char* comment,
+HRESULT disassembler(vector<byte>* buffer, vector<byte>* ret, const char* comment, unordered_map<string, vector<DWORD>>& codeBin,
 	int hexdump, bool d3dcompiler_46_compat,
 	bool disassemble_undecipherable_data,
 	bool patch_cb_offsets)
@@ -2849,7 +2855,7 @@ HRESULT disassembler(vector<byte>* buffer, vector<byte>* ret, const char* commen
 	asmBuffer = (char*)pDissassembly->GetBufferPointer();
 	asmSize = pDissassembly->GetBufferSize();
 
-	byte* codeByteStart;
+	byte* codeByteStart = nullptr;
 	int codeChunk = 0;
 	for (DWORD i = 1; i <= numChunks; i++) {
 		codeChunk = numChunks - i;
@@ -2883,7 +2889,7 @@ HRESULT disassembler(vector<byte>* buffer, vector<byte>* ret, const char* commen
 				codeStarted = true;
 				v.push_back(*codeStart);
 				codeStart += 2;
-				s = assembleAndCompare(s, v);
+				s = assembleAndCompare(s, v, codeBin);
 				lines[i] = s;
 			}
 		} else if (s.find("{ {") < s.size()) {
@@ -2906,7 +2912,7 @@ HRESULT disassembler(vector<byte>* buffer, vector<byte>* ret, const char* commen
 				v.push_back(*codeStart);
 				codeStart++;
 			}
-			s = assembleAndCompare(s, v);
+			s = assembleAndCompare(s, v, codeBin);
 			auto sLines = stringToLines(s.c_str(), s.size());
 			size_t startLine = i - sLines.size() + 1;
 			for (size_t j = 0; j < sLines.size(); j++) {
@@ -2948,9 +2954,9 @@ HRESULT disassembler(vector<byte>* buffer, vector<byte>* ret, const char* commen
 				v.push_back(*(codeStart)++);
 				for (uint32_t j = 1; j < len - 1; j++)
 					v.push_back(*(codeStart)++);
-				s = assembleAndCompare(s, v);
+				s = assembleAndCompare(s, v, codeBin);
 			} else {
-				s = assembleAndCompare(s, v);
+				s = assembleAndCompare(s, v, codeBin);
 			}
 			lines[i] = s;
 		}
@@ -3163,7 +3169,7 @@ vector<byte> assembler(vector<char>* asmFile, vector<byte> origBytecode,
 	size_t asmSize;
 	asmBuffer = asmFile->data();
 	asmSize = asmFile->size();
-	byte* codeByteStart;
+	byte* codeByteStart = nullptr;
 	int codeChunk = 0;
 	for (DWORD i = 1; i <= numChunks; i++) {
 		codeChunk = numChunks - i;
@@ -3251,3 +3257,204 @@ vector<byte> assembler(vector<char>* asmFile, vector<byte> origBytecode,
 	dwordBuffer[4] = hash[3];
 	return origBytecode;
 }
+
+HRESULT disassemblerDX9(vector<byte>* buffer, vector<byte>* ret, const char* comment)
+{
+	char* asmBuffer;
+	size_t asmSize;
+	vector<byte> asmBuf;
+	ID3DBlob* pDissassembly = NULL;
+	LPD3DXBUFFER pD3DXDissassembly = NULL;
+	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, comment, &pDissassembly);
+	if (FAILED(ok))
+		ok = D3DDisassemble(buffer->data(), buffer->size(), NULL, comment, &pDissassembly);
+	if (FAILED(ok))
+		ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_DISABLE_DEBUG_INFO, comment, &pDissassembly);
+	if (FAILED(ok)) {
+		//below sometimes give an access violation for some reason
+		//ok = D3DXDisassembleShader((DWORD*)buffer->data(), false, NULL, &pD3DXDissassembly);
+		//if (FAILED(ok))
+		return ok;
+		//asmBuffer = (char*)pD3DXDissassembly->GetBufferPointer();
+		//asmSize = pD3DXDissassembly->GetBufferSize();
+	} else {
+		asmBuffer = (char*)pDissassembly->GetBufferPointer();
+		asmSize = pDissassembly->GetBufferSize();
+	}
+	vector<string> lines = stringToLines(asmBuffer, asmSize);
+	ret->clear();
+	for (size_t i = 0; i < lines.size(); i++) {
+		for (size_t j = 0; j < lines[i].size(); j++) {
+			ret->insert(ret->end(), lines[i][j]);
+		}
+		ret->insert(ret->end(), '\n');
+	}
+	if (pDissassembly)
+		pDissassembly->Release();
+	if (pD3DXDissassembly)
+		pD3DXDissassembly->Release();
+	return S_OK;
+}
+
+vector<byte> assemblerDX9(vector<char>* asmFile)
+{
+	vector<byte> ret;
+	LPD3DXBUFFER pAssembly;
+	HRESULT hr = D3DXAssembleShader(asmFile->data(), (UINT)asmFile->size(), NULL, NULL, 0, &pAssembly, NULL);
+	if (!FAILED(hr)) {
+		size_t size = pAssembly->GetBufferSize();
+		LPVOID buffer = pAssembly->GetBufferPointer();
+		ret.resize(size);
+		std::memcpy(ret.data(), buffer, size);
+		pAssembly->Release();
+		// FIXME: Pass warnings back to the caller
+	} else {
+		// FIXME: Pass error messages back to the caller
+		throw std::invalid_argument("assembler: Bad shader assembly (FIXME: RETURN ERROR MESSAGES)");
+	}
+	return ret;
+}
+
+// Common routine to handle disassembling binary shaders to asm text.
+// This is used whenever we need the Asm text.
+
+
+// New version using Flugan's wrapper around D3DDisassemble to replace the
+// problematic %f floating point values with %.9e, which is enough that a 32bit
+// floating point value will be reproduced exactly:
+string BinaryToAsmText(const void* pShaderBytecode, size_t BytecodeLength,
+	bool patch_cb_offsets,
+	bool disassemble_undecipherable_data,
+	int hexdump, bool d3dcompiler_46_compat)
+{
+	string comments;
+	vector<byte> byteCode(BytecodeLength);
+	vector<byte> disassembly;
+	HRESULT r;
+
+	comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
+	memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
+
+#if MIGOTO_DX == 9
+	r = disassemblerDX9(&byteCode, &disassembly, comments.c_str());
+#elif MIGOTO_DX == 11
+	unordered_map<string, vector<DWORD>> codeBin;
+	r = disassembler(&byteCode, &disassembly, comments.c_str(), codeBin, hexdump,
+		d3dcompiler_46_compat, disassemble_undecipherable_data, patch_cb_offsets);
+#endif // MIGOTO_DX
+	if (FAILED(r)) {
+		LogInfo("  disassembly failed. Error: %x\n", r);
+		return "";
+	}
+
+	return string(disassembly.begin(), disassembly.end());
+}
+
+// Get the shader model from the binary shader bytecode.
+//
+// This used to disassemble, then search for the text string, but if we are going to
+// do all that work, we might as well use the James-Jones decoder to get it.
+// The other reason to do it this way is that we have seen multiple shader versions
+// in Unity games, and the old technique of searching for the first uncommented line
+// would fail.
+
+// This is an interesting idea, but doesn't work well here because of project structure.
+// for the moment, let's leave this here, but use the disassemble search approach.
+
+//static string GetShaderModel(const void *pShaderBytecode)
+//{
+//	Shader *shader = DecodeDXBC((uint32_t*)pShaderBytecode);
+//	if (shader == nullptr)
+//		return "";
+//
+//	string shaderModel;
+//	
+//	switch (shader->eShaderType)
+//	{
+//	case PIXEL_SHADER:
+//		shaderModel = "ps";
+//		break;
+//	case VERTEX_SHADER:
+//		shaderModel = "vs";
+//		break;
+//	case GEOMETRY_SHADER:
+//		shaderModel = "gs";
+//		break;
+//	case HULL_SHADER:
+//		shaderModel = "hs";
+//		break;
+//	case DOMAIN_SHADER:
+//		shaderModel = "ds";
+//		break;
+//	case COMPUTE_SHADER:
+//		shaderModel = "cs";
+//		break;
+//	default:
+//		return "";		// Failure.
+//	}
+//
+//	shaderModel += "_" + shader->ui32MajorVersion;
+//	shaderModel += "_" + shader->ui32MinorVersion;
+//
+//	delete shader;
+//
+//	return shaderModel;
+//}
+
+string GetShaderModel(const void* pShaderBytecode, size_t bytecodeLength)
+{
+	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength, false);
+	if (asmText.empty())
+		return "";
+
+	// Read shader model. This is the first not commented line.
+	char* pos = (char*)asmText.data();
+	char* end = pos + asmText.size();
+	while ((pos[0] == '/' || pos[0] == '\n') && pos < end)
+	{
+		while (pos[0] != 0x0a && pos < end) pos++;
+		pos++;
+	}
+	// Extract model.
+	char* eol = pos;
+	while (eol[0] != 0x0a && pos < end) eol++;
+	string shaderModel(pos, eol);
+
+	return shaderModel;
+}
+
+// Get shader type from asm, first non-commented line.  CS, PS, VS.
+// Not sure this works on weird Unity variant with embedded types.
+
+
+// Specific variant to name files consistently, so we know they are Asm text.
+
+HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wchar_t* shaderType,
+	const void* pShaderBytecode, size_t bytecodeLength, bool patch_cb_offsets)
+{
+	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength, patch_cb_offsets);
+	if (asmText.empty())
+	{
+		return E_OUTOFMEMORY;
+	}
+
+	wchar_t fullPath[MAX_PATH];
+	swprintf_s(fullPath, MAX_PATH, L"%ls\\%016llx-%ls.txt", fileDirectory, hash, shaderType);
+
+	HRESULT hr = CreateTextFile(fullPath, &asmText, false);
+
+	if (SUCCEEDED(hr))
+		LogInfoW(L"    storing disassembly to %s\n", fullPath);
+	else
+		LogInfoW(L"    error: %x, storing disassembly to %s\n", hr, fullPath);
+
+	return hr;
+}
+
+// Create a text file containing text for the string specified.  Can be Asm or HLSL.
+// If the file already exists and the caller did not specify overwrite (used
+// for reassembled text), return that as an error to avoid overwriting previous
+// work.
+
+// We previously would overwrite the file only after checking if the contents were different,
+// this relaxes that to just being same file name.

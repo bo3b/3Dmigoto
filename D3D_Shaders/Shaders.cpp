@@ -7,6 +7,8 @@
 #include <vector>
 #include <iostream>
 #include <direct.h>
+#include "D3DCompiler.h"
+#include "..\HLSLDecompiler\Assembler.h"
 
 using namespace std;
 
@@ -49,6 +51,46 @@ static vector<byte> readFile(string fileName) {
 	return buffer;
 }
 
+void writeLUT(const unordered_map<string, vector<DWORD>>& codeBin)
+{
+	FILE* f;
+
+	fopen_s(&f, "lut.asm", "wb");
+	if (!f)
+		return;
+
+	for (auto it = codeBin.begin(); it != codeBin.end(); ++it) {
+		fputs(it->first.c_str(), f);
+		fputs(":->", f);
+		vector<DWORD> b = it->second;
+		int nextOperand = 1;
+		for (DWORD i = 0; i < b.size(); i++) {
+			if (i == 0) {
+				char hex[40];
+				shader_ins* ins = (shader_ins*)&b[0];
+				if (ins->_11_23 > 0) {
+					if (ins->extended)
+						sprintf_s(hex, "0x%08X: %d,%d,%d<>%d->", b[0], ins->opcode, ins->_11_23, ins->length, ins->extended);
+					else
+						sprintf_s(hex, "0x%08X: %d,%d,%d->", b[0], ins->opcode, ins->_11_23, ins->length);
+				} else {
+					if (ins->extended)
+						sprintf_s(hex, "0x%08X: %d,%d<>%d->", b[0], ins->opcode, ins->length, ins->extended);
+					else
+						sprintf_s(hex, "0x%08X: %d,%d->", b[0], ins->opcode, ins->length);
+				}
+				fputs(hex, f);
+			} else {
+				char hex[20];
+				sprintf_s(hex, " 0x%08X", b[i]);
+				fputs(hex, f);
+			}
+		}
+		fputs("\n", f);
+	}
+	fclose(f);
+}
+
 int _tmain(int argc, _TCHAR* argv[])
 {
 	int shaderNo = 1;
@@ -56,6 +98,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	string pathName;
 	vector<string> files;
 	FILE* f;
+	unordered_map<string, vector<DWORD>> codeBin;
 	char cwd[MAX_PATH];
 	char gamebuffer[10000];
 
@@ -90,7 +133,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				string fileName = files[i];
 
 				vector<byte> ASM;
-				disassembler(&readFile(fileName), &ASM, NULL);
+				disassembler(&readFile(fileName), &ASM, NULL, codeBin);
 
 				fileName.erase(fileName.size() - 3, 3);
 				fileName.append("txt");
@@ -152,7 +195,7 @@ int _tmain(int argc, _TCHAR* argv[])
 				string fileName = files[i];
 
 				vector<byte> ASM;
-				disassembler(&readFile(fileName), &ASM, NULL);
+				disassembler(&readFile(fileName), &ASM, NULL, codeBin);
 
 				fileName.erase(fileName.size() - 3, 3);
 				fileName.append("txt");
@@ -172,7 +215,7 @@ int _tmain(int argc, _TCHAR* argv[])
 		}
 		cout << endl;
 
-		writeLUT();
+		writeLUT(codeBin);
 	}
 	return 0;
 }

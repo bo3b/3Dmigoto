@@ -18,22 +18,20 @@
 // All sscanf that did not use %s or %c were switched to sscanf_s to avoid warnings.
 
 #include <map>
-#include <string>
 #include <cstdio>
-#include <vector>
 #include <set>
 #include <algorithm>
 
 #include "DecompileHLSL.h"
 
-#include "BinaryDecompiler\internal_includes\structs.h"
-#include "BinaryDecompiler\internal_includes\decode.h"
+#include "../BinaryDecompiler/internal_includes/structs.h"
+#include "../BinaryDecompiler/internal_includes/decode.h"
 
 #include <excpt.h>
 
 #include "assert.h"
-#include "log.h"
-#include "version.h"
+#include "../log.h"
+#include "../version.h"
 
 // MSVC insists we use MS's secure version of scanf, which in turn insists we
 // pass the size of each string/char array as an unsigned integer. We want to
@@ -396,7 +394,7 @@ public:
 	{
 		string interpolation = "";
 
-		for each (Declaration declaration in shader->asPhase[MAIN_PHASE].ppsDecl[0])
+		for (Declaration declaration : shader->asPhase[MAIN_PHASE].ppsDecl[0])
 		{
 			if (declaration.eOpcode == OPCODE_DCL_INPUT_PS)
 			{
@@ -3832,7 +3830,7 @@ public:
 				// The swizzle is a bit more complicated than the mask here,
 				// because it represents extra 32bit offsets in the structure,
 				// which is one whole index in the "val" array in our fake type.
-				char* swiz_offset = "";
+				const char* swiz_offset = "";
 				switch (swiz_offsets[component]) {
 				case  0: break;
 				case  4: swiz_offset = "+1"; break;
@@ -3981,11 +3979,11 @@ public:
 	string GetComponentStrFromInstruction(Instruction* instr, int opIndex)
 	{
 		assert(instr != NULL);
-		char* componentX = "x";
-		char* componentY = "y";
-		char* componentZ = "z";
-		char* componentW = "w";
-		char* component[] = { componentX, componentY, componentZ, componentW };
+		const char* componentX = "x";
+		const char* componentY = "y";
+		const char* componentZ = "z";
+		const char* componentW = "w";
+		const char* component[] = { componentX, componentY, componentZ, componentW };
 
 
 		char buff[opcodeSize];

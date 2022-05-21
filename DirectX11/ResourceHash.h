@@ -6,6 +6,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <unordered_map>
 #include <memory>
 #include <atomic>
 

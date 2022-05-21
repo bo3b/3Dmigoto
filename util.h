@@ -16,10 +16,8 @@
 
 #include "version.h"
 #include "log.h"
-#include "crc32c.h"
+#include "crc32c-hw-1.0.5/include/crc32c.h"
 #include "util_min.h"
-
-#include "D3D_Shaders\stdafx.h"
 
 #if MIGOTO_DX == 11
 #include "DirectX11\HookedDevice.h"
@@ -750,121 +748,6 @@ static const char* type_name_dx9(IUnknown *object)
 #endif // MIGOTO_DX == 9
 // -----------------------------------------------------------------------------------------------
 
-// Common routine to handle disassembling binary shaders to asm text.
-// This is used whenever we need the Asm text.
-
-
-// New version using Flugan's wrapper around D3DDisassemble to replace the
-// problematic %f floating point values with %.9e, which is enough that a 32bit
-// floating point value will be reproduced exactly:
-static string BinaryToAsmText(const void *pShaderBytecode, size_t BytecodeLength,
-		bool patch_cb_offsets,
-		bool disassemble_undecipherable_data = true,
-		int hexdump = 0, bool d3dcompiler_46_compat = true)
-{
-	string comments;
-	vector<byte> byteCode(BytecodeLength);
-	vector<byte> disassembly;
-	HRESULT r;
-
-	comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
-	memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
-
-#if MIGOTO_DX == 9
-	r = disassemblerDX9(&byteCode, &disassembly, comments.c_str());
-#elif MIGOTO_DX == 11
-	r = disassembler(&byteCode, &disassembly, comments.c_str(), hexdump,
-			d3dcompiler_46_compat, disassemble_undecipherable_data, patch_cb_offsets);
-#endif // MIGOTO_DX
-	if (FAILED(r)) {
-		LogInfo("  disassembly failed. Error: %x\n", r);
-		return "";
-	}
-
-	return string(disassembly.begin(), disassembly.end());
-}
-
-// Get the shader model from the binary shader bytecode.
-//
-// This used to disassemble, then search for the text string, but if we are going to
-// do all that work, we might as well use the James-Jones decoder to get it.
-// The other reason to do it this way is that we have seen multiple shader versions
-// in Unity games, and the old technique of searching for the first uncommented line
-// would fail.
-
-// This is an interesting idea, but doesn't work well here because of project structure.
-// for the moment, let's leave this here, but use the disassemble search approach.
-
-//static string GetShaderModel(const void *pShaderBytecode)
-//{
-//	Shader *shader = DecodeDXBC((uint32_t*)pShaderBytecode);
-//	if (shader == nullptr)
-//		return "";
-//
-//	string shaderModel;
-//	
-//	switch (shader->eShaderType)
-//	{
-//	case PIXEL_SHADER:
-//		shaderModel = "ps";
-//		break;
-//	case VERTEX_SHADER:
-//		shaderModel = "vs";
-//		break;
-//	case GEOMETRY_SHADER:
-//		shaderModel = "gs";
-//		break;
-//	case HULL_SHADER:
-//		shaderModel = "hs";
-//		break;
-//	case DOMAIN_SHADER:
-//		shaderModel = "ds";
-//		break;
-//	case COMPUTE_SHADER:
-//		shaderModel = "cs";
-//		break;
-//	default:
-//		return "";		// Failure.
-//	}
-//
-//	shaderModel += "_" + shader->ui32MajorVersion;
-//	shaderModel += "_" + shader->ui32MinorVersion;
-//
-//	delete shader;
-//
-//	return shaderModel;
-//}
-
-static string GetShaderModel(const void *pShaderBytecode, size_t bytecodeLength)
-{
-	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength, false);
-	if (asmText.empty())
-		return "";
-
-	// Read shader model. This is the first not commented line.
-	char *pos = (char *)asmText.data();
-	char *end = pos + asmText.size();
-	while ((pos[0] == '/' || pos[0] == '\n') && pos < end)
-	{
-		while (pos[0] != 0x0a && pos < end) pos++;
-		pos++;
-	}
-	// Extract model.
-	char *eol = pos;
-	while (eol[0] != 0x0a && pos < end) eol++;
-	string shaderModel(pos, eol);
-
-	return shaderModel;
-}
-
-// Create a text file containing text for the string specified.  Can be Asm or HLSL.
-// If the file already exists and the caller did not specify overwrite (used
-// for reassembled text), return that as an error to avoid overwriting previous
-// work.
-
-// We previously would overwrite the file only after checking if the contents were different,
-// this relaxes that to just being same file name.
-
 static HRESULT CreateTextFile(wchar_t *fullPath, string *asmText, bool overwrite)
 {
 	FILE *f;
@@ -887,34 +770,6 @@ static HRESULT CreateTextFile(wchar_t *fullPath, string *asmText, bool overwrite
 	}
 
 	return S_OK;
-}
-
-// Get shader type from asm, first non-commented line.  CS, PS, VS.
-// Not sure this works on weird Unity variant with embedded types.
-
-
-// Specific variant to name files consistently, so we know they are Asm text.
-
-static HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wchar_t* shaderType, 
-	const void *pShaderBytecode, size_t bytecodeLength, bool patch_cb_offsets)
-{
-	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength, patch_cb_offsets);
-	if (asmText.empty())
-	{
-		return E_OUTOFMEMORY;
-	}
-
-	wchar_t fullPath[MAX_PATH];
-	swprintf_s(fullPath, MAX_PATH, L"%ls\\%016llx-%ls.txt", fileDirectory, hash, shaderType);
-
-	HRESULT hr = CreateTextFile(fullPath, &asmText, false);
-
-	if (SUCCEEDED(hr))
-		LogInfoW(L"    storing disassembly to %s\n", fullPath);
-	else
-		LogInfoW(L"    error: %x, storing disassembly to %s\n", hr, fullPath);
-
-	return hr;
 }
 
 // Specific variant to name files, so we know they are HLSL text.

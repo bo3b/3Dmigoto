@@ -1,3 +1,5 @@
+#include <stdint.h>
+
 #define POLY 0x82f63b78
 #define LONG_SHIFT 8192
 #define SHORT_SHIFT 256

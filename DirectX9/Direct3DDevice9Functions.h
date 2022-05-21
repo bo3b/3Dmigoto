@@ -1,11 +1,13 @@
 #include <codecvt>
-#include "../HLSLDecompiler/DecompileHLSL.h"
 #include <D3Dcompiler.h>
+#include <DirectXMath.h>
+
+#include "Assembler.h"
+#include "DecompileHLSL.h"
 #include "shader.h"
 #include "ShaderRegex.h"
 #include "HookedDeviceDX9.h"
 #include "d3d9Wrapper.h"
-#include <DirectXMath.h>
 
 #define D3D_COMPILE_STANDARD_FILE_INCLUDE ((ID3DInclude*)(UINT_PTR)1)
 inline void D3D9Wrapper::IDirect3DDevice9::Delete()

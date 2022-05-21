@@ -1,7 +1,7 @@
 #ifndef REFLECT_H
 #define REFLECT_H
 
-#include "hlslcc.h"
+#include "../include/hlslcc.h"
 
 ResourceGroup ResourceTypeToResourceGroup(ResourceType);
 

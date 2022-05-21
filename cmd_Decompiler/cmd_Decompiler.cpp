@@ -1,128 +1,19 @@
 // cmd_Decompiler.cpp : Defines the entry point for the console application.
 //
 
-#include "stdafx.h"
-
 #include <iostream>     // console output
 
 #include <D3Dcompiler.h>
-#include "DecompileHLSL.h"
-#include "version.h"
-#include "log.h"
-#define MIGOTO_DX 9 // Selects the DX11 disassembler in util.h - the DX9 dis/assembler is not very
-					 // interesting since it is just Microsoft's - we can add it later, but low priority.
-					 // The DX9 decompiler is more interesting, which is unrelated to this flag.
-#include "util.h"
-#include "shader.h"
+#include "../version.h"
+#include "../log.h"
+#include "../util.h"
+#include "../shader.h"
+#include "../HLSLDecompiler/DecompileHLSL.h"
+#include "../HLSLDecompiler/SignatureParser.h"
 
-#if MIGOTO_DX == 9
-#include <d3dx9shader.h>
-#endif
+#define D3D_COMPILE_STANDARD_FILE_INCLUDE ((ID3DInclude*)(UINT_PTR)1)
 
 using namespace std;
-
-static vector<string> stringToLinesDX9(const char* start, size_t size) {
-	vector<string> lines;
-	const char* pStart = start;
-	const char* pEnd = pStart;
-	const char* pRealEnd = pStart + size;
-	while (true) {
-		while (*pEnd != '\n' && pEnd < pRealEnd) {
-			pEnd++;
-		}
-		if (*pStart == 0) {
-			break;
-		}
-		string s(pStart, pEnd++);
-		pStart = pEnd;
-		lines.push_back(s);
-		if (pStart >= pRealEnd) {
-			break;
-		}
-	}
-	for (unsigned int i = 0; i < lines.size(); i++) {
-		string s = lines[i];
-		// Bug fixed: This would not strip carriage returns from DOS
-		// style newlines if they were the only character on the line,
-		// corrupting the resulting shader binary. -DarkStarSword
-		if (s.size() >= 1 && s[s.size() - 1] == '\r')
-			s.erase(--s.end());
-
-		// Strip whitespace from the end of each line. This isn't
-		// strictly necessary, but the MS disassembler inserts an extra
-		// space after "ret ", "else " and "endif ", which has been a
-		// gotcha for trying to match it with ShaderRegex since it's
-		// easy to miss the fact that there is a space there and not
-		// understand why the pattern isn't matching. By removing
-		// excess spaces from the end of each line now we can make this
-		// gotcha go away.
-		while (s.size() >= 1 && s[s.size() - 1] == ' ')
-			s.erase(--s.end());
-
-		while (s.size() >= 1 && s[0] == ' ')
-			s.erase(s.begin());
-
-		lines[i] = s;
-	}
-	return lines;
-}
-
-HRESULT disassemblerDX9(vector<byte>* buffer, vector<byte>* ret, const char* comment)
-{
-	char* asmBuffer;
-	size_t asmSize;
-	vector<byte> asmBuf;
-	ID3DBlob* pDissassembly = NULL;
-	LPD3DXBUFFER pD3DXDissassembly = NULL;
-	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, comment, &pDissassembly);
-	if (FAILED(ok))
-		ok = D3DDisassemble(buffer->data(), buffer->size(), NULL, comment, &pDissassembly);
-	if (FAILED(ok))
-		ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_DISABLE_DEBUG_INFO, comment, &pDissassembly);
-	if (FAILED(ok)) {
-		//below sometimes give an access violation for some reason
-		//ok = D3DXDisassembleShader((DWORD*)buffer->data(), false, NULL, &pD3DXDissassembly);
-		//if (FAILED(ok))
-		return ok;
-		//asmBuffer = (char*)pD3DXDissassembly->GetBufferPointer();
-		//asmSize = pD3DXDissassembly->GetBufferSize();
-	} else {
-		asmBuffer = (char*)pDissassembly->GetBufferPointer();
-		asmSize = pDissassembly->GetBufferSize();
-	}
-	vector<string> lines = stringToLinesDX9(asmBuffer, asmSize);
-	ret->clear();
-	for (size_t i = 0; i < lines.size(); i++) {
-		for (size_t j = 0; j < lines[i].size(); j++) {
-			ret->insert(ret->end(), lines[i][j]);
-		}
-		ret->insert(ret->end(), '\n');
-	}
-	if (pDissassembly)
-		pDissassembly->Release();
-	if (pD3DXDissassembly)
-		pD3DXDissassembly->Release();
-	return S_OK;
-}
-
-vector<byte> assemblerDX9(vector<char>* asmFile)
-{
-	vector<byte> ret;
-	LPD3DXBUFFER pAssembly;
-	HRESULT hr = D3DXAssembleShader(asmFile->data(), (UINT)asmFile->size(), NULL, NULL, 0, &pAssembly, NULL);
-	if (!FAILED(hr)) {
-		size_t size = pAssembly->GetBufferSize();
-		LPVOID buffer = pAssembly->GetBufferPointer();
-		ret.resize(size);
-		std::memcpy(ret.data(), buffer, size);
-		pAssembly->Release();
-		// FIXME: Pass warnings back to the caller
-	} else {
-		// FIXME: Pass error messages back to the caller
-		throw std::invalid_argument("assembler: Bad shader assembly (FIXME: RETURN ERROR MESSAGES)");
-	}
-	return ret;
-}
 
 FILE* LogFile = stderr; // Log to stderr by default
 bool gLogDebug = false;
@@ -721,7 +612,8 @@ static int process(string const* filename)
 		{
 			LogInfo("Translating %s...\n", filename->c_str());
 			auto srcBytes = assemblerDX9(&srcData);
-			hret = TranslateASMtoHLSL(srcBytes.data(), std::string(srcData.data()), &output, &model);
+			auto data = std::string(srcData.data());
+			hret = TranslateASMtoHLSL(srcBytes.data(), data, &output, &model);
 		}
 		if (FAILED(hret))
 			return EXIT_FAILURE;

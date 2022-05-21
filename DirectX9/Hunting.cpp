@@ -7,7 +7,7 @@
 #include "DecompileHLSL.h"
 #include "Override.h"
 #include "IniHandler.h"
-#include "D3D_Shaders\stdafx.h"
+#include "Assembler.h"
 #include "ConstantsTable.h"
 #define D3D_COMPILE_STANDARD_FILE_INCLUDE ((ID3DInclude*)(UINT_PTR)1)
 

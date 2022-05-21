@@ -2,7 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="d3d10Wrapper.cpp" />
-    <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="Override.cpp" />
     <ClCompile Include="input.cpp" />
     <ClCompile Include="Hunting.cpp" />
@@ -17,7 +16,6 @@
     <ClInclude Include="Direct3D10Device.h" />
     <ClInclude Include="d3d10WrapperDevice.h" />
     <ClInclude Include="globals.h" />
-    <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="Override.h" />
     <ClInclude Include="input.h" />
     <ClInclude Include="IniHandler.h" />

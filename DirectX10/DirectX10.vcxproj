@@ -27,7 +27,6 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
     <ClCompile Include="d3d10Wrapper.cpp" />
     <ClCompile Include="IniHandler.cpp" />
     <ClCompile Include="input.cpp" />
@@ -38,7 +37,6 @@
     <None Include="d3d10Wrapper.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
     <ClInclude Include="..\log.h" />
     <ClInclude Include="d3d10Wrapper.h" />
     <ClInclude Include="d3d10WrapperDevice.h" />
@@ -54,6 +52,9 @@
   <ItemGroup>
     <ProjectReference Include="..\BinaryDecompiler\BinaryDecompiler.vcxproj">
       <Project>{258d0ad2-b762-41e3-a0c1-cf831d859da4}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\HLSLDecompiler\HLSLDecompiler.vcxproj">
+      <Project>{00b6ba42-4050-488d-91be-a8cd7adaeb87}</Project>
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup Label="Globals">

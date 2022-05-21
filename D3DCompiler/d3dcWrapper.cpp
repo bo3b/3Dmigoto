@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <ctime>
 
-#include "util.h"
+#include "../util.h"
 
 #define COMPILER_DLL_VERSION "46"
 #define COMPILER_DLL_VERSIONL L"46"
