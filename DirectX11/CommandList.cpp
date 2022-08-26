@@ -1274,7 +1274,7 @@ void DrawCommand::run(CommandListState *state)
 			break;
 		case DrawCommandType::AUTO_INDEX_INSTANCE_COUNT:
 			if (!info) {
-				COMMAND_LIST_LOG(state, "[%S] Draw = from_caller -> NO ACTIVE DRAW CALL\n", ini_section.c_str());
+				COMMAND_LIST_LOG(state, "[%S] drawindexedinstanced = auto -> NO ACTIVE DRAW CALL\n", ini_section.c_str());
 				break;
 			}
 			auto_count = get_index_count_from_current_ib(mOrigContext1);
