@@ -829,7 +829,11 @@ HRESULT WINAPI D3D11CreateDevice(
 {
 	if (get_tls()->hooking_quirk_protection) {
 		LogInfo("Hooking Quirk: Unexpected call back into D3D11CreateDevice, passing through\n");
-		// No confirmed cases
+		// Known case: Present() may call D3D11CreateDevice in Optimus laptops,
+		//             triggering this if we have hooked that call, as we do
+		//             when we have been injected from outside the game
+		//             directory. Cause of crash in DOA6:
+		//             https://github.com/bo3b/3Dmigoto/issues/106
 		return _D3D11CreateDevice(pAdapter, DriverType, Software,
 				Flags, pFeatureLevels, FeatureLevels,
 				SDKVersion, ppDevice, pFeatureLevel,

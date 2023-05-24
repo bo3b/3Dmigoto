@@ -564,7 +564,9 @@ STDMETHODIMP HackerSwapChain::Present(THIS_
 			Profiling::end(&profiling_state, &Profiling::present_overhead);
 	}
 
+	get_tls()->hooking_quirk_protection = true; // Present may call D3D11CreateDevice, which we may have hooked
 	HRESULT hr = mOrigSwapChain1->Present(SyncInterval, Flags);
+	get_tls()->hooking_quirk_protection = false;
 
 	if (!(Flags & DXGI_PRESENT_TEST)) {
 		if (profiling)
@@ -869,7 +871,9 @@ STDMETHODIMP HackerSwapChain::Present1(THIS_
 			Profiling::end(&profiling_state, &Profiling::present_overhead);
 	}
 
+	get_tls()->hooking_quirk_protection = true; // Present may call D3D11CreateDevice, which we may have hooked
 	HRESULT hr = mOrigSwapChain1->Present1(SyncInterval, PresentFlags, pPresentParameters);
+	get_tls()->hooking_quirk_protection = false;
 
 	if (!(PresentFlags & DXGI_PRESENT_TEST)) {
 		if (profiling)
