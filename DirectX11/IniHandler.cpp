@@ -455,6 +455,9 @@ bool check_include_condition(wstring *val, const wstring *ini_namespace)
 		return false;
 	}
 
+	if (!ret)
+		LogInfo("        condition = false, skipping \"%S\"\n", ini_namespace->c_str());
+
 	return !!ret;
 }
 
@@ -476,7 +479,6 @@ static bool ParseIniPreamble(wstring *wline, wstring *ini_namespace)
 			val = wline->substr(first);
 
 		if (!_wcsicmp(key.c_str(), L"condition")) {
-			LogInfo("        condition = false, skipping \"%S\"\n", ini_namespace->c_str());
 			return check_include_condition(&val, ini_namespace);
 		}
 
