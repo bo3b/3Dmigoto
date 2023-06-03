@@ -398,6 +398,7 @@ enum class AsyncQueryType
 struct Globals
 {
 	bool gInitialized;
+	bool bIntendedTargetExe;
 	bool gReloadConfigPending;
 	bool gWipeUserConfig;
 	bool gLogInput;
@@ -688,6 +689,7 @@ struct Globals
 		enable_create_device(0),
 		enable_platform_update(false),
 		gInitialized(false),
+		bIntendedTargetExe(false),
 		gReloadConfigPending(false),
 		gWipeUserConfig(false),
 		user_config_dirty(0),

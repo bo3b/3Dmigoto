@@ -917,6 +917,11 @@ HRESULT __stdcall Hooked_CreateDXGIFactory(REFIID riid, void **ppFactory)
 	// up our d3d11.dll and the .ini file.
 	InitD311();
 
+	if (!G->bIntendedTargetExe) {
+		LogInfo("   Not intended target exe, passing through to real DX\n");
+		return fnOrigCreateDXGIFactory(riid, ppFactory);
+	}
+
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
 	{
@@ -982,6 +987,11 @@ HRESULT __stdcall Hooked_CreateDXGIFactory1(REFIID riid, void **ppFactory1)
 	// up our d3d11.dll and the .ini file.
 	InitD311();
 
+	if (!G->bIntendedTargetExe) {
+		LogInfo("   Not intended target exe, passing through to real DX\n");
+		return fnOrigCreateDXGIFactory1(riid, ppFactory1);
+	}
+
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
 	{
@@ -1041,6 +1051,11 @@ HRESULT __stdcall Hooked_CreateDXGIFactory2(UINT Flags, REFIID riid, void **ppFa
 	// If this happens to be first call from the game, let's make sure to load
 	// up our d3d11.dll and the .ini file.
 	InitD311();
+
+	if (!G->bIntendedTargetExe) {
+		LogInfo("   Not intended target exe, passing through to real DX\n");
+		return fnOrigCreateDXGIFactory2(Flags, riid, ppFactory2);
+	}
 
 	// If we are being requested to create a DXGIFactory2, lie and say it's not possible.
 	if (riid == __uuidof(IDXGIFactory2) && !G->enable_platform_update)
