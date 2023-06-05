@@ -60,6 +60,9 @@ static bool verify_intended_target_late()
 	wchar_t target[MAX_PATH];
 	size_t target_len, exe_len;
 
+	if (!GetIniBool(L"Loader", L"check_target_even_without_loader", false, NULL))
+		return true;
+
 	if (GetIniString(L"Loader", L"Target", NULL, target, MAX_PATH) == 0)
 		return true;
 
