@@ -8,7 +8,5 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DXGIWrapper.h" />
-    <ClInclude Include="..\log.h" />
-    <ClInclude Include="..\util.h" />
   </ItemGroup>
 </Project>

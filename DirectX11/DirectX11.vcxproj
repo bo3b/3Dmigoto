@@ -30,22 +30,22 @@
     <ProjectReference Include="..\BinaryDecompiler\BinaryDecompiler.vcxproj">
       <Project>{258d0ad2-b762-41e3-a0c1-cf831d859da4}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\D3D_Shaders\D3D_Shaders.vcxproj">
-      <Project>{59a9b0c6-8302-48a9-96e0-126fb32fb9ed}</Project>
+    <ProjectReference Include="..\crc32c-hw-1.0.5\CRC32C-HW.vcxproj">
+      <Project>{d05da837-8c74-40e0-8255-1345ca449648}</Project>
     </ProjectReference>
     <ProjectReference Include="..\DirectXTK\DirectXTK_Desktop_2017.vcxproj">
       <Project>{e0b52ae7-e160-4d32-bf3f-910b785e5a8e}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\HLSLDecompiler\HLSLDecompiler.vcxproj">
+      <Project>{00b6ba42-4050-488d-91be-a8cd7adaeb87}</Project>
+      <UseLibraryDependencyInputs>false</UseLibraryDependencyInputs>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp" />
-    <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
-    <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
-    <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
-    <ClCompile Include="CommandList.cpp" />
     <ClCompile Include="..\iid.cpp" />
     <ClCompile Include="..\ini_parser_lite.cpp" />
     <ClCompile Include="..\util.cpp" />
+    <ClCompile Include="CommandList.cpp" />
     <ClCompile Include="cursor.cpp" />
     <ClCompile Include="D3D11Wrapper.cpp" />
     <ClCompile Include="DLLMainHook.cpp" />
@@ -72,12 +72,6 @@
     <None Include="d3d11Wrapper.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h" />
-    <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
-    <ClInclude Include="..\log.h" />
-    <ClInclude Include="..\shader.h" />
-    <ClInclude Include="..\util.h" />
-    <ClInclude Include="..\version.h" />
     <ClInclude Include="cursor.h" />
     <ClInclude Include="D3D11Wrapper.h" />
     <ClInclude Include="DLLMainHook.h" />
@@ -100,7 +94,6 @@
     <ClInclude Include="profiling.h" />
     <ClInclude Include="ResourceHash.h" />
     <ClInclude Include="ShaderRegex.h" />
-    <ClInclude Include="..\vkeys.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
@@ -177,48 +170,42 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSDK_LibraryPath_x86);$(VC_LibraryPath_x86)</LibraryPath>
+    <LibraryPath>$(WindowsSDK_LibraryPath_x86);$(VC_LibraryPath_x86);$(DXSDK_DIR)Lib\x86</LibraryPath>
     <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSDK_LibraryPath_x64);$(VC_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(WindowsSDK_LibraryPath_x64);$(VC_LibraryPath_x64);$(DXSDK_DIR)Lib\x64</LibraryPath>
     <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSDK_LibraryPath_x86);$(VC_LibraryPath_x86)</LibraryPath>
+    <LibraryPath>$(WindowsSDK_LibraryPath_x86);$(VC_LibraryPath_x86);$(DXSDK_DIR)Lib\x86</LibraryPath>
     <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSDK_LibraryPath_x64);$(VC_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(WindowsSDK_LibraryPath_x64);$(VC_LibraryPath_x64);$(DXSDK_DIR)Lib\x64</LibraryPath>
     <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSDK_LibraryPath_x86);$(VC_LibraryPath_x86)</LibraryPath>
+    <LibraryPath>$(WindowsSDK_LibraryPath_x86);$(VC_LibraryPath_x86);$(DXSDK_DIR)Lib\x86</LibraryPath>
     <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
-    <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
-    <LibraryPath>$(WindowsSDK_LibraryPath_x64);$(VC_LibraryPath_x64)</LibraryPath>
+    <LibraryPath>$(WindowsSDK_LibraryPath_x64);$(VC_LibraryPath_x64);$(DXSDK_DIR)Lib\x64</LibraryPath>
     <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
   </PropertyGroup>
@@ -238,7 +225,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib_Debug.lib;..\pcre2\pcre2-8-32d.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib_Debug.lib;..\pcre2\pcre2-8-32d.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;d3dx9.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ForceSymbolReferences>_CreateDXGIFactory@8</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
@@ -264,7 +251,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib64_Debug.lib;..\pcre2\pcre2-8-64d.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib64_Debug.lib;..\pcre2\pcre2-8-64d.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;d3dx9.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ForceSymbolReferences>CreateDXGIFactory</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
@@ -295,7 +282,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib.lib;..\pcre2\pcre2-8-32.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib.lib;..\pcre2\pcre2-8-32.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;d3dx9.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
       <ForceSymbolReferences>_CreateDXGIFactory@8</ForceSymbolReferences>
@@ -328,7 +315,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib.lib;..\pcre2\pcre2-8-32.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib.lib;..\pcre2\pcre2-8-32.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;d3dx9.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ForceSymbolReferences>_CreateDXGIFactory@8</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
@@ -359,7 +346,7 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /s
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;..\pcre2\pcre2-8-64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;..\pcre2\pcre2-8-64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;d3dx9.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ForceSymbolReferences>CreateDXGIFactory</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
@@ -390,7 +377,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;..\pcre2\pcre2-8-64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;..\pcre2\pcre2-8-64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;d3dx9.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ForceSymbolReferences>CreateDXGIFactory</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>

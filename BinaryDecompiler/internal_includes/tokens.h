@@ -1,7 +1,7 @@
 #ifndef TOKENS_H
 #define TOKENS_H
 
-#include "hlslcc.h"
+#include "../include/hlslcc.h"
 
 typedef enum
 {

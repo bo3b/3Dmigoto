@@ -1,71 +1,68 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="D3D11Wrapper.cpp" />
-    <ClCompile Include="DLLMainHook.cpp" />
-    <ClCompile Include="HackerContext.cpp" />
-    <ClCompile Include="HackerDevice.cpp" />
-    <ClCompile Include="Hunting.cpp" />
-    <ClCompile Include="IniHandler.cpp" />
-    <ClCompile Include="Input.cpp" />
-    <ClCompile Include="Overlay.cpp" />
-    <ClCompile Include="Override.cpp" />
-    <ClCompile Include="..\HLSLDecompiler\DecompileHLSL.cpp" />
-    <ClCompile Include="HookedDXGI.cpp" />
-    <ClCompile Include="FrameAnalysis.cpp" />
-    <ClCompile Include="..\D3D_Shaders\Assembler.cpp" />
-    <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp" />
-    <ClCompile Include="CommandList.cpp" />
-    <ClCompile Include="ResourceHash.cpp" />
-    <ClCompile Include="HookedContext.cpp" />
-    <ClCompile Include="HookedDevice.cpp" />
-    <ClCompile Include="nvprofile.cpp" />
-    <ClCompile Include="..\D3D_Shaders\SignatureParser.cpp" />
-    <ClCompile Include="ShaderRegex.cpp" />
     <ClCompile Include="HookAddresses.c" />
-    <ClCompile Include="HackerDXGI.cpp" />
-    <ClCompile Include="..\iid.cpp" />
-    <ClCompile Include="..\util.cpp" />
-    <ClCompile Include="profiling.cpp" />
-    <ClCompile Include="..\ini_parser_lite.cpp" />
-    <ClCompile Include="lock.cpp" />
-    <ClCompile Include="cursor.cpp" />
+    <ClCompile Include="CommandList.cpp" Filter="Source Files"/>
+    <ClCompile Include="cursor.cpp" Filter="Source Files" />
+    <ClCompile Include="D3D11Wrapper.cpp" Filter="Source Files" />
+    <ClCompile Include="DLLMainHook.cpp" Filter="Source Files" />
+    <ClCompile Include="FrameAnalysis.cpp" Filter="Source Files" />
+    <ClCompile Include="HackerContext.cpp" Filter="Source Files" />
+    <ClCompile Include="HackerDevice.cpp" Filter="Source Files" />
+    <ClCompile Include="HackerDXGI.cpp" Filter="Source Files" />
+    <ClCompile Include="HookedContext.cpp" Filter="Source Files" />
+    <ClCompile Include="HookedDevice.cpp" Filter="Source Files" />
+    <ClCompile Include="HookedDXGI.cpp" Filter="Source Files" />
+    <ClCompile Include="Hunting.cpp" Filter="Source Files" />
+    <ClCompile Include="IniHandler.cpp" Filter="Source Files" />
+    <ClCompile Include="Input.cpp" Filter="Source Files" />
+    <ClCompile Include="lock.cpp" Filter="Source Files" />
+    <ClCompile Include="nvprofile.cpp" Filter="Source Files" />
+    <ClCompile Include="Overlay.cpp" Filter="Source Files" />
+    <ClCompile Include="Override.cpp" Filter="Source Files" />
+    <ClCompile Include="profiling.cpp" Filter="Source Files" />
+    <ClCompile Include="ResourceHash.cpp" Filter="Source Files" />
+    <ClCompile Include="ShaderRegex.cpp" Filter="Source Files" />
+    <ClCompile Include="..\util.cpp" Filter="Source Files" />
+    <ClCompile Include="..\iid.cpp" Filter="Source Files" />
+    <ClCompile Include="..\ini_parser_lite.cpp" Filter="Source Files" />
   </ItemGroup>
   <ItemGroup>
     <None Include="d3d11Wrapper.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="D3D11Wrapper.h" />
-    <ClInclude Include="Globals.h" />
-    <ClInclude Include="HackerContext.h" />
-    <ClInclude Include="HackerDevice.h" />
-    <ClInclude Include="Hunting.h" />
-    <ClInclude Include="IniHandler.h" />
-    <ClInclude Include="Input.h" />
-    <ClInclude Include="Overlay.h" />
-    <ClInclude Include="Override.h" />
-    <ClInclude Include="..\vkeys.h" />
-    <ClInclude Include="..\HLSLDecompiler\DecompileHLSL.h" />
-    <ClInclude Include="HookedDXGI.h" />
-    <ClInclude Include="DLLMainHook.h" />
-    <ClInclude Include="..\log.h" />
-    <ClInclude Include="..\util.h" />
-    <ClInclude Include="..\version.h" />
-    <ClInclude Include="..\crc32c-hw-1.0.5\include\crc32c.h" />
-    <ClInclude Include="CommandList.h" />
-    <ClInclude Include="ResourceHash.h" />
-    <ClInclude Include="HookedContext.h" />
-    <ClInclude Include="HookedDevice.h" />
-    <ClInclude Include="..\shader.h" />
-    <ClInclude Include="nvprofile.h" />
-    <ClInclude Include="ShaderRegex.h" />
-    <ClInclude Include="FrameAnalysis.h" />
-    <ClInclude Include="HackerDXGI.h" />
-    <ClInclude Include="profiling.h" />
-    <ClInclude Include="lock.h" />
-    <ClInclude Include="cursor.h" />
+    <ClInclude Include="CommandList.h" Filter="Header Files" />
+    <ClInclude Include="cursor.h" Filter="Header Files" />
+    <ClInclude Include="D3D11Wrapper.h" Filter="Header Files" />
+    <ClInclude Include="DLLMainHook.h" Filter="Header Files" />
+    <ClInclude Include="FrameAnalysis.h" Filter="Header Files" />
+    <ClInclude Include="Globals.h" Filter="Header Files" />
+    <ClInclude Include="HackerContext.h" Filter="Header Files" />
+    <ClInclude Include="HackerDevice.h" Filter="Header Files" />
+    <ClInclude Include="HackerDXGI.h" Filter="Header Files" />
+    <ClInclude Include="HookedContext.h" Filter="Header Files" />
+    <ClInclude Include="HookedDevice.h" Filter="Header Files" />
+    <ClInclude Include="HookedDXGI.h" Filter="Header Files" />
+    <ClInclude Include="Hunting.h" Filter="Header Files" />
+    <ClInclude Include="IniHandler.h" Filter="Header Files" />
+    <ClInclude Include="Input.h" Filter="Header Files" />
+    <ClInclude Include="lock.h" Filter="Header Files" />
+    <ClInclude Include="nvprofile.h" Filter="Header Files" />
+    <ClInclude Include="Overlay.h" Filter="Header Files" />
+    <ClInclude Include="Override.h" Filter="Header Files" />
+    <ClInclude Include="profiling.h" Filter="Header Files" />
+    <ClInclude Include="ResourceHash.h" Filter="Header Files" />
+    <ClInclude Include="ShaderRegex.h" Filter="Header Files" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DirectX11.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{889aa926-57af-41da-97e0-b14b6d5129ea}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{61c044e9-2cf3-4560-bc82-ecb8d10c2911}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

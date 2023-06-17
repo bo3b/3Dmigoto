@@ -33,8 +33,6 @@
     <None Include="d3dxgiWrapper.def" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\log.h" />
-    <ClInclude Include="..\util.h" />
     <ClInclude Include="DXGIWrapper.h" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

@@ -24,6 +24,9 @@
 #include "ShaderRegex.h"
 #include "FrameAnalysis.h"
 #include "profiling.h"
+#include "Assembler.h"
+#include "SignatureParser.h"
+
 
 // -----------------------------------------------------------------------------------------------
 

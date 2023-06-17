@@ -7,9 +7,13 @@
 
 #include "targetver.h"
 
-#include <stdio.h>
+#define NOMINMAX
+#include <windows.h>
+
+#include <algorithm>
+#include <stdint.h>
 #include <tchar.h>
-
-
+#include <string>
+#include <vector>
 
 // TODO: reference additional headers your program requires here

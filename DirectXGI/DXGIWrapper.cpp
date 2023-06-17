@@ -31,7 +31,7 @@
 #include "DXGIWrapper.h"
 //#include "HackerDXGI.h"
 
-#include "log.h"
+#include "..\log.h"
 
 
 bool gLogDebug = false;

@@ -1,31 +1,32 @@
 // cmd_Decompiler.cpp : Defines the entry point for the console application.
 //
 
-#include "stdafx.h"
-
 #include <iostream>     // console output
 
 #include <D3Dcompiler.h>
-#include "DecompileHLSL.h"
-#include "version.h"
-#include "log.h"
-#define MIGOTO_DX 11 // Selects the DX11 disassembler in util.h - the DX9 dis/assembler is not very
-                     // interesting since it is just Microsoft's - we can add it later, but low priority.
-                     // The DX9 decompiler is more interesting, which is unrelated to this flag.
-#include "util.h"
-#include "shader.h"
+#include "../version.h"
+#include "../log.h"
+#include "../util.h"
+#include "../shader.h"
+#include "../HLSLDecompiler/DecompileHLSL.h"
+#include "../HLSLDecompiler/SignatureParser.h"
+
+#define D3D_COMPILE_STANDARD_FILE_INCLUDE ((ID3DInclude*)(UINT_PTR)1)
 
 using namespace std;
 
-FILE *LogFile = stderr; // Log to stderr by default
+FILE* LogFile = stderr; // Log to stderr by default
 bool gLogDebug = false;
 
-static void PrintHelp(int argc, char *argv[])
+static void PrintHelp(int argc, char* argv[])
 {
 	LogInfo("usage: %s [OPTION] FILE...\n\n", argv[0]);
 
 	LogInfo("  -D, --decompile\n");
 	LogInfo("\t\t\tDecompile binary shaders with 3DMigoto's decompiler\n");
+
+	LogInfo("  -T, --translate\n");
+	LogInfo("\t\t\tTranslate asm shader to hlsl with 3DMigoto's decompiler\n");
 
 	// We can do this via fxc easily enough for now, and would need to pass in the shader model:
 	// LogInfo("  -C, --compile\n");
@@ -84,6 +85,7 @@ static void PrintVersion()
 static struct {
 	std::vector<std::string> files;
 	bool decompile;
+	bool translate;
 	bool compile;
 	bool disassemble_ms;
 	bool disassemble_flugan;
@@ -98,10 +100,10 @@ static struct {
 	bool stop;
 } args;
 
-void parse_args(int argc, char *argv[])
+void parse_args(int argc, char* argv[])
 {
 	bool terminated = false;
-	char *arg;
+	char* arg;
 	int i;
 
 	// I'd prefer to use an existing library for this (e.g. that allows
@@ -127,6 +129,10 @@ void parse_args(int argc, char *argv[])
 			}
 			if (!strcmp(arg, "-D") || !strcmp(arg, "--decompile")) {
 				args.decompile = true;
+				continue;
+			}
+			if (!strcmp(arg, "-T") || !strcmp(arg, "--translate")) {
+				args.translate = true;
 				continue;
 			}
 			// if (!strcmp(arg, "-C") || !strcmp(arg, "--compile")) {
@@ -191,11 +197,12 @@ void parse_args(int argc, char *argv[])
 	}
 
 	if (args.decompile + args.compile
-			+ args.disassemble_ms
-			+ args.disassemble_flugan
-			+ args.disassemble_hexdump
-			+ args.disassemble_46
-			+ args.assemble < 1) {
+		+ args.translate
+		+ args.disassemble_ms
+		+ args.disassemble_flugan
+		+ args.disassemble_hexdump
+		+ args.disassemble_46
+		+ args.assemble < 1) {
 		LogInfo("No action specified\n");
 		PrintHelp(argc, argv); // Does not return
 	}
@@ -206,9 +213,9 @@ void parse_args(int argc, char *argv[])
 // to bug in MS's disassembler that always prints floats with %f, which does
 // not have sufficient precision to reproduce a 32bit floating point value
 // exactly. Might still be useful for comparison:
-static HRESULT DisassembleMS(const void *pShaderBytecode, size_t BytecodeLength, string *asmText)
+static HRESULT DisassembleMS(const void* pShaderBytecode, size_t BytecodeLength, string* asmText)
 {
-	ID3DBlob *disassembly = nullptr;
+	ID3DBlob* disassembly = nullptr;
 	UINT flags = D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS;
 	string comments = "//   using 3Dmigoto command line v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
 
@@ -227,8 +234,8 @@ static HRESULT DisassembleMS(const void *pShaderBytecode, size_t BytecodeLength,
 	return S_OK;
 }
 
-static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLength, string *asmText,
-		int hexdump, bool d3dcompiler_46_compat)
+static HRESULT DisassembleFlugan(const void* pShaderBytecode, size_t BytecodeLength, string* asmText,
+	int hexdump, bool d3dcompiler_46_compat)
 {
 	// FIXME: This is a bit of a waste - we convert from a vector<char> to
 	// a void* + size_t to a vector<byte>
@@ -240,9 +247,9 @@ static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLen
 	return S_OK;
 }
 
-static int validate_section(char section[4], unsigned char *old_section, unsigned char *new_section, size_t size, struct dxbc_header *old_dxbc)
+static int validate_section(char section[4], unsigned char* old_section, unsigned char* new_section, size_t size, struct dxbc_header* old_dxbc)
 {
-	unsigned char *p1 = old_section, *p2 = new_section;
+	unsigned char* p1 = old_section, * p2 = new_section;
 	int rc = 0;
 	size_t pos;
 	size_t off = (size_t)(old_section - (unsigned char*)old_dxbc);
@@ -254,21 +261,21 @@ static int validate_section(char section[4], unsigned char *old_section, unsigne
 		if (!rc)
 			LogInfo("\n*** Assembly verification pass failed: mismatch in section %.4s:\n", section);
 		LogInfo("  %.4s+0x%04Ix (0x%08Ix): expected 0x%02x, found 0x%02x\n",
-				section, pos, off+pos, *p1, *p2);
+			section, pos, off + pos, *p1, *p2);
 		rc = 1;
 	}
 
 	return rc;
 }
 
-static int validate_assembly(string *assembly, vector<char> *old_shader)
+static int validate_assembly(string* assembly, vector<char>* old_shader)
 {
 	vector<char> assembly_vec(assembly->begin(), assembly->end());
 	vector<byte> new_shader;
-	struct dxbc_header *old_dxbc_header = NULL, *new_dxbc_header = NULL;
-	struct section_header *old_section_header = NULL, *new_section_header = NULL;
-	uint32_t *old_section_offset_ptr = NULL, *new_section_offset_ptr = NULL;
-	unsigned char *old_section = NULL, *new_section = NULL;
+	struct dxbc_header* old_dxbc_header = NULL, * new_dxbc_header = NULL;
+	struct section_header* old_section_header = NULL, * new_section_header = NULL;
+	uint32_t* old_section_offset_ptr = NULL, * new_section_offset_ptr = NULL;
+	unsigned char* old_section = NULL, * new_section = NULL;
 	uint32_t size;
 	unsigned i, j;
 	int rc = 0;
@@ -285,7 +292,7 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 			LogInfo("\n*** Assembly verification pass failed: Reassembly failed 0x%x\n", hret);
 			return 1;
 		}
-	} catch (AssemblerParseError &e) {
+	} catch (AssemblerParseError& e) {
 		string disassembly;
 
 		LogInfo("\n%s\n\n", e.what());
@@ -317,9 +324,9 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 				// warn, but still compare since the sections
 				// are identical
 				if ((!strncmp(old_section_header->signature, "SHDR", 4) &&
-				     !strncmp(new_section_header->signature, "SHEX", 4)) ||
-				    (!strncmp(old_section_header->signature, "SHEX", 4) &&
-				     !strncmp(new_section_header->signature, "SHDR", 4))) {
+					!strncmp(new_section_header->signature, "SHEX", 4)) ||
+					(!strncmp(old_section_header->signature, "SHEX", 4) &&
+						!strncmp(new_section_header->signature, "SHDR", 4))) {
 					if (args.lenient) {
 						LogInfo("Notice: SHDR / SHEX mismatch\n");
 					} else {
@@ -342,7 +349,7 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 				// If the failure was in a bytecode section,
 				// output the disassembly with hexdump enabled:
 				if (!strncmp(old_section_header->signature, "SHDR", 4) ||
-				    !strncmp(old_section_header->signature, "SHEX", 4)) {
+					!strncmp(old_section_header->signature, "SHEX", 4)) {
 					string disassembly;
 					hret = DisassembleFlugan(old_shader->data(), old_shader->size(), &disassembly, 2, false);
 					if (SUCCEEDED(hret))
@@ -353,7 +360,7 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 
 			if (old_section_header->size != new_section_header->size) {
 				LogInfo("\n*** Assembly verification pass failed: size mismatch in section %.4s, expected %i, found %i\n",
-						old_section_header->signature, old_section_header->size, new_section_header->size);
+					old_section_header->signature, old_section_header->size, new_section_header->size);
 				rc = 1;
 			}
 
@@ -362,11 +369,11 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 		if (j == new_dxbc_header->num_sections) {
 			// Whitelist sections that are okay to be missed:
 			if (!args.lenient &&
-			    strncmp(old_section_header->signature, "STAT", 4) && // Compiler Statistics
-			    strncmp(old_section_header->signature, "RDEF", 4) && // Resource Definitions
-			    strncmp(old_section_header->signature, "SDBG", 4) && // Debug Info
-			    strncmp(old_section_header->signature, "Aon9", 4)) { // Level 9 shader bytecode
-			    //strncmp(old_section_header->signature, "SFI0", 4)) { // Subtarget Feature Info (not yet sure if this is critical or not)
+				strncmp(old_section_header->signature, "STAT", 4) && // Compiler Statistics
+				strncmp(old_section_header->signature, "RDEF", 4) && // Resource Definitions
+				strncmp(old_section_header->signature, "SDBG", 4) && // Debug Info
+				strncmp(old_section_header->signature, "Aon9", 4)) { // Level 9 shader bytecode
+				//strncmp(old_section_header->signature, "SFI0", 4)) { // Subtarget Feature Info (not yet sure if this is critical or not)
 				LogInfo("*** Assembly verification pass failed: Reassembled shader missing %.4s section (not whitelisted)\n", old_section_header->signature);
 				rc = 1;
 			} else
@@ -394,20 +401,13 @@ static int validate_assembly(string *assembly, vector<char> *old_shader)
 	return rc;
 }
 
-
-static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, string *hlslText, string *shaderModel)
+static HRESULT TranslateASMtoHLSL(const void* pShaderBytecode, std::string& disassembly, std::string* hlslText, std::string* shaderModel)
 {
 	// Set all to zero, so we only init the ones we are using here:
-	ParseParameters p = {0};
+	ParseParameters p = { 0 };
 	DecompilerSettings d;
 	bool patched = false;
 	bool errorOccurred = false;
-	string disassembly;
-	HRESULT hret;
-
-	hret = DisassembleMS(pShaderBytecode, BytecodeLength, &disassembly);
-	if (FAILED(hret))
-		return E_FAIL;
 
 	LogInfo("    creating HLSL representation\n");
 
@@ -436,10 +436,22 @@ static HRESULT Decompile(const void *pShaderBytecode, size_t BytecodeLength, str
 	return S_OK;
 }
 
-static int validate_hlsl(string *hlsl, string *shaderModel)
+static HRESULT Decompile(const void* pShaderBytecode, size_t BytecodeLength, string* hlslText, string* shaderModel)
 {
-	ID3DBlob *ppBytecode = NULL;
-	ID3DBlob *pErrorMsgs = NULL;
+	HRESULT hret;
+	string disassembly;
+
+	hret = DisassembleMS(pShaderBytecode, BytecodeLength, &disassembly);
+	if (FAILED(hret))
+		return E_FAIL;
+
+	return TranslateASMtoHLSL(pShaderBytecode, disassembly, hlslText, shaderModel);
+}
+
+static int validate_hlsl(string* hlsl, string* shaderModel)
+{
+	ID3DBlob* ppBytecode = NULL;
+	ID3DBlob* pErrorMsgs = NULL;
 	HRESULT hr;
 
 	// Using optimisation level 0 for faster verification:
@@ -471,7 +483,7 @@ static int validate_hlsl(string *hlsl, string *shaderModel)
 }
 
 template<typename T>
-static int ReadInput(vector<T> *srcData, string const *filename)
+static int ReadInput(vector<T>* srcData, string const* filename)
 {
 	DWORD srcDataSize;
 	DWORD readSize;
@@ -499,10 +511,10 @@ static int ReadInput(vector<T> *srcData, string const *filename)
 	return EXIT_SUCCESS;
 }
 
-static int WriteOutput(string const *in_filename, char const *extension, string const *output)
+static int WriteOutput(string const* in_filename, char const* extension, string const* output)
 {
 	string out_filename;
-	FILE *fp;
+	FILE* fp;
 
 	// TODO: Use 3DMigoto style filenames when possible, but remember we
 	// have no guarantee that the input filename is already in a form that
@@ -526,7 +538,7 @@ static int WriteOutput(string const *in_filename, char const *extension, string 
 	return EXIT_SUCCESS;
 }
 
-static int process(string const *filename)
+static int process(string const* filename)
 {
 	HRESULT hret;
 	string output;
@@ -592,9 +604,17 @@ static int process(string const *filename)
 
 	}
 
-	if (args.decompile) {
-		LogInfo("Decompiling %s...\n", filename->c_str());
-		hret = Decompile(srcData.data(), srcData.size(), &output, &model);
+	if (args.decompile || args.translate) {
+		if (args.decompile) {
+			LogInfo("Decompiling %s...\n", filename->c_str());
+			hret = Decompile(srcData.data(), srcData.size(), &output, &model);
+		} else
+		{
+			LogInfo("Translating %s...\n", filename->c_str());
+			auto srcBytes = assemblerDX9(&srcData);
+			auto data = std::string(srcData.data());
+			hret = TranslateASMtoHLSL(srcBytes.data(), data, &output, &model);
+		}
 		if (FAILED(hret))
 			return EXIT_FAILURE;
 
@@ -615,16 +635,16 @@ static int process(string const *filename)
 //-----------------------------------------------------------------------------
 // Console App Entry-Point.
 //-----------------------------------------------------------------------------
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
 	int rc = EXIT_SUCCESS;
 
 	parse_args(argc, argv);
 
-	for (string const &filename : args.files) {
+	for (string const& filename : args.files) {
 		try {
 			rc = process(&filename) || rc;
-		} catch (const exception & e) {
+		} catch (const exception& e) {
 			LogInfo("\n*** UNHANDLED EXCEPTION: %s\n", e.what());
 			rc = EXIT_FAILURE;
 		}

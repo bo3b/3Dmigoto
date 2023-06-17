@@ -1,9 +1,11 @@
-#include "stdafx.h"
-#include "float.h"
-
-#if MIGOTO_DX == 9
+#include <stdexcept>
 #include <d3dx9shader.h>
-#endif
+
+#include "Assembler.h"
+#include "D3Dcompiler.h"
+#include "float.h"
+#include "..\log.h"
+#include "..\util.h"
 
 using namespace std;
 
@@ -15,7 +17,48 @@ using namespace std;
 // for sscanf_s convinience. Explanation in DecompileHLSL.cpp
 #define UCOUNTOF(...) (unsigned)_countof(__VA_ARGS__)
 
-static unordered_map<string, vector<DWORD>> codeBin;
+struct token_operand
+{
+	union {
+		struct {
+			// XXX Beware that bitfield packing is not defined in
+			// the C/C++ standards and this is relying on compiler
+			// specific packing. This approach is not recommended.
+
+			unsigned comps_enum : 2; /* sm4_operands_comps */
+			unsigned mode : 2; /* sm4_operand_mode */
+			unsigned sel : 8;
+			unsigned file : 8; /* SM_FILE */
+			unsigned num_indices : 2;
+			unsigned index0_repr : 3; /* sm4_operand_index_repr */
+			unsigned index1_repr : 3; /* sm4_operand_index_repr */
+			unsigned index2_repr : 3; /* sm4_operand_index_repr */
+			unsigned extended : 1;
+		};
+		DWORD op;
+	};
+};
+
+inline AssemblerParseError::AssemblerParseError(string context, string desc) :
+	context(context),
+	desc(desc),
+	line_no(0)
+{
+	update_msg();
+}
+
+inline void AssemblerParseError::update_msg()
+{
+	msg = "Assembly parse error";
+	if (line_no > 0)
+		msg += string(" on line ") + to_string(line_no);
+	msg += ", " + desc + ":\n\"" + context + "\"";
+}
+
+inline const char* AssemblerParseError::what() const
+{
+	return msg.c_str();
+}
 
 static DWORD strToDWORD(string s)
 {
@@ -66,7 +109,7 @@ static DWORD strToDWORD(string s)
 	return atoi(s.c_str());
 }
 
-static uint64_t str_to_raw_double(string &s)
+static uint64_t str_to_raw_double(string& s)
 {
 	double d;
 
@@ -86,10 +129,10 @@ static string convertF(DWORD original)
 {
 	char buf[80];
 	char scientific[80];
-	char *scientific_exp = NULL;
+	char* scientific_exp = NULL;
 	int exp;
 
-	float fOriginal = reinterpret_cast<float &>(original);
+	float fOriginal = reinterpret_cast<float&>(original);
 
 	// This printf produces different results depending on the toolchain
 	// and/or SDK we are using. e.g. the value 0x3CAAAAAB will produce:
@@ -153,7 +196,7 @@ static string convertD(DWORD v1, DWORD v2)
 {
 	char buf[80];
 	uint64_t q = (uint64_t)v1 | ((uint64_t)v2 << 32);
-	double *d = (double*)&q;
+	double* d = (double*)&q;
 
 	if (isnan(*d) || isinf(*d)) {
 		// As above, if we ever get called on a NAN/INF value just
@@ -176,49 +219,9 @@ static string convertD(DWORD v1, DWORD v2)
 	return buf;
 }
 
-void writeLUT()
-{
-	FILE* f;
-
-	fopen_s(&f, "lut.asm", "wb");
-	if (!f)
-		return;
-
-	for (unordered_map<string, vector<DWORD>>::iterator it = codeBin.begin(); it != codeBin.end(); ++it) {
-		fputs(it->first.c_str(), f);
-		fputs(":->", f);
-		vector<DWORD> b = it->second;
-		int nextOperand = 1;
-		for (DWORD i = 0; i < b.size(); i++) {
-			if (i == 0) {
-				char hex[40];
-				shader_ins* ins = (shader_ins*)&b[0];
-				if (ins->_11_23 > 0) {
-					if (ins->extended)
-						sprintf_s(hex, "0x%08X: %d,%d,%d<>%d->", b[0], ins->opcode, ins->_11_23, ins->length, ins->extended);
-					else
-						sprintf_s(hex, "0x%08X: %d,%d,%d->", b[0], ins->opcode, ins->_11_23, ins->length);
-				} else {
-					if (ins->extended)
-						sprintf_s(hex, "0x%08X: %d,%d<>%d->", b[0], ins->opcode, ins->length, ins->extended);
-					else
-						sprintf_s(hex, "0x%08X: %d,%d->", b[0], ins->opcode, ins->length);
-				}
-				fputs(hex, f);
-			} else {
-				char hex[20];
-				sprintf_s(hex, " 0x%08X", b[i]);
-				fputs(hex, f);
-			}
-		}
-		fputs("\n", f);
-	}
-	fclose(f);
-}
-
 static void handleSwizzle(string s, token_operand* tOp, bool special = false)
 {
-	if (special == true){
+	if (special == true) {
 		// Mask
 		tOp->mode = 0; // Mask
 		if (s.size() > 0 && s[0] == 'x') {
@@ -242,7 +245,7 @@ static void handleSwizzle(string s, token_operand* tOp, bool special = false)
 		tOp->mode = 0;
 		tOp->comps_enum = 0;
 		return;
-	} else if(s.size() == 4) {
+	} else if (s.size() == 4) {
 		// Swizzle
 		tOp->mode = 1; // Swizzle
 		for (int i = 0; i < 4; i++) {
@@ -255,7 +258,7 @@ static void handleSwizzle(string s, token_operand* tOp, bool special = false)
 			if (s[i] == 'w')
 				tOp->sel |= 3 << (2 * i);
 		}
-	} else if (s.size() == 1){
+	} else if (s.size() == 1) {
 		tOp->mode = 2; // Scalar
 		if (s[0] == 'x')
 			tOp->sel = 0;
@@ -307,7 +310,7 @@ struct special_purpose_register
 	// may interact with this, but this is at least passing all test cases.
 	unsigned comps_enum;
 
-	char *name;
+	const char* name;
 };
 
 static struct special_purpose_register special_purpose_registers[] = {
@@ -337,7 +340,7 @@ static struct special_purpose_register special_purpose_registers[] = {
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/hh446903(v=vs.85).aspx
 };
 
-static bool assemble_special_purpose_register(string &s, vector<DWORD> &v, token_operand *tOp, bool special)
+static bool assemble_special_purpose_register(string& s, vector<DWORD>& v, token_operand* tOp, bool special)
 {
 	size_t swiz_pos = s.find('.');
 	int i;
@@ -363,7 +366,7 @@ static bool assemble_special_purpose_register(string &s, vector<DWORD> &v, token
 
 static vector<DWORD> assembleOp(string s, bool special = false);
 
-static vector<DWORD> assemble_cbvox_operand(string &s, vector<DWORD> &v, token_operand *tOp, bool special, DWORD num)
+static vector<DWORD> assemble_cbvox_operand(string& s, vector<DWORD>& v, token_operand* tOp, bool special, DWORD num)
 {
 	tOp->num_indices = 2;
 	if (s[0] == 'x') { // Indexable temp array
@@ -375,7 +378,7 @@ static vector<DWORD> assemble_cbvox_operand(string &s, vector<DWORD> &v, token_o
 		s.erase(s.begin());
 	} else if (s[0] == 'v') { // Input register
 		tOp->file = 1;
-		if (s.size() > 4 && s[1] == 'i' && s[2] == 'c' && s[3] == 'p')  { // Hull shader vicp
+		if (s.size() > 4 && s[1] == 'i' && s[2] == 'c' && s[3] == 'p') { // Hull shader vicp
 			tOp->file = 0x19;
 			s.erase(s.begin());
 			s.erase(s.begin());
@@ -515,7 +518,7 @@ static vector<DWORD> assemble_cbvox_operand(string &s, vector<DWORD> &v, token_o
 	return v;
 }
 
-static vector<DWORD> assemble_literal_operand(string &s, vector<DWORD> &v, token_operand *tOp)
+static vector<DWORD> assemble_literal_operand(string& s, vector<DWORD>& v, token_operand* tOp)
 {
 	tOp->file = 4;
 	s.erase(s.begin());
@@ -549,7 +552,7 @@ static vector<DWORD> assemble_literal_operand(string &s, vector<DWORD> &v, token
 	return v;
 }
 
-static vector<DWORD> assemble_double_operand(string &s, vector<DWORD> &v, token_operand *tOp)
+static vector<DWORD> assemble_double_operand(string& s, vector<DWORD>& v, token_operand* tOp)
 {
 	// Examples of double literals (from RE2):
 	//   d(0.000000l, 766800.000000l)
@@ -614,17 +617,17 @@ static vector<DWORD> assemble_double_operand(string &s, vector<DWORD> &v, token_
 	return v;
 }
 
-static DWORD encode_min_precision_type(const char *type)
+static DWORD encode_min_precision_type(const char* type)
 {
 	if (!strncmp(type, "min", 3)) {
-		if (!strncmp(type+3, "16", 2)) { // min16*
-			switch(type[5]) {
-				case 'f': return 1 << 14;
-				case 'i': return 4 << 14;
-				case 'u': return 5 << 14;
+		if (!strncmp(type + 3, "16", 2)) { // min16*
+			switch (type[5]) {
+			case 'f': return 1 << 14;
+			case 'i': return 4 << 14;
+			case 'u': return 5 << 14;
 			};
 		}
-		if (!strncmp(type+3, "2_8f", 4)) // min10float
+		if (!strncmp(type + 3, "2_8f", 4)) // min10float
 			return 2 << 14;
 	}
 	if (!strncmp(type, "def32", 5))
@@ -633,7 +636,7 @@ static DWORD encode_min_precision_type(const char *type)
 	return 0;
 }
 
-static void parse_min_precision_tag(string &s, vector<DWORD> &v, token_operand *tOp, DWORD *ext)
+static void parse_min_precision_tag(string& s, vector<DWORD>& v, token_operand* tOp, DWORD* ext)
 {
 	size_t tag;
 
@@ -657,11 +660,11 @@ static void parse_min_precision_tag(string &s, vector<DWORD> &v, token_operand *
 #if 0 // Debugging
 	size_t as = s.find(" as ", tag + 1);
 	if (as != string::npos) {
-		string stype1 = s.substr(tag+1, as - tag - 1);
+		string stype1 = s.substr(tag + 1, as - tag - 1);
 		string stype2 = s.substr(as + 4, s.size() - as - 5);
 		printf("min precision cast from: \"%s\" to: \"%s\"\n", stype1.c_str(), stype2.c_str());
 	} else {
-		string stype1 = s.substr(tag+1, s.length() - tag - 2);
+		string stype1 = s.substr(tag + 1, s.length() - tag - 2);
 		printf("min precision type: \"%s\"\n", stype1.c_str());
 	}
 #endif
@@ -735,11 +738,11 @@ static vector<DWORD> assembleOp(string s, bool special)
 		return v;
 
 	if (s[0] == 'i' && s[1] == 'c' && s[2] == 'b'
-	 || s[0] == 'c' && s[1] == 'b'
-	 || s[0] == 'C' && s[1] == 'B' // Compatibility with d3dcompiler_47 disassembly -DarkStarSword
-	 || s[0] == 'x'
-	 || s[0] == 'o'
-	 || s[0] == 'v') {
+		|| s[0] == 'c' && s[1] == 'b'
+		|| s[0] == 'C' && s[1] == 'B' // Compatibility with d3dcompiler_47 disassembly -DarkStarSword
+		|| s[0] == 'x'
+		|| s[0] == 'o'
+		|| s[0] == 'v') {
 		return assemble_cbvox_operand(s, v, tOp, special, num);
 	}
 
@@ -823,7 +826,7 @@ static vector<string> strToWords(string s)
 		// type here to avoid grouping something we don't want
 		//   -DarkStarSword:
 		if (end != string::npos && (!s.compare(end, 5, " {min")
-		                         || !s.compare(end, 5, " {def"))) {
+			|| !s.compare(end, 5, " {def"))) {
 			// We will match to the next comma or end of line. We
 			// can't just match until the closing brace, because of
 			// cases where minimum precision and absolute value are
@@ -1175,7 +1178,7 @@ static unordered_map<string, vector<int>> insMap = {
 	{ "utod",                      { 2, 0xd9    } }, // Added and verified -DarkStarSword
 };
 
-static void assembleResourceDeclarationType(string *type, vector<DWORD> *v)
+static void assembleResourceDeclarationType(string* type, vector<DWORD>* v)
 {
 	// The resource declarations all use the same format strings and
 	// encoding, so do this once, consistently, and handle all confirmed
@@ -1205,7 +1208,7 @@ static void assembleResourceDeclarationType(string *type, vector<DWORD> *v)
 	// nothing here will cause a hang!
 }
 
-static void assembleSystemValue(string *sv, vector<DWORD> *os)
+static void assembleSystemValue(string* sv, vector<DWORD>* os)
 {
 	// All possible system values used in any of the dcl_*_s?v
 	// declarations (s?v = system value). Not all system values make sense
@@ -1262,7 +1265,7 @@ static void assembleSystemValue(string *sv, vector<DWORD> *os)
 	// otherwise we might generate a corrupt shader and crash DirectX.
 }
 
-static int interpolationMode(vector<string> &w, int def)
+static int interpolationMode(vector<string>& w, int def)
 {
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/dn280473(v=vs.85).aspx
 
@@ -1286,7 +1289,7 @@ static int interpolationMode(vector<string> &w, int def)
 	return 2;
 }
 
-static unsigned parseSyncFlags(string *w)
+static unsigned parseSyncFlags(string* w)
 {
 	unsigned flags = 0;
 	int pos = 4;
@@ -1347,7 +1350,7 @@ static unsigned parseSyncFlags(string *w)
 
 }
 
-static void check_num_ops(string &s, vector<string> &w, int min_expected, int max_expected = -1)
+static void check_num_ops(string& s, vector<string>& w, int min_expected, int max_expected = -1)
 {
 	int num_operands = (int)w.size() - 1;
 	char buf[80];
@@ -1380,29 +1383,29 @@ static void check_num_ops(string &s, vector<string> &w, int min_expected, int ma
 	}
 }
 
-static string translate_string_operand(string &in)
+static string translate_string_operand(string& in)
 {
 	// Strip quote characters:
 	string ret = in.substr(1, in.size() - 2);
 
 	// Translate escape sequences:
 	for (size_t pos = ret.find('\\'); pos < ret.size() - 1; pos = ret.find('\\', pos + 1)) {
-		switch(ret[pos+1]) {
-			case 'b':
-				ret.replace(pos, 2, "\b");
-				break;
-			case 'n':
-				ret.replace(pos, 2, "\n");
-				break;
-			case 'r':
-				ret.replace(pos, 2, "\r");
-				break;
-			case 't':
-				ret.replace(pos, 2, "\t");
-				break;
-			case '\\':
-				ret.replace(pos, 2, "\\");
-				break;
+		switch (ret[pos + 1]) {
+		case 'b':
+			ret.replace(pos, 2, "\b");
+			break;
+		case 'n':
+			ret.replace(pos, 2, "\n");
+			break;
+		case 'r':
+			ret.replace(pos, 2, "\r");
+			break;
+		case 't':
+			ret.replace(pos, 2, "\t");
+			break;
+		case '\\':
+			ret.replace(pos, 2, "\\");
+			break;
 			// The disassembler does not encode all non-printable
 			// characters as escape sequences, so some will show up
 			// as an ambiguous dot "." instead. We could add a
@@ -1415,9 +1418,9 @@ static string translate_string_operand(string &in)
 
 // Printf/errorf instructions can potentially allow us to extract data from the
 // shader when the debug layer is enabled, potentially making them quite valuable
-static vector<DWORD> assemble_printf(string &s, vector<DWORD> &v, vector<string> &w, bool errorf)
+static vector<DWORD> assemble_printf(string& s, vector<DWORD>& v, vector<string>& w, bool errorf)
 {
-	shader_ins ins = {0};
+	shader_ins ins = { 0 };
 	ins.opcode = 0x35;
 	ins._11_23 = 0x4;
 	v.push_back(ins.op);
@@ -1454,7 +1457,7 @@ static vector<DWORD> assemble_printf(string &s, vector<DWORD> &v, vector<string>
 	return v;
 }
 
-static vector<DWORD> assemble_undecipherable_custom_data(string &s, vector<DWORD> &v, vector<string> &w)
+const vector<DWORD> assemble_undecipherable_custom_data(string& s, vector<DWORD>& v, vector<string>& w)
 {
 	uint32_t numOps, word, i;
 
@@ -1481,8 +1484,7 @@ static vector<DWORD> assembleIns(string s)
 	unsigned msaa_samples = 0;
 
 	if (hackMap.find(s) != hackMap.end()) {
-		auto v = hackMap[s];
-		return v;
+		return hackMap[s];
 	}
 	DWORD op = 0;
 	shader_ins* ins = (shader_ins*)&op;
@@ -2282,7 +2284,7 @@ static vector<DWORD> assembleIns(string s)
 	return v;
 }
 
-static string assembleAndCompare(string s, vector<DWORD> v)
+static string assembleAndCompare(string s, vector<DWORD> v, unordered_map<string, vector<DWORD>>& codeBin)
 {
 	string s2;
 	int numSpaces = 0;
@@ -2444,8 +2446,8 @@ static string assembleAndCompare(string s, vector<DWORD> v)
 					// If it's a hex literal it is split over four components instead of two:
 					if (!sNew.compare(lastLiteral + 2, 2, "0x"))
 						lastEnd = sNew.find(",", lastLiteral + 1);
-					if (v[i-1] != v2[i-1] || v[i] != v2[i]) {
-						string sLiteral = convertD(v[i-1], v[i]);
+					if (v[i - 1] != v2[i - 1] || v[i] != v2[i]) {
+						string sLiteral = convertD(v[i - 1], v[i]);
 						string sBegin = sNew.substr(0, lastLiteral + 2);
 						lastLiteral = sBegin.size();
 						sBegin.append(sLiteral);
@@ -2458,8 +2460,8 @@ static string assembleAndCompare(string s, vector<DWORD> v)
 					if (!sNew.compare(lastLiteral + 2, 2, "0x"))
 						lastLiteral = sNew.find(",", lastLiteral + 1);
 					lastEnd = sNew.find(")", lastLiteral + 1);
-					if (v[i-1] != v2[i-1] || v[i] != v2[i]) {
-						string sLiteral = convertD(v[i-1], v[i]);
+					if (v[i - 1] != v2[i - 1] || v[i] != v2[i]) {
+						string sLiteral = convertD(v[i - 1], v[i]);
 						string sBegin = sNew.substr(0, lastLiteral + 1);
 						if (sNew[lastLiteral + 1] == ' ')
 							sBegin = sNew.substr(0, lastLiteral + 2);
@@ -2563,56 +2565,11 @@ vector<string> stringToLines(const char* start, size_t size)
 	}
 	return lines;
 }
-static vector<string> stringToLinesDX9(const char* start, size_t size) {
-	vector<string> lines;
-	const char* pStart = start;
-	const char* pEnd = pStart;
-	const char* pRealEnd = pStart + size;
-	while (true) {
-		while (*pEnd != '\n' && pEnd < pRealEnd) {
-			pEnd++;
-		}
-		if (*pStart == 0) {
-			break;
-		}
-		string s(pStart, pEnd++);
-		pStart = pEnd;
-		lines.push_back(s);
-		if (pStart >= pRealEnd) {
-			break;
-		}
-	}
-	for (unsigned int i = 0; i < lines.size(); i++) {
-		string s = lines[i];
-		// Bug fixed: This would not strip carriage returns from DOS
-		// style newlines if they were the only character on the line,
-		// corrupting the resulting shader binary. -DarkStarSword
-		if (s.size() >= 1 && s[s.size() - 1] == '\r')
-			s.erase(--s.end());
 
-		// Strip whitespace from the end of each line. This isn't
-		// strictly necessary, but the MS disassembler inserts an extra
-		// space after "ret ", "else " and "endif ", which has been a
-		// gotcha for trying to match it with ShaderRegex since it's
-		// easy to miss the fact that there is a space there and not
-		// understand why the pattern isn't matching. By removing
-		// excess spaces from the end of each line now we can make this
-		// gotcha go away.
-		while (s.size() >= 1 && s[s.size() - 1] == ' ')
-			s.erase(--s.end());
-
-		while (s.size() >= 1 && s[0] == ' ')
-			s.erase(s.begin());
-
-		lines[i] = s;
-	}
-	return lines;
-}
-
-static void hexdump_instruction(string &s, vector<DWORD> &v,
-		vector<string> &lines, DWORD *i,
-		int *multiLines, uint32_t line_byte_offset,
-		int hexdump_mode)
+static void hexdump_instruction(string& s, vector<DWORD>& v,
+	vector<string>& lines, DWORD* i,
+	int* multiLines, uint32_t line_byte_offset,
+	int hexdump_mode)
 {
 	string hd;
 	char buf[16];
@@ -2621,7 +2578,7 @@ static void hexdump_instruction(string &s, vector<DWORD> &v,
 
 	try {
 		v2 = assembleIns(s.substr(s.find_first_not_of(" ")));
-	} catch (AssemblerParseError &e) {
+	} catch (AssemblerParseError& e) {
 		parse_error = e.desc;
 	}
 
@@ -2656,7 +2613,7 @@ static void hexdump_instruction(string &s, vector<DWORD> &v,
 	lines.insert(pos, hd);
 }
 
-static void encode_custom_data(string &s, vector<DWORD> &v)
+static void encode_custom_data(string& s, vector<DWORD>& v)
 {
 	char buf[16];
 
@@ -2672,7 +2629,7 @@ static void encode_custom_data(string &s, vector<DWORD> &v)
 // other differences ("cb" vs "CB" in dcl_constantbuffer lines, number of
 // digits used in certain number formatting routines), but this is the most
 // likely to interfere with ShaderRegex patterns.
-static inline void patch_d3dcompiler_47_rdef(string *line, int *rdef_state)
+static inline void patch_d3dcompiler_47_rdef(string* line, int* rdef_state)
 {
 	char name[256], type[16], format[16], dim[16], bind_type[16];
 	int bind_idx, count, numRead;
@@ -2682,16 +2639,16 @@ static inline void patch_d3dcompiler_47_rdef(string *line, int *rdef_state)
 		if (line->compare("// Name                                 Type  Format         Dim      HLSL Bind  Count"))
 			return;
 		*line = "// Name                                 Type  Format         Dim Slot Elements";
-		++*rdef_state;
+		++* rdef_state;
 		return;
 	case 1:
 		if (!line->compare("// ------------------------------ ---------- ------- ----------- -------------- ------"))
 			*line = "// ------------------------------ ---------- ------- ----------- ---- --------";
-		++*rdef_state;
+		++* rdef_state;
 		return;
 	case 2:
 		if (!line->compare("//")) {
-			++*rdef_state;
+			++* rdef_state;
 			return;
 		}
 		numRead = sscanf_s(line->c_str(), "// %s %s %s %s %[a-z]%d %d",
@@ -2700,8 +2657,8 @@ static inline void patch_d3dcompiler_47_rdef(string *line, int *rdef_state)
 		if (numRead == 7) {
 			vector<char> buf(line->length() + 1); // d3dcompiler_47 lines should always be longer
 			_snprintf_s(buf.data(), buf.size(), _TRUNCATE,
-					"// %-30s %10s %7s %11s %4d %8d",
-					name, type, format, dim, bind_idx, count);
+				"// %-30s %10s %7s %11s %4d %8d",
+				name, type, format, dim, bind_idx, count);
 			*line = buf.data();
 		}
 		return;
@@ -2764,7 +2721,7 @@ static char txt_swiz[] = {
 //       int m_PatchX;                  // Index:    0
 //       int m_PatchZ;                  // Index:    0.y
 //
-static inline void replace_cb_offsets_with_indices(string *line)
+static inline void replace_cb_offsets_with_indices(string* line)
 {
 	int numRead, end1 = 0, end2 = 0;
 	unsigned offset = 0, size = 0;
@@ -2804,8 +2761,8 @@ static inline void replace_cb_offsets_with_indices(string *line)
 		// Offset is not on a cb boundary, or this entry has 4
 		// or less components (if known). Show the swizzle:
 		for (n = 0; first_swiz + n <= (first_idx == last_idx ? last_swiz : first_swiz); n++)
-			buf[1+n] = txt_swiz[first_swiz + n];
-		buf[n+1] = '\0';
+			buf[1 + n] = txt_swiz[first_swiz + n];
+		buf[n + 1] = '\0';
 		buf[0] = '.'; n++;
 		*line += buf;
 	}
@@ -2813,7 +2770,7 @@ static inline void replace_cb_offsets_with_indices(string *line)
 	if (last_idx > first_idx) {
 		if ((last_idx - first_idx < 4) && (first_swiz == 0 && last_swiz == 3)) {
 			// 2-4 indices, show each for ShaderRegex matching:
-			for (unsigned i = first_idx+1; i <= last_idx; i++) {
+			for (unsigned i = first_idx + 1; i <= last_idx; i++) {
 				n += _snprintf_s(buf, 32, _TRUNCATE, " %u", i);
 				*line += buf;
 			}
@@ -2832,7 +2789,7 @@ static inline void replace_cb_offsets_with_indices(string *line)
 	}
 	// Minimum 15 character (3 characters x (room for 4 digits + 1 space))
 	// field length for the above will keep most entries aligned:
-	for (; n < 3*5; n++)
+	for (; n < 3 * 5; n++)
 		*line += ' ';
 
 	if (numRead == 2) {
@@ -2849,51 +2806,10 @@ static inline void replace_cb_offsets_with_indices(string *line)
 	*line += suffix;
 }
 
-#if MIGOTO_DX == 9
-HRESULT disassemblerDX9(vector<byte> *buffer, vector<byte> *ret, const char *comment)
-{
-	char* asmBuffer;
-	size_t asmSize;
-	vector<byte> asmBuf;
-	ID3DBlob* pDissassembly = NULL;
-	LPD3DXBUFFER pD3DXDissassembly = NULL;
-	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, comment, &pDissassembly);
-	if (FAILED(ok))
-		ok = D3DDisassemble(buffer->data(), buffer->size(), NULL, comment, &pDissassembly);
-	if (FAILED(ok))
-		ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_DISABLE_DEBUG_INFO, comment, &pDissassembly);
-	if (FAILED(ok)){
-		//below sometimes give an access violation for some reason
-		//ok = D3DXDisassembleShader((DWORD*)buffer->data(), false, NULL, &pD3DXDissassembly);
-		//if (FAILED(ok))
-			return ok;
-		//asmBuffer = (char*)pD3DXDissassembly->GetBufferPointer();
-		//asmSize = pD3DXDissassembly->GetBufferSize();
-	}
-	else {
-		asmBuffer = (char*)pDissassembly->GetBufferPointer();
-		asmSize = pDissassembly->GetBufferSize();
-	}
-	vector<string> lines = stringToLinesDX9(asmBuffer, asmSize);
-	ret->clear();
-	for (size_t i = 0; i < lines.size(); i++) {
-		for (size_t j = 0; j < lines[i].size(); j++) {
-			ret->insert(ret->end(), lines[i][j]);
-		}
-		ret->insert(ret->end(), '\n');
-	}
-	if (pDissassembly)
-		pDissassembly->Release();
-	if (pD3DXDissassembly)
-		pD3DXDissassembly->Release();
-	return S_OK;
-}
-#endif
-
-HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment,
-		int hexdump, bool d3dcompiler_46_compat,
-		bool disassemble_undecipherable_data,
-		bool patch_cb_offsets)
+HRESULT disassembler(vector<byte>* buffer, vector<byte>* ret, const char* comment, unordered_map<string, vector<DWORD>>& codeBin,
+	int hexdump, bool d3dcompiler_46_compat,
+	bool disassemble_undecipherable_data,
+	bool patch_cb_offsets)
 {
 	byte fourcc[4];
 	DWORD fHash[4];
@@ -2930,16 +2846,16 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 	// We disable debug info in the disassembler as it interferes with our
 	// ability to match assembly lines with bytecode below
 	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(),
-			D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS |
-			D3D_DISASM_DISABLE_DEBUG_INFO,
-			comment, &pDissassembly);
+		D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS |
+		D3D_DISASM_DISABLE_DEBUG_INFO,
+		comment, &pDissassembly);
 	if (FAILED(ok))
 		return ok;
 
 	asmBuffer = (char*)pDissassembly->GetBufferPointer();
 	asmSize = pDissassembly->GetBufferSize();
 
-	byte* codeByteStart;
+	byte* codeByteStart = nullptr;
 	int codeChunk = 0;
 	for (DWORD i = 1; i <= numChunks; i++) {
 		codeChunk = numChunks - i;
@@ -2973,7 +2889,7 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 				codeStarted = true;
 				v.push_back(*codeStart);
 				codeStart += 2;
-				s = assembleAndCompare(s, v);
+				s = assembleAndCompare(s, v, codeBin);
 				lines[i] = s;
 			}
 		} else if (s.find("{ {") < s.size()) {
@@ -2996,7 +2912,7 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 				v.push_back(*codeStart);
 				codeStart++;
 			}
-			s = assembleAndCompare(s, v);
+			s = assembleAndCompare(s, v, codeBin);
 			auto sLines = stringToLines(s.c_str(), s.size());
 			size_t startLine = i - sLines.size() + 1;
 			for (size_t j = 0; j < sLines.size(); j++) {
@@ -3038,9 +2954,9 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 				v.push_back(*(codeStart)++);
 				for (uint32_t j = 1; j < len - 1; j++)
 					v.push_back(*(codeStart)++);
-				s = assembleAndCompare(s, v);
+				s = assembleAndCompare(s, v, codeBin);
 			} else {
-				s = assembleAndCompare(s, v);
+				s = assembleAndCompare(s, v, codeBin);
 			}
 			lines[i] = s;
 		}
@@ -3061,9 +2977,9 @@ HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *commen
 	return S_OK;
 }
 
-static void preprocessLine(string &line)
+static void preprocessLine(string& line)
 {
-	const char *p;
+	const char* p;
 	size_t i;
 
 	for (p = line.c_str(), i = 0; *p; p++, i++) {
@@ -3101,7 +3017,7 @@ static vector<DWORD> ComputeHash(byte const* input, DWORD size)
 	bool sizeHash56 = sizeHash >= 56;
 	DWORD restSize = sizeHash56 ? 120 - 56 : 56 - sizeHash;
 	DWORD loopSize = (size + 8 + restSize) >> 6;
-	DWORD Dst[16];
+	DWORD Dst[16]{};
 	DWORD Data[] = { 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 	DWORD loopSize2 = loopSize - (sizeHash56 ? 2 : 1);
 	DWORD start_0 = 0;
@@ -3220,8 +3136,8 @@ static vector<DWORD> ComputeHash(byte const* input, DWORD size)
 
 // origByteCode is modified in this function, so passing it by value!
 // asmFile is not modified, so passing it by pointer -DarkStarSword
-vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
-		vector<AssemblerParseError> *parse_errors)
+vector<byte> assembler(vector<char>* asmFile, vector<byte> origBytecode,
+	vector<AssemblerParseError>* parse_errors)
 {
 	byte fourcc[4];
 	DWORD fHash[4];
@@ -3253,7 +3169,7 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
 	size_t asmSize;
 	asmBuffer = asmFile->data();
 	asmSize = asmFile->size();
-	byte* codeByteStart;
+	byte* codeByteStart = nullptr;
 	int codeChunk = 0;
 	for (DWORD i = 1; i <= numChunks; i++) {
 		codeChunk = numChunks - i;
@@ -3297,7 +3213,7 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
 				vector<DWORD> ins = assembleIns(s);
 				o.insert(o.end(), ins.begin(), ins.end());
 			}
-		} catch (AssemblerParseError &e) {
+		} catch (AssemblerParseError& e) {
 			e.line_no = i + 1;
 			e.update_msg();
 
@@ -3341,8 +3257,46 @@ vector<byte> assembler(vector<char> *asmFile, vector<byte> origBytecode,
 	dwordBuffer[4] = hash[3];
 	return origBytecode;
 }
-#if MIGOTO_DX == 9
-vector<byte> assemblerDX9(vector<char> *asmFile)
+
+HRESULT disassemblerDX9(vector<byte>* buffer, vector<byte>* ret, const char* comment)
+{
+	char* asmBuffer;
+	size_t asmSize;
+	vector<byte> asmBuf;
+	ID3DBlob* pDissassembly = NULL;
+	LPD3DXBUFFER pD3DXDissassembly = NULL;
+	HRESULT ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_ENABLE_DEFAULT_VALUE_PRINTS, comment, &pDissassembly);
+	if (FAILED(ok))
+		ok = D3DDisassemble(buffer->data(), buffer->size(), NULL, comment, &pDissassembly);
+	if (FAILED(ok))
+		ok = D3DDisassemble(buffer->data(), buffer->size(), D3D_DISASM_DISABLE_DEBUG_INFO, comment, &pDissassembly);
+	if (FAILED(ok)) {
+		//below sometimes give an access violation for some reason
+		//ok = D3DXDisassembleShader((DWORD*)buffer->data(), false, NULL, &pD3DXDissassembly);
+		//if (FAILED(ok))
+		return ok;
+		//asmBuffer = (char*)pD3DXDissassembly->GetBufferPointer();
+		//asmSize = pD3DXDissassembly->GetBufferSize();
+	} else {
+		asmBuffer = (char*)pDissassembly->GetBufferPointer();
+		asmSize = pDissassembly->GetBufferSize();
+	}
+	vector<string> lines = stringToLines(asmBuffer, asmSize);
+	ret->clear();
+	for (size_t i = 0; i < lines.size(); i++) {
+		for (size_t j = 0; j < lines[i].size(); j++) {
+			ret->insert(ret->end(), lines[i][j]);
+		}
+		ret->insert(ret->end(), '\n');
+	}
+	if (pDissassembly)
+		pDissassembly->Release();
+	if (pD3DXDissassembly)
+		pD3DXDissassembly->Release();
+	return S_OK;
+}
+
+vector<byte> assemblerDX9(vector<char>* asmFile)
 {
 	vector<byte> ret;
 	LPD3DXBUFFER pAssembly;
@@ -3360,4 +3314,147 @@ vector<byte> assemblerDX9(vector<char> *asmFile)
 	}
 	return ret;
 }
-#endif
+
+// Common routine to handle disassembling binary shaders to asm text.
+// This is used whenever we need the Asm text.
+
+
+// New version using Flugan's wrapper around D3DDisassemble to replace the
+// problematic %f floating point values with %.9e, which is enough that a 32bit
+// floating point value will be reproduced exactly:
+string BinaryToAsmText(const void* pShaderBytecode, size_t BytecodeLength,
+	bool patch_cb_offsets,
+	bool disassemble_undecipherable_data,
+	int hexdump, bool d3dcompiler_46_compat)
+{
+	string comments;
+	vector<byte> byteCode(BytecodeLength);
+	vector<byte> disassembly;
+	HRESULT r;
+
+	comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + LogTime() + "//\n";
+	memcpy(byteCode.data(), pShaderBytecode, BytecodeLength);
+
+#if MIGOTO_DX == 9
+	r = disassemblerDX9(&byteCode, &disassembly, comments.c_str());
+#elif MIGOTO_DX == 11
+	unordered_map<string, vector<DWORD>> codeBin;
+	r = disassembler(&byteCode, &disassembly, comments.c_str(), codeBin, hexdump,
+		d3dcompiler_46_compat, disassemble_undecipherable_data, patch_cb_offsets);
+#endif // MIGOTO_DX
+	if (FAILED(r)) {
+		LogInfo("  disassembly failed. Error: %x\n", r);
+		return "";
+	}
+
+	return string(disassembly.begin(), disassembly.end());
+}
+
+// Get the shader model from the binary shader bytecode.
+//
+// This used to disassemble, then search for the text string, but if we are going to
+// do all that work, we might as well use the James-Jones decoder to get it.
+// The other reason to do it this way is that we have seen multiple shader versions
+// in Unity games, and the old technique of searching for the first uncommented line
+// would fail.
+
+// This is an interesting idea, but doesn't work well here because of project structure.
+// for the moment, let's leave this here, but use the disassemble search approach.
+
+//static string GetShaderModel(const void *pShaderBytecode)
+//{
+//	Shader *shader = DecodeDXBC((uint32_t*)pShaderBytecode);
+//	if (shader == nullptr)
+//		return "";
+//
+//	string shaderModel;
+//	
+//	switch (shader->eShaderType)
+//	{
+//	case PIXEL_SHADER:
+//		shaderModel = "ps";
+//		break;
+//	case VERTEX_SHADER:
+//		shaderModel = "vs";
+//		break;
+//	case GEOMETRY_SHADER:
+//		shaderModel = "gs";
+//		break;
+//	case HULL_SHADER:
+//		shaderModel = "hs";
+//		break;
+//	case DOMAIN_SHADER:
+//		shaderModel = "ds";
+//		break;
+//	case COMPUTE_SHADER:
+//		shaderModel = "cs";
+//		break;
+//	default:
+//		return "";		// Failure.
+//	}
+//
+//	shaderModel += "_" + shader->ui32MajorVersion;
+//	shaderModel += "_" + shader->ui32MinorVersion;
+//
+//	delete shader;
+//
+//	return shaderModel;
+//}
+
+string GetShaderModel(const void* pShaderBytecode, size_t bytecodeLength)
+{
+	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength, false);
+	if (asmText.empty())
+		return "";
+
+	// Read shader model. This is the first not commented line.
+	char* pos = (char*)asmText.data();
+	char* end = pos + asmText.size();
+	while ((pos[0] == '/' || pos[0] == '\n') && pos < end)
+	{
+		while (pos[0] != 0x0a && pos < end) pos++;
+		pos++;
+	}
+	// Extract model.
+	char* eol = pos;
+	while (eol[0] != 0x0a && pos < end) eol++;
+	string shaderModel(pos, eol);
+
+	return shaderModel;
+}
+
+// Get shader type from asm, first non-commented line.  CS, PS, VS.
+// Not sure this works on weird Unity variant with embedded types.
+
+
+// Specific variant to name files consistently, so we know they are Asm text.
+
+HRESULT CreateAsmTextFile(wchar_t* fileDirectory, UINT64 hash, const wchar_t* shaderType,
+	const void* pShaderBytecode, size_t bytecodeLength, bool patch_cb_offsets)
+{
+	string asmText = BinaryToAsmText(pShaderBytecode, bytecodeLength, patch_cb_offsets);
+	if (asmText.empty())
+	{
+		return E_OUTOFMEMORY;
+	}
+
+	wchar_t fullPath[MAX_PATH];
+	swprintf_s(fullPath, MAX_PATH, L"%ls\\%016llx-%ls.txt", fileDirectory, hash, shaderType);
+
+	HRESULT hr = CreateTextFile(fullPath, &asmText, false);
+
+	if (SUCCEEDED(hr))
+		LogInfoW(L"    storing disassembly to %s\n", fullPath);
+	else
+		LogInfoW(L"    error: %x, storing disassembly to %s\n", hr, fullPath);
+
+	return hr;
+}
+
+// Create a text file containing text for the string specified.  Can be Asm or HLSL.
+// If the file already exists and the caller did not specify overwrite (used
+// for reassembled text), return that as an error to avoid overwriting previous
+// work.
+
+// We previously would overwrite the file only after checking if the contents were different,
+// this relaxes that to just being same file name.
