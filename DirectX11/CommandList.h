@@ -1103,6 +1103,7 @@ enum class DrawCommandType {
 	// 3DMigoto special draw commands:
 	FROM_CALLER,
 	AUTO_INDEX_COUNT,
+	AUTO_INDEX_INSTANCE_COUNT,
 };
 
 class DrawCommand : public CommandListCommand {
