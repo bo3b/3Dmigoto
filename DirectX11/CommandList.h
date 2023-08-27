@@ -909,6 +909,7 @@ enum class ParamOverrideType {
 	SLI,
 	HUNTING,
 	FRAME_ANALYSIS,
+	EFFECTIVE_DPI, // For calculating UI scaling factor on 4K+. Note not the same thing as raw DPI.
 };
 static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] = {
 	{L"rt_width", ParamOverrideType::RT_WIDTH},
@@ -951,6 +952,7 @@ static EnumName_t<const wchar_t *, ParamOverrideType> ParamOverrideTypeNames[] =
 	{L"sli", ParamOverrideType::SLI},
 	{L"hunting", ParamOverrideType::HUNTING},
 	{L"frame_analysis", ParamOverrideType::FRAME_ANALYSIS},
+	{L"effective_dpi", ParamOverrideType::EFFECTIVE_DPI},
 	{NULL, ParamOverrideType::INVALID} // End of list marker
 };
 class CommandListOperand :

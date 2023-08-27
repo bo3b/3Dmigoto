@@ -4,6 +4,7 @@
 #include <io.h>
 #include <fcntl.h>
 #include <Dbghelp.h>
+#include <shellscalingapi.h>
 
 // FIXME: Move any dependencies from these headers into common:
 #if MIGOTO_DX == 9
@@ -352,6 +353,97 @@ void WarnIfConflictingShaderExists(wchar_t *orig_path, const char *message)
 		WarnIfConflictingFileExists(orig_path, conflicting_path, message);
 		return;
 	}
+}
+
+extern "C" typedef HRESULT(__stdcall* tGetDpiForMonitor)(HMONITOR, MONITOR_DPI_TYPE, UINT*, UINT*);
+extern "C" typedef HRESULT(__stdcall* tGetProcessDpiAwareness)(HANDLE, PROCESS_DPI_AWARENESS*);
+typedef DPI_AWARENESS_CONTEXT(WINAPI* tSetThreadDpiAwarenessContext)(DPI_AWARENESS_CONTEXT);
+float get_effective_dpi()
+{
+	static tGetDpiForMonitor fnGetDpiForMonitor = nullptr;
+	static tGetProcessDpiAwareness fnGetProcessDpiAwareness = nullptr;
+	static tSetThreadDpiAwarenessContext fnSetThreadDpiAwarenessContext = nullptr;
+	static bool init_done = false;
+	if (!init_done) {
+		// GetDpiForMonitor & GetProcessDpiAwareness were introduced in Windows
+		// 8.1 and SetThreadDpiAwarenessContext was added in Win 10 1607, so
+		// calling them directly would add a link time dependency breaking
+		// backwards compatibility with Windows 7 (in a very bad way since the
+		// game will silently fail to launch, and even if the user does run it
+		// from the command line the error message doesn't really tell them
+		// what's actually wrong). Try to load it dynamically, and if it isn't
+		// available fall back to other methods to get the DPI.
+		HMODULE libShcore = LoadLibraryA("Shcore.dll");
+		if (libShcore) {
+			fnGetDpiForMonitor = (tGetDpiForMonitor)GetProcAddress(libShcore, "GetDpiForMonitor");
+			fnGetProcessDpiAwareness = (tGetProcessDpiAwareness)GetProcAddress(libShcore, "GetProcessDpiAwareness");
+		}
+		HMODULE libUser32 = LoadLibraryA("user32.dll");
+		if (libUser32)
+			fnSetThreadDpiAwarenessContext = (tSetThreadDpiAwarenessContext)GetProcAddress(libUser32, "SetThreadDpiAwarenessContext");
+		if (!fnGetDpiForMonitor)
+			LogInfo("Obsolete Windows version, GetDpiForMonitor() unavailable, falling back to reporting effective_dpi as 96\n");
+		else if (!fnSetThreadDpiAwarenessContext)
+			LogInfo("Obsolete Windows version, SetThreadDpiAwarenessContext() unavailable, effective_dpi will be at the mercy of the process DPI awareness\n");
+		if (fnGetProcessDpiAwareness) {
+			PROCESS_DPI_AWARENESS awareness;
+			fnGetProcessDpiAwareness(NULL, &awareness);
+			LogInfo("Process DPI Awareness: %u\n", awareness);
+		}
+		init_done = true;
+	}
+
+	if (fnGetDpiForMonitor) {
+		HMONITOR mon;
+		if (G->hWnd)
+			mon = MonitorFromWindow(G->hWnd, MONITOR_DEFAULTTONEAREST);
+		else
+			mon = MonitorFromPoint(POINT{ 0,0 }, MONITOR_DEFAULTTOPRIMARY);
+		UINT x = 0, y = 0;
+		// XXX: NOTE GetDpiForMonitor() may return 96 if the process is
+		// PROCESS_DPI_UNAWARE, and PROCESS_SYSTEM_DPI_AWARE is also
+		// sub-optimal. On Windows 10 1607+ we can temporarily switch the
+		// thread to multi-monitor DPI aware that should* then return the
+		// correct effective DPI for the monitor that (most of) the window is
+		// on. Prior to that version we are at the mercy of the process DPI
+		// awareness, and while there is an API that can set it
+		// programmatically since 8.1, it can only be called once in the
+		// lifetime of the process and it might be a bad idea to perturb that.
+		//
+		// * though the doco on this is all over the place and I'm really
+		// unsure if this will work in all cases. e.g. it suggests that it
+		// must be set prior to window creation as it gets baked into the
+		// thread at that time... but that seems false, at least for
+		// GetDpiForMonitor... Also it says GetDpiForMonitor (Win8.1) is DPI
+		// unaware and we should use GetDpiForWindow (Win10) before detailing
+		// what it returns for different DPI awareness settings, seemingly
+		// contradicting itself... I do get the impression that the behaviour
+		// may have changed several times throughout history, so maybe this is
+		// true in older versions of Windows?
+		//
+		// Point is, this could do with wider testing in games with different
+		// DPI awareness at various resolutions and on several versions of
+		// Windows to see how it behaves in practice and if there are any
+		// particularly bad cases.
+		DPI_AWARENESS_CONTEXT old = DPI_AWARENESS_CONTEXT_UNAWARE;
+		if (fnSetThreadDpiAwarenessContext)
+			old = fnSetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE);
+		fnGetDpiForMonitor(mon, MDT_EFFECTIVE_DPI, &x, &y);
+		if (fnSetThreadDpiAwarenessContext)
+			fnSetThreadDpiAwarenessContext(old);
+		return (float)x;
+	}
+
+	// Fallback for Win 7: Just return 96, which is the effective DPI Windows
+	// reports at 100% scaling. We could potentially try to return the
+	// recommended scaling factors for different resolutions (e.g. 120 for
+	// 1080p at 125% recommended scaling, 240 for 4k at 250% recommended
+	// scaling), but it's probably not worth going to such heroics on an OS
+	// that has outdated notions of DPI scaling where no one should really be
+	// using a 4K display anyway. We definitely should not be naive and return
+	// the real / physical / raw DPI here, as that is not the same as effective
+	// DPI and generally unsuitable for UI scaling.
+	return 96.0f;
 }
 
 #if MIGOTO_DX == 9

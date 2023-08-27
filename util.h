@@ -1574,3 +1574,4 @@ static UINT DrawPrimitiveCountToVerticesCount(UINT pCount, D3DPRIMITIVETYPE pTyp
 extern IDXGISwapChain *last_fullscreen_swap_chain;
 #endif // MIGOTO_DX == 11
 void install_crash_handler(int level);
+float get_effective_dpi();
