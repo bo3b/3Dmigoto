@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:49 2019
+// ---- Created with 3Dmigoto v1.3.16 on Thu Aug 31 06:04:57 2023
 
 cbuffer _Params : register(b0)
 {
@@ -138,7 +138,7 @@ void main(
     r0.w = g_txDepth.SampleLevel(g_SamplePoint_s, r2.zw, 0).x;
     r0.w = -g_fQ + r0.w;
     r0.w = -g_fQTimesZNear / r0.w;
-    if (b10_1 != 0) {
+    if (bUseNormals != 0) {
       if (b10_1 != 0) {
         r3.x = g_txNormalsZ.SampleLevel(g_SamplePoint_s, r2.zw, 0).x;
       } else {
@@ -150,7 +150,7 @@ void main(
     r4.xyzw = float4(0,0,0,0);
     r2.w = 0;
     while (true) {
-      r5.x = cmp((int)r2.w >= b10_1);
+      r5.x = cmp((int)r2.w >= iNumRingGathers);
       if (r5.x != 0) break;
       r5.xy = r1.xy * icb[r2.w+0].zw + float2(1,1);
       r5.zw = r1.xy * icb[r2.w+0].zw + r0.xy;
@@ -198,7 +198,7 @@ void main(
       r9.xyzw = r10.xyzw * r9.xyzw;
       r9.xyzw = icb[r2.w+20].xyzw * r9.xyzw;
       r4.xyzw = r9.xyzw * r0.zzzz + r4.xyzw;
-      if (b10_1 != 0) {
+      if (bUseNormals != 0) {
         if (b10_1 != 0) {
           r9.xyzw = g_txNormalsZ.Gather(g_SamplePoint_s, r3.xy).xyzw;
           r10.xyzw = g_txNormalsZ.Gather(g_SamplePoint_s, r3.zw).xyzw;
@@ -235,18 +235,18 @@ void main(
   } else {
     r4.xyzw = float4(0,0,0,0);
   }
-  if (b10_1 != 0) {
+  if (bUseNormals != 0) {
     r0.x = r4.x + r4.y;
     r0.x = r0.x + r4.z;
     r0.x = r0.x + r4.w;
-    r0.y = b10_1 + -1;
+    r0.y = iNumRings + -1;
     r0.y = icb[r0.y+4].x * 3;
     r0.x = r0.x / r0.y;
   } else {
     r0.y = r4.x + r4.y;
     r0.y = r0.y + r4.z;
     r0.y = r0.y + r4.w;
-    r0.z = b10_1 + -1;
+    r0.z = iNumRings + -1;
     r0.z = icb[r0.z+4].x + icb[r0.z+4].x;
     r0.x = r0.y / r0.z;
   }

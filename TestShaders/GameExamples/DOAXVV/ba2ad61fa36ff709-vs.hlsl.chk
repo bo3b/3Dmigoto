@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.16 on Thu Aug 31 05:15:11 2023
+// ---- Created with 3Dmigoto v1.3.16 on Thu Aug 31 06:54:48 2023
 
 cbuffer bool_register_block : register(b1)
 {
@@ -89,7 +89,7 @@ void main(
   uint4 bitmask, uiDest;
   float4 fDest;
 
-  if (gFogEnable != 0) {
+  if (gVertexBlendEnable2 != 0) {
     r0.x = (int)v10.x * 3;
     r0.yzw = gSkinningMatrices[v10.x]._m00_m01_m02 * v7.xxx;
     r1.x = 0;
@@ -268,7 +268,7 @@ void main(
   o3.xyzw = gUseMultiUV ? r2.xyzw : r2.xyxy;
   o4.xyzw = gUseMultiUV ? r5.xyzw : r2.xyxy;
   o5.xyzw = gUseMultiUV ? r6.xyzw : r2.xyxy;
-  o2.xyz = gVertexBlendEnable4 ? v1.xyz : float3(1,1,1);
+  o2.xyz = gUseInputVertexColor ? v1.xyz : float3(1,1,1);
   o1.w = dot(r1.zxy, gShadowVector.xyz);
   o1.xyz = float3(0,0,0);
   o6.xyzw = r3.xyzw;

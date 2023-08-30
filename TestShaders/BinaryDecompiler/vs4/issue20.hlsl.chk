@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.16 on Tue Nov 19 19:22:56 2019
+// ---- Created with 3Dmigoto v1.3.16 on Thu Aug 31 06:05:05 2023
 
 cbuffer _Globals : register(b0)
 {
@@ -21,7 +21,7 @@ void main(
   float4 fDest;
 
   r0.xyzw = g_bBoolParam ? v0.xyzw : float4(0,0,0,0);
-  r0.xyzw = (int4)r0.xyzw + g_bBoolParam;
+  r0.xyzw = (int4)r0.xyzw + g_IntParam;
   o0.xyzw = (int4)r0.xyzw;
   return;
 }

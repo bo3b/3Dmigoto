@@ -2119,14 +2119,14 @@ public:
 					//strPos : +10].w
 					return;
 				}
-				if ((i->second.bt == DT_float || i->second.bt == DT_uint || i->second.bt == DT_int) ||
-					((i->second.bt == DT_float2 || i->second.bt == DT_uint2 || i->second.bt == DT_int2) && (strrchr(right2, '.')[1] == 'w' || strrchr(right2, '.')[1] == 'z')) ||
-					((i->second.bt == DT_float3 || i->second.bt == DT_uint3 || i->second.bt == DT_int3) && strrchr(right2, '.')[1] == 'w'))
+				if ((i->second.bt == DT_float || i->second.bt == DT_uint || i->second.bt == DT_int || i->second.bt == DT_bool) ||
+					((i->second.bt == DT_float2 || i->second.bt == DT_uint2 || i->second.bt == DT_int2 || i->second.bt == DT_bool2) && (strrchr(right2, '.')[1] == 'w' || strrchr(right2, '.')[1] == 'z')) ||
+					((i->second.bt == DT_float3 || i->second.bt == DT_uint3 || i->second.bt == DT_int3 || i->second.bt == DT_bool3) && strrchr(right2, '.')[1] == 'w'))
 				{
 					int skip = 4;
-					if (i->second.bt == DT_float || i->second.bt == DT_uint || i->second.bt == DT_int) skip = 1;
-					else if (i->second.bt == DT_float2 || i->second.bt == DT_uint2 || i->second.bt == DT_int2) skip = 2;
-					else if (i->second.bt == DT_float3 || i->second.bt == DT_uint3 || i->second.bt == DT_int3) skip = 3;
+					if (i->second.bt == DT_float || i->second.bt == DT_uint || i->second.bt == DT_int || i->second.bt == DT_bool) skip = 1;
+					else if (i->second.bt == DT_float2 || i->second.bt == DT_uint2 || i->second.bt == DT_int2 || i->second.bt == DT_bool2) skip = 2;
+					else if (i->second.bt == DT_float3 || i->second.bt == DT_uint3 || i->second.bt == DT_int3 || i->second.bt == DT_bool3) skip = 3;
 					char *dotPos = strrchr(right2, '.');
 					int lowOffset = dotPos[1] - 'x'; if (dotPos[1] == 'w') lowOffset = 3;
 					if (lowOffset >= skip)
