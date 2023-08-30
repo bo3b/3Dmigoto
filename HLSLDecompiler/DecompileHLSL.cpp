@@ -2174,7 +2174,8 @@ public:
 					}
 					else if (mLastStatement && mLastStatement->eOpcode == OPCODE_IMUL &&
 						(i->second.bt == DT_float4x4 || i->second.bt == DT_float4x3 || i->second.bt == DT_float4x2 || i->second.bt == DT_float2x4 ||
-						i->second.bt == DT_float3x4 || i->second.bt == DT_float3x3))
+						i->second.bt == DT_float3x4 || i->second.bt == DT_float3x3) &&
+						mMulOperand.substr(0, mMulOperand.find(".")) != indexRegisterName) // We can't use the old non-multiplied index variable if it was the same one overwritten with the result of the multiplication. TestShaders/GameExamples/DOAXVV/ba2ad61fa36ff709-vs.bin
 					{
 						char newOperand[opcodeSize]; strcpy(newOperand, mMulOperand.c_str());
 						applySwizzle(regAndSwiz, newOperand, true);

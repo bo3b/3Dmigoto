@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.16 on Thu Aug 31 06:54:48 2023
+// ---- Created with 3Dmigoto v1.3.16 on Thu Aug 31 07:32:00 2023
 
 cbuffer bool_register_block : register(b1)
 {
@@ -113,13 +113,13 @@ void main(
       r3.xy = (int2)r3.yw | (int2)r3.xz;
       r2.w = (int)r3.y | (int)r3.x;
       r2.w = (int)r2.w * 3;
-      r3.x = gSkinningMatrices[r2.w]._m03 + -gSkinningMatrices[v10.x]._m03;
-      r3.y = gSkinningMatrices[r2.w]._m13 + -gSkinningMatrices[v10.x]._m13;
-      r3.z = gSkinningMatrices[r2.w]._m23 + -gSkinningMatrices[v10.x]._m23;
+      r3.x = gSkinningMatrices[r2.w/3]._m03 + -gSkinningMatrices[v10.x]._m03;
+      r3.y = gSkinningMatrices[r2.w/3]._m13 + -gSkinningMatrices[v10.x]._m13;
+      r3.z = gSkinningMatrices[r2.w/3]._m23 + -gSkinningMatrices[v10.x]._m23;
       r4.w = dot(v7.yzw, icb[r8.y+0].xyz);
-      r4.xyz = gSkinningMatrices[r2.w]._m00_m01_m02 * r4.www + r4.xyz;
-      r5.xyz = gSkinningMatrices[r2.w]._m10_m11_m12 * r4.www + r5.xyz;
-      r6.xyz = gSkinningMatrices[r2.w]._m20_m21_m22 * r4.www + r6.xyz;
+      r4.xyz = gSkinningMatrices[r2.w/3]._m00_m01_m02 * r4.www + r4.xyz;
+      r5.xyz = gSkinningMatrices[r2.w/3]._m10_m11_m12 * r4.www + r5.xyz;
+      r6.xyz = gSkinningMatrices[r2.w/3]._m20_m21_m22 * r4.www + r6.xyz;
       r7.xyz = r3.xyz * r4.www + r7.xyz;
     }
     r0.y = cmp(0 < v8.x);
@@ -143,13 +143,13 @@ void main(
         r8.xy = (int2)r8.yw | (int2)r8.xz;
         r2.w = (int)r8.y | (int)r8.x;
         r2.w = (int)r2.w * 3;
-        r8.x = gSkinningMatrices[r2.w]._m03 + -gSkinningMatrices[v10.x]._m03;
-        r8.y = gSkinningMatrices[r2.w]._m13 + -gSkinningMatrices[v10.x]._m13;
-        r8.z = gSkinningMatrices[r2.w]._m23 + -gSkinningMatrices[v10.x]._m23;
+        r8.x = gSkinningMatrices[r2.w/3]._m03 + -gSkinningMatrices[v10.x]._m03;
+        r8.y = gSkinningMatrices[r2.w/3]._m13 + -gSkinningMatrices[v10.x]._m13;
+        r8.z = gSkinningMatrices[r2.w/3]._m23 + -gSkinningMatrices[v10.x]._m23;
         r3.w = dot(v8.xyzw, icb[r1.w+0].xyzw);
-        r0.yzw = gSkinningMatrices[r2.w]._m00_m01_m02 * r3.www + r0.yzw;
-        r1.xyz = gSkinningMatrices[r2.w]._m10_m11_m12 * r3.www + r1.xyz;
-        r2.xyz = gSkinningMatrices[r2.w]._m20_m21_m22 * r3.www + r2.xyz;
+        r0.yzw = gSkinningMatrices[r2.w/3]._m00_m01_m02 * r3.www + r0.yzw;
+        r1.xyz = gSkinningMatrices[r2.w/3]._m10_m11_m12 * r3.www + r1.xyz;
+        r2.xyz = gSkinningMatrices[r2.w/3]._m20_m21_m22 * r3.www + r2.xyz;
         r3.xyz = r8.xyz * r3.www + r3.xyz;
         r1.w = r10.y;
       }
@@ -178,13 +178,13 @@ void main(
           r8.xy = (int2)r8.yw | (int2)r8.xz;
           r2.w = (int)r8.y | (int)r8.x;
           r2.w = (int)r2.w * 3;
-          r8.x = gSkinningMatrices[r2.w]._m03 + -gSkinningMatrices[v10.x]._m03;
-          r8.y = gSkinningMatrices[r2.w]._m13 + -gSkinningMatrices[v10.x]._m13;
-          r8.z = gSkinningMatrices[r2.w]._m23 + -gSkinningMatrices[v10.x]._m23;
+          r8.x = gSkinningMatrices[r2.w/3]._m03 + -gSkinningMatrices[v10.x]._m03;
+          r8.y = gSkinningMatrices[r2.w/3]._m13 + -gSkinningMatrices[v10.x]._m13;
+          r8.z = gSkinningMatrices[r2.w/3]._m23 + -gSkinningMatrices[v10.x]._m23;
           r3.w = dot(v9.xyzw, icb[r1.w+0].xyzw);
-          r0.yzw = gSkinningMatrices[r2.w]._m00_m01_m02 * r3.www + r0.yzw;
-          r1.xyz = gSkinningMatrices[r2.w]._m10_m11_m12 * r3.www + r1.xyz;
-          r2.xyz = gSkinningMatrices[r2.w]._m20_m21_m22 * r3.www + r2.xyz;
+          r0.yzw = gSkinningMatrices[r2.w/3]._m00_m01_m02 * r3.www + r0.yzw;
+          r1.xyz = gSkinningMatrices[r2.w/3]._m10_m11_m12 * r3.www + r1.xyz;
+          r2.xyz = gSkinningMatrices[r2.w/3]._m20_m21_m22 * r3.www + r2.xyz;
           r3.xyz = r8.xyz * r3.www + r3.xyz;
           r1.w = r10.y;
         }
