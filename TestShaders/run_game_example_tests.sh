@@ -18,7 +18,7 @@ reconstruct_shader()
 		reconstruct_shader "$unstripped_filename"
 		echo -n "Reconstructing $bin_filename... "
 		"$FXC" /nologo /dumpbin "$unstripped_filename" /Qstrip_reflect /Fo "$bin_filename" \
-			>/dev/null 2>&1 && echo OK || echo Fail
+			</dev/null >/dev/null 2>&1 && echo OK || echo Fail
 		return
 	fi
 

@@ -114,19 +114,19 @@ run_decompiler_test()
 	local fail=0
 
 	rm "$decompiled" "$decompiled_log" "$recompiled" "$recompiled_asm" "$recompiled_log" 2>/dev/null
-	local model=$(timeout 5s "$FXC" /nologo /dumpbin "$compiled" | grep -avE '^(\/\/|$)' | head -n 1 | tr -d '\r')
+	local model=$(timeout 5s "$FXC" /nologo /dumpbin "$compiled" </dev/null | grep -avE '^(\/\/|$)' | head -n 1 | tr -d '\r')
 	if [ -z "$model" ]; then
 		echo -n " Unable to get shader model - bad binary?"
 		fail=1
 	else
-		"$CMD_DECOMPILER" -D "$compiled" > "$decompiled_log" 2>&1 # produces "$decompiled"
+		"$CMD_DECOMPILER" -D "$compiled" </dev/null > "$decompiled_log" 2>&1 # produces "$decompiled"
 		if [ ! -f "$decompiled" ]; then
 			echo -n " HLSL decompilation failed."
 			fail=1
 		else
 			rm "$decompiled_log"
 			check_decompiler_result "$decompiled" "$check" || fail=1
-			if ! "$FXC" /nologo "$decompiled" /T "$model" /Fo "$recompiled" /Fc "$recompiled_asm" /Fe "$recompiled_log" >/dev/null 2>&1; then
+			if ! "$FXC" /nologo "$decompiled" /T "$model" /Fo "$recompiled" /Fc "$recompiled_asm" /Fe "$recompiled_log" </dev/null >/dev/null 2>&1; then
 				echo -n " Recompilation failed."
 				fail=1
 			fi
@@ -152,7 +152,7 @@ run_hlsl_test()
 		local stripped_asm="${dst}_${model}_stripped.asm"
 
 		echo -n "....: ${dst}_${model}...         "
-		"$FXC" /nologo "$src" /T "$model" $flags /Fo "$HLSL_OUTPUT_DIR\\$compiled" /Fc "$HLSL_OUTPUT_DIR\\$assembled" /Fe "$HLSL_OUTPUT_DIR\\$log" >/dev/null
+		"$FXC" /nologo "$src" /T "$model" $flags /Fo "$HLSL_OUTPUT_DIR\\$compiled" /Fc "$HLSL_OUTPUT_DIR\\$assembled" /Fe "$HLSL_OUTPUT_DIR\\$log" </dev/null >/dev/null
 		rm_if_empty "$HLSL_OUTPUT_DIR\\$log"
 
 		local test_dir="$PWD"
@@ -160,7 +160,7 @@ run_hlsl_test()
 			run_decompiler_test "$compiled" "$test_dir/${dst}_${model}.hlsl.chk"
 
 			echo -n "....: ${dst}_${model}_stripped..."
-			"$FXC" /nologo /dumpbin "$compiled" /Qstrip_reflect /Fo "$stripped" /Fc "$stripped_asm" >/dev/null
+			"$FXC" /nologo /dumpbin "$compiled" /Qstrip_reflect /Fo "$stripped" /Fc "$stripped_asm" </dev/null >/dev/null
 			run_decompiler_test "$stripped" "$test_dir/${dst}_${model}_stripped.hlsl.chk"
 		cd "$test_dir"
 	done
@@ -174,7 +174,7 @@ run_assembler_test()
 	local asemble_log="${dst}_asm.log"
 
 	rm "$disassembled" "$asemble_log" 2>/dev/null
-	"$CMD_DECOMPILER" -d -V $LENIENT "$compiled" > "$asemble_log" 2>&1 # produces "$disassembled"
+	"$CMD_DECOMPILER" -d -V $LENIENT "$compiled" </dev/null > "$asemble_log" 2>&1 # produces "$disassembled"
 	pass_fail $?
 }
 
@@ -207,7 +207,7 @@ run_hlsl_asm_test()
 		local compile_log="${dst}_${model}_fxc.log"
 
 		echo -n "....: ${dst}_${model}...         "
-		"$FXC" /nologo "$src" /T "$model" $flags /Fo "$ASM_OUTPUT_DIR\\$compiled" /Fc "$ASM_OUTPUT_DIR\\$ms_assembled" /Fe "$ASM_OUTPUT_DIR\\$compile_log" >/dev/null
+		"$FXC" /nologo "$src" /T "$model" $flags /Fo "$ASM_OUTPUT_DIR\\$compiled" /Fc "$ASM_OUTPUT_DIR\\$ms_assembled" /Fe "$ASM_OUTPUT_DIR\\$compile_log" </dev/null >/dev/null
 		rm_if_empty "$ASM_OUTPUT_DIR\\$compile_log"
 
 		local test_dir="$PWD"
@@ -256,13 +256,13 @@ run_asm_asm_test()
 	cp "$src" "$ASM_OUTPUT_DIR/$src"
 	local test_dir="$PWD"
 	cd "$ASM_OUTPUT_DIR"
-		"$CMD_DECOMPILER" -a "$src" > "$asm_log" 2>&1 # produces "$assembled"
+		"$CMD_DECOMPILER" -a "$src" </dev/null > "$asm_log" 2>&1 # produces "$assembled"
 		if [ $? -ne 0 ]; then
 			echo -n " Assembly failed."
 			fail=1
 		else
 			rm "$src" 2>/dev/null || true
-			"$CMD_DECOMPILER" -d -V "$assembled" > "$dsm_log" 2>&1 # produces "$src"
+			"$CMD_DECOMPILER" -d -V "$assembled" </dev/null > "$dsm_log" 2>&1 # produces "$src"
 			if [ $? -ne 0 ]; then
 				echo -n " Disassembly failed."
 				fail=1
@@ -276,7 +276,7 @@ run_asm_asm_test()
 
 cmd_decompiler_copy_reflection_check()
 {
-	"$CMD_DECOMPILER" --version 2>/dev/null
+	"$CMD_DECOMPILER" --version </dev/null 2>/dev/null
 }
 
 reconstruct_shader_binary()
@@ -304,7 +304,7 @@ reconstruct_shader_binary()
 	# shaders we expect the compilation to fail outright or may not use the
 	# complete reflection information, so we might have to massage the HLSL
 	# by hand a little first.
-	"$FXC" /T "$shader_model" "$hlsl_filename" /Fo "$hlsl_filename.bin"
+	"$FXC" /T "$shader_model" "$hlsl_filename" /Fo "$hlsl_filename.bin" </dev/null
 
 	# We don't really trust the _replace.txt file to test the decompiler
 	# since it already went through the decompiler, so we want to use the
@@ -312,7 +312,7 @@ reconstruct_shader_binary()
 	# doesn't assemble the reflection information and we really want that
 	# to adequately test the decompiler we will compromise and copy the
 	# reflection information from the HLSL compiled binary:
-	"$CMD_DECOMPILER" -a "$asm_filename" --copy-reflection "$hlsl_filename.bin"
+	"$CMD_DECOMPILER" -a "$asm_filename" --copy-reflection "$hlsl_filename.bin" </dev/null
 
 	if [ "$rm_asm" = "1" ]; then
 		rm "$asm_filename"
