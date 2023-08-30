@@ -1,4 +1,4 @@
-// ---- Created with 3Dmigoto v1.3.16 on Sun Dec 01 01:36:35 2019
+// ---- Created with 3Dmigoto v1.3.16 on Thu Aug 31 05:55:51 2023
 
 cbuffer SceneInfo : register(b0)
 {
@@ -72,7 +72,7 @@ void main)
       r2.xyzw = f16tof32(r2.xyzw);
     r2.xyzw = -r0.xxxx + {min16f}.xyzw;
     r2.xyzw = {min16f}.xyzw * abs(r2.xyz) + {min16f}|.xyzw;
-    r2.xyzw = max(float4(9.99999975e-005,9.99999975e-005,9.99999975e-005,9.99999975e-005), {min16f}.xyzw);
+    r2.xyzw = max(float4(9.99999975e-05,9.99999975e-05,9.99999975e-05,9.99999975e-05), {min16f}.xyzw);
     r3.xyzw = r3.xyzw * {min16f}.xyzw;
     r4.xy = r3.xy + {min16f}.xy;
     r4.zw = r2.xy + {min16f}.zw;
@@ -82,7 +82,7 @@ void main)
       r2.xyzw = f16tof32(r2.xyzw);
     r2.xyzw = -r0.xxxx + {min16f}.xyzw;
     r2.xyzw = {min16f}.xyzw * abs(r2.xyz) + {min16f}|.xyzw;
-    r2.xyzw = max(float4(9.99999975e-005,9.99999975e-005,9.99999975e-005,9.99999975e-005), {min16f}.xyzw);
+    r2.xyzw = max(float4(9.99999975e-05,9.99999975e-05,9.99999975e-05,9.99999975e-05), {min16f}.xyzw);
     r4.xy = {min16f}.xy * r2.xy + {min16f}.xy;
     r4.zw = r4.zw + {min16f}.zw;
     r4.xy = {min16f}.xy * r2.zw + {min16f}.xy;
@@ -93,7 +93,7 @@ void main)
       r2.xyzw = f16tof32(r2.xyzw);
     r2.xyzw = -r0.xxxx + {min16f}.xyzw;
     r2.xyzw = {min16f}.xyzw * abs(r2.xyz) + {min16f}|.xyzw;
-    r2.xyzw = max(float4(9.99999975e-005,9.99999975e-005,9.99999975e-005,9.99999975e-005), {min16f}.xyzw);
+    r2.xyzw = max(float4(9.99999975e-05,9.99999975e-05,9.99999975e-05,9.99999975e-05), {min16f}.xyzw);
     r4.xy = {min16f}.xy * r2.xy + {min16f}.xy;
     r4.zw = r4.zw + {min16f}.zw;
     r4.xy = {min16f}.xy * r2.zw + {min16f}.xy;
@@ -104,7 +104,7 @@ void main)
       r2.xyzw = f16tof32(r2.xyzw);
     r0.xyzw = -r0.xxxx + {min16f}.xyzw;
     r0.xyzw = {min16f}.xyzw * abs(r0.xyz) + {min16f}|.xyzw;
-    r0.xyzw = max(float4(9.99999975e-005,9.99999975e-005,9.99999975e-005,9.99999975e-005), {min16f}.xyzw);
+    r0.xyzw = max(float4(9.99999975e-05,9.99999975e-05,9.99999975e-05,9.99999975e-05), {min16f}.xyzw);
     r4.xy = {min16f}.xy * r0.xy + {min16f}.xy;
     r4.zw = r4.zw + {min16f}.zw;
     r4.xy = {min16f}.xy * r0.zw + {min16f}.xy;
