@@ -715,6 +715,8 @@ static bool ParseDrawCommand(const wchar_t *section,
 	if (!wcscmp(key, L"draw")) {
 		if (!wcscmp(val->c_str(), L"from_caller")) {
 			operation->type = DrawCommandType::FROM_CALLER;
+		} else if (!wcscmp(val->c_str(), L"auto")) {
+			operation->type = DrawCommandType::AUTO_VERTEX_COUNT;
 		} else {
 			operation->type = DrawCommandType::DRAW;
 			ok = ParseDrawCommandArgs(val, operation, false, 2, ini_namespace, pre_command_list->scope);
@@ -1084,6 +1086,36 @@ void PresetCommand::run(CommandListState *state)
 		preset->Trigger(this);
 }
 
+static UINT get_vertex_count_from_current_vb(ID3D11DeviceContext* mOrigContext1)
+{
+	ID3D11Buffer* vb;
+	D3D11_BUFFER_DESC desc;
+	UINT stride;
+	UINT offset;
+
+	// Using vb slot 0. This is kind of making an assumption that vb0 is
+	// assigned and has per-vertex (not per-instance) data, but that's probably
+	// going to be a fairly safe bet in almost every game. We could go to more
+	// heorics to check other vertex buffers if slot 0 isn't assigned, and to
+	// check the input layout to make sure it holds per-vertex data, but it's
+	// probably not worth it, especially as there's no API to get the input
+	// layout description, and while we have stored it in private data for
+	// frame analysis purposes, querying private data is a slow and not
+	// something we want to do in the hot path of the render pipeline.
+	//
+	// Let's just keep this simple and fast, and if a game comes along that
+	// doesn't work with this the modder can always specify the vertex count
+	// manually.
+	mOrigContext1->IAGetVertexBuffers(0, 1, &vb, &stride, &offset);
+	if (!vb)
+		return 0;
+
+	vb->GetDesc(&desc);
+	vb->Release();
+
+	return (desc.ByteWidth - offset) / stride;
+}
+
 static UINT get_index_count_from_current_ib(ID3D11DeviceContext *mOrigContext1)
 {
 	ID3D11Buffer *ib;
@@ -1263,6 +1295,14 @@ void DrawCommand::run(CommandListState *state)
 					LogOverlay(LOG_DIRE, "BUG: draw = from_caller -> unknown draw call type\n");
 					break;
 			}
+			break;
+		case DrawCommandType::AUTO_VERTEX_COUNT:
+			auto_count = get_vertex_count_from_current_vb(mOrigContext1);
+			COMMAND_LIST_LOG(state, "[%S] draw = auto -> Draw(%u, 0)\n", ini_section.c_str(), auto_count);
+			if (auto_count)
+				mOrigContext1->Draw(auto_count, 0);
+			else
+				COMMAND_LIST_LOG(state, "  Unable to determine vertex count\n");
 			break;
 		case DrawCommandType::AUTO_INDEX_COUNT:
 			auto_count = get_index_count_from_current_ib(mOrigContext1);
