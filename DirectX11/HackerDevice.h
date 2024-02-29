@@ -13,6 +13,14 @@
 DEFINE_GUID(IID_HackerDevice,
 0x83ffd841, 0xa5c9, 0x46f4, 0x81, 0x9, 0xbc, 0x25, 0x95, 0x58, 0xfe, 0xf4);
 
+// Hack to get around vertex limits in genshin buffers
+// Apologies for the silly way of doing this, am currently under time pressure
+// I will come back and do it properly once my time frees up
+#ifndef GENSHIN_VERTEX
+#define GENSHIN_VERTEX
+extern std::unordered_set<UINT64> genshin_character_vb_draw_hashes;
+#endif
+
 // Forward declaration to allow circular reference between HackerContext and HackerDevice. 
 // We need this to allow each to reference the other as needed.
 

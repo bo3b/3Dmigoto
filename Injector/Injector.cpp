@@ -115,6 +115,8 @@ static void check_3dmigoto_version(const char *module_path, const char *ini_sect
 	delete [] buf;
 }
 
+// TODO: Fix to properly track counts when passing between functions, or find out why genshin seems to break the check functionality
+int check_count = 0;
 static bool verify_injection(PROCESSENTRY32 *pe, const wchar_t *module, bool log_name)
 {
 	HANDLE snapshot;
@@ -128,20 +130,28 @@ static bool verify_injection(PROCESSENTRY32 *pe, const wchar_t *module, bool log
 		basename++;
 	else
 		basename = module;
-
+	
+	check_count++;
 	do {
 		snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, pe->th32ProcessID);
 	} while (snapshot == INVALID_HANDLE_VALUE && GetLastError() == ERROR_BAD_LENGTH);
 	if (snapshot == INVALID_HANDLE_VALUE) {
-		printf("%S (%d): Unable to verify if 3DMigoto was successfully loaded: %d\n",
+		printf("%S (%d): Checking if 3DMigoto GIMI was successfully loaded. Do not worry if this window closes: %d\n",
 				pe->szExeFile, pe->th32ProcessID, GetLastError());
+		if (check_count > 10) {
+			return true;
+		}
 		return false;
 	}
 
 	me.dwSize = sizeof(MODULEENTRY32);
 	if (!Module32First(snapshot, &me)) {
-		printf("%S (%d): Unable to verify if 3DMigoto was successfully loaded: %d\n",
+		printf("%S (%d): Checking if 3DMigoto GIMI was successfully loaded. Do not worry if this window closes: %d\n",
 				pe->szExeFile, pe->th32ProcessID, GetLastError());
+		if (check_count > 10) {
+			CloseHandle(snapshot);
+			return true;
+		}
 		goto out_close;
 	}
 
@@ -197,20 +207,19 @@ static bool check_for_running_target(wchar_t *target, const wchar_t *module)
 
 	snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 	if (snapshot == INVALID_HANDLE_VALUE) {
-		printf("Unable to verify if 3DMigoto was successfully loaded: %d\n", GetLastError());
+		printf("Checking if 3DMigoto GIMI was successfully loaded. Do not worry if this window closes: %d\n", GetLastError());
 		return false;
 	}
 
 	pe.dwSize = sizeof(PROCESSENTRY32);
 	if (!Process32First(snapshot, &pe)) {
-		printf("Unable to verify if 3DMigoto was successfully loaded: %d\n", GetLastError());
+		printf("Checking if 3DMigoto GIMI was successfully loaded. Do not worry if this window closes: %d\n", GetLastError());
 		goto out_close;
 	}
 
 	do {
 		if (_wcsicmp(pe.szExeFile, basename))
 			continue;
-
 		rc = verify_injection(&pe, module, !pids.count(pe.th32ProcessID)) || rc;
 		pids.insert(pe.th32ProcessID);
 	} while (Process32Next(snapshot, &pe));
@@ -321,7 +330,7 @@ int main()
 	if (GetLastError() == ERROR_ALREADY_EXISTS)
 		wait_exit(EXIT_FAILURE, "ERROR: Another instance of the 3DMigoto Loader is already running. Please close it and try again\n");
 
-	printf("\n------------------------------- 3DMigoto Loader ------------------------------\n\n");
+	printf("\n------------------------------- 3DMigoto GIMI Loader ------------------------------\n\n");
 
 	ini_file = CreateFile(L"d3dx.ini", GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (ini_file == INVALID_HANDLE_VALUE)
@@ -348,6 +357,30 @@ int main()
 	// value and bail if it is in the wrong one.
 	if (!find_ini_setting_lite(ini_section, "target", target, MAX_PATH))
 		exit_usage("d3dx.ini [Loader] section missing required \"target\" setting\n");
+
+	// Fixes some compatability issues with cultivation
+	int i = 0, j = 0;
+	while (target[i] != '\0') {
+
+		// Remove forward slashes
+		if (target[i] == '/') {
+			target[j] = '\\';
+		}
+		// Remove double slashes
+		else if (target[i] == '\\' && target[i + 1] == '\\') {
+			target[j] = '\\';
+			i++;
+		}
+		else if (target[i] == '\"') {
+			j--;
+		}
+		else {
+			target[j] = target[i];
+		}
+		i++;
+		j++;
+	}
+	target[j] = '\0';
 
 	if (!find_ini_setting_lite(ini_section, "module", module_path, MAX_PATH))
 		exit_usage("d3dx.ini [Loader] section missing required \"module\" setting\n");

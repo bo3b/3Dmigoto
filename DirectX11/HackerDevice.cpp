@@ -77,8 +77,12 @@
 typedef std::unordered_map<IUnknown *, HackerDevice *> DeviceMap;
 static DeviceMap device_map;
 
+// Forcably overriding size of genshin's draw buffers upon buffer create
+// Separated out here so we do not spend time recreating them each draw call
+std::unordered_set<UINT64> genshin_character_vb_draw_hashes = { 3999368768, 3914268842, 2675921, 2269637282, 3381130432, 2265609369, 3658145583, 348730234, 3206123287, 4095494095, 1627175614, 2457683658, 2334791042, 2037003170, 2060120640, 2769185736, 1444257140, 2930471741, 1027264250, 2614133275, 1275163150, 1019803691, 1914480996, 482238240, 1614041745, 3729555884, 3859108149, 707388211, 2536330990, 1258989410, 3512060255, 1160123486, 4023158633, 1380359734, 4012102701, 1126229385, 1867121482, 7608616, 1106346560, 3841743106, 283024504, 1460830225, 478721929, 2690546668, 889403198, 2652399833, 4090798106, 4089349450, 399728222, 4259418583, 4163605496, 4228376619, 868416083, 1620919672, 227204795, 1552632211, 2488417195, 3874717824, 4190826402, 439420883, 2125620477, 2721078696, 86370884, 637445377, 1111390749, 3863410899, 725060867, 595515587, 1393976728, 2891758963, 120378664, 3966015416, 865607904, 4042323108, 614895516, 4042323108, 4104526509, 4104526509, 4082182058, 3220894407, 3220894407, 1821815196 };
+
 // This will look up a HackerDevice corresponding to some unknown device object
-// (ID3D11Device*, IDXGIDevice*, etc). It will bump the refcount on the
+// (ID3D11Device*, IDXGIDevice*, etc). It will bump the refcount on the2652399833
 // returned interface.
 HackerDevice* lookup_hacker_device(IUnknown *unknown)
 {
@@ -2147,6 +2151,15 @@ STDMETHODIMP HackerDevice::CreateBuffer(THIS_
 
 	// Override custom settings?
 	pNewDesc = process_texture_override(hash, mStereoHandle, pDesc, &newDesc, &oldMode);
+	if (genshin_character_vb_draw_hashes.find(hash) != genshin_character_vb_draw_hashes.end()) {
+		//LogInfo("Before: %d\n", pNewDesc->ByteWidth);
+		UINT new_bytewidth = 8800000;
+		UINT *p_bytewidth = &new_bytewidth;
+		UINT *old_bytewidth = (UINT *)&pNewDesc->ByteWidth;
+		*old_bytewidth = new_bytewidth;
+		//LogInfo("After: %d\n", pNewDesc->ByteWidth);
+		//LogInfo("%d", pNewDesc->ByteWidth);
+	}
 
 	HRESULT hr = mOrigDevice1->CreateBuffer(pNewDesc, pInitialData, ppBuffer);
 	restore_old_surface_create_mode(oldMode, mStereoHandle);

@@ -1050,6 +1050,11 @@ static UINT64 GetIniHash(const wchar_t *section, const wchar_t *key, UINT64 def,
 		} else {
 			if (found)
 				*found = true;
+			if (key == L"Hash") {
+				if (wcsstr(section, L"VertexLimitRaise") != 0) {
+					genshin_character_vb_draw_hashes.insert(ret);
+				}
+			}
 			LogInfo("  %S=%016llx\n", key, ret);
 		}
 	}

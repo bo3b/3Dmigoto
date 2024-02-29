@@ -263,6 +263,30 @@ static bool verify_intended_target(HINSTANCE our_dll)
 	if (!find_ini_setting_lite(section, "target", target, MAX_PATH))
 		goto out_free;
 
+	// Fixes some compatability issues with cultivation
+	int i = 0, j = 0;
+	while (target[i] != '\0') {
+
+		// Remove forward slashes
+		if (target[i] == '/') {
+			target[j] = '\\';
+		}
+		// Remove double slashes
+		else if (target[i] == '\\' && target[i + 1] == '\\') {
+			target[j] = '\\';
+			i++;
+		}
+		else if (target[i] == '\"') {
+			j--;
+		}
+		else {
+			target[j] = target[i];
+		}
+		i++;
+		j++;
+	}
+	target[j] = '\0';
+
 	// Convert to UTF16 to match the Win32 API in case there are any
 	// non-ASCII characters somewhere in the path:
 	if (!MultiByteToWideChar(CP_UTF8, 0, target, -1, target_w, MAX_PATH))
