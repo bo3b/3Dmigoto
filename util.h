@@ -169,13 +169,43 @@ static void BeepShort()
 	// Short High beep
 	Beep(1800, 100);
 }
+//************************************************************************
+//Caverabbit was here
+#include <windows.h>
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
 
-static void BeepFailure() 
+static void BeepFailure(HINSTANCE handle)	// Error sound for failure.
 {
-	// Bonk sound for failure.
-	Beep(200, 150);
-}
 
+	wchar_t migotoPath[MAX_PATH];
+
+	GetModuleFileName(handle, migotoPath, MAX_PATH);
+
+	std::wstring path;
+
+	for (int i = 0; i < wcslen(migotoPath), i++;)
+		path += migotoPath[i];
+
+	path += L"SystemFiles/FailSound.wav"; //Define folder and file name here
+
+	if (!PlaySound(path.c_str(), NULL, SND_ASYNC))
+	{
+		//Error
+	}
+
+	/* This version will failover and use the original beep, however it does not play sound asynchronously
+
+	if (!PlaySound(path.c_str(), NULL, SND_NODEFAULT))
+	{
+		//Failover for when sound file is not found
+		Beep(200, 150);
+	}
+
+	*/
+
+}
+//************************************************************************
 static void BeepFailure2() 
 {
 	// Brnk, dunk sound for failure.

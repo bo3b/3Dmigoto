@@ -249,7 +249,7 @@ static void emit_ini_warning_tone()
 	if (!ini_warned)
 		return;
 	ini_warned = false;
-	BeepFailure();
+	BeepFailure(migoto_handle); //Caverabbit was here - Changed syntax to invoke altered function
 }
 
 static bool get_namespaced_section_name(const wstring *section, const wstring *ini_namespace, wstring *ret)
@@ -4062,7 +4062,7 @@ void LoadConfigFile()
 		GetModuleFileName(NULL, exe_path, MAX_PATH);
 		LogInfo("Game path: %S\n"
 			"3DMigoto path: %S\n\n",
-			exe_path, our_path);
+			exe_path, our_path); //Caverabbit was here - 3DMigoto path is here
 
 		LogInfoW(L"----------- " INI_FILENAME L" settings -----------\n");
 	}
