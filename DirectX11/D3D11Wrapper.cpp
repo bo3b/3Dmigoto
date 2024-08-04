@@ -535,6 +535,24 @@ void InitD311()
 #endif
 }
 
+HRESULT WINAPI D3D11On12CreateDevice(
+	_In_ IUnknown* pDevice,
+	UINT Flags,
+	_In_reads_opt_(FeatureLevels) CONST D3D_FEATURE_LEVEL* pFeatureLevels,
+	UINT FeatureLevels,
+	_In_reads_opt_(NumQueues) IUnknown* CONST* ppCommandQueues,
+	UINT NumQueues,
+	UINT NodeMask,
+	_COM_Outptr_opt_ ID3D11Device** ppDevice,
+	_COM_Outptr_opt_ ID3D11DeviceContext** ppImmediateContext,
+	_Out_opt_ D3D_FEATURE_LEVEL* pChosenFeatureLevel)
+{
+	InitD311();
+	LogInfo("D3D11On12CreateDevice called.\n");
+
+	return (*_D3D11On12CreateDevice)(pDevice, Flags, pFeatureLevels, FeatureLevels, ppCommandQueues, NumQueues, NodeMask, ppDevice, ppImmediateContext, pChosenFeatureLevel);
+}
+
 int WINAPI D3DKMTQueryAdapterInfo(_D3DKMT_QUERYADAPTERINFO *info)
 {
 	InitD311();

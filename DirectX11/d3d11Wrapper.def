@@ -55,7 +55,7 @@ EXPORTS
 ; D3DPerformance_EndEvent
 ; D3DPerformance_GetStatus
 ; D3DPerformance_SetMarker
-	
+	D3D11On12CreateDevice				@43
 
 ; Full list from d3d11.dll, sorted by Hint:
 ; D3D11CoreCreateDevice
