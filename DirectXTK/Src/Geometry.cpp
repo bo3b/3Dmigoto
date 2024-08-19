@@ -15,6 +15,8 @@
 #include "Geometry.h"
 #include "Bezier.h"
 
+#include <stdexcept>
+
 using namespace DirectX;
 
 namespace

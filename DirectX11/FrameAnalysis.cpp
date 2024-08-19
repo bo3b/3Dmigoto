@@ -12,6 +12,7 @@
 #include <Strsafe.h>
 #include <stdarg.h>
 #include <Shlwapi.h>
+#include <stdexcept>
 
 // For windows shortcuts:
 #include <shobjidl.h>
