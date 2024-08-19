@@ -3,6 +3,7 @@
 
 #include "Overlay.h"
 
+#include <stdexcept>
 #include <DirectXColors.h>
 //#include <StrSafe.h>
 

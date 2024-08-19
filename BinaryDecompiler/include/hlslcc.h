@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <map>
+#include <string>
 
 #if defined (_WIN32) && defined(HLSLCC_DYNLIB)
     #define HLSLCC_APIENTRY __stdcall
