@@ -442,7 +442,7 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 		binaryHash = fnv_64_buf((*ppCode)->GetBufferPointer(), (*ppCode)->GetBufferSize());
 		sprintf(shaderName, "%08lx%08lx-%s_%08lx%08lx.txt", (UINT32)(binaryHash >> 32), (UINT32)binaryHash, pTarget, (UINT32)(sourceHash >> 32), (UINT32)sourceHash);
 		LogInfo("    Filename = %s\n", shaderName);
-		LogInfo("    Compiled bytecode size = %d, bytecode handle = %p\n", (*ppCode)->GetBufferSize(), (*ppCode)->GetBufferPointer());
+		LogInfo("    Compiled bytecode size = %llu, bytecode handle = %p\n", (*ppCode)->GetBufferSize(), (*ppCode)->GetBufferPointer());
 		
 		if (SHADER_PATH[0])
 		{
@@ -487,7 +487,7 @@ HRESULT WINAPI D3DCompile(_In_reads_bytes_(SrcDataSize) LPCVOID pSrcData,
 						pSrcData = new char[SrcDataSize];
 						fread((void *) pSrcData, 1, SrcDataSize, f);
 						fclose(f);
-						LogInfo("    Source code loaded. Size = %d\n", SrcDataSize);
+						LogInfo("    Source code loaded. Size = %llu\n", SrcDataSize);
 						
 
 						// Compile replacement.

@@ -2892,7 +2892,7 @@ HRESULT disassemblerDX9(vector<byte> *buffer, vector<byte> *ret, const char *com
 }
 #endif
 
-HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment,
+HRESULT disassembler(vector<byte> *buffer, vector<char> *ret, const char *comment,
 		int hexdump, bool d3dcompiler_46_compat,
 		bool disassemble_undecipherable_data,
 		bool patch_cb_offsets)
