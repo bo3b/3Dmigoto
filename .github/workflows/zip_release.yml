@@ -1,0 +1,79 @@
+# This workflow will build geo-11 for Release use, but is specifically set
+# up to build the HelixMod version.
+# This is a basic workflow that will only be manually triggered, but will
+# call through to the main Release workflow.
+
+name: HelixMod Manual Build
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI.
+on:
+  workflow_dispatch:
+    # Inputs the workflow accepts.
+    inputs:
+      name:
+        # Friendly description to be shown in the UI instead of 'name'
+        description: 'Create a Release build for HelixMod use'
+        # Default value if no value is explicitly provided
+        default: 'World'
+        # Input has to be provided for the workflow to run
+        required: true
+
+# This is a copy of the msbuild.yml action script. The setup to
+# call out to another job is too restrictive, so let's just duplicate
+# the sequence, but upload different artifact here.
+
+jobs:
+  zip_release_workflow:
+
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout vs2022
+      uses: actions/checkout@v2
+
+    - name: Add MSBuild for vs2022 to PATH
+      uses: microsoft/setup-msbuild@v2
+      with:
+        vs-version: '[17)'
+
+
+#    - name: Setup NuGet.exe for use with actions
+#      uses: NuGet/setup-nuget@v1.0.6
+#    - name: Restore nuget packages
+#      run: nuget restore StereovisionHacks.sln
+
+    - name: Build via Publish.bat
+      shell: cmd
+      run: call .\Publish.bat 
+
+# In order to pass the version number from the Publish.bat script back here to Actions,
+# we need to fetch it using powershell commands. Normal echo and cat don't work here.
+# Fetches the version from the embedded version file name.
+# It's also worth noting that the env.GITHUB_ENV is only read at the start of a Step,
+# so the variable will be wrong until the next step.
+
+    - name: Versioning
+      shell: pwsh
+      run: |
+        cat ".\Zip Release\Version-*" | Set-Variable -Name "BUILD_VERSION"
+        echo "Set BUILD_VERSION=" ${BUILD_VERSION}
+        echo "BUILD_VERSION=${BUILD_VERSION}" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
+        
+# Add a new commit for the bump in version number.        
+# We add the git pull --ff 
+
+    - name: Commit version change
+      run: |
+        git config --global user.name 'CI Build'
+        git config --global user.email '3Dmigoto@bo3b.net'
+        git pull --ff-only
+        git commit -am "CI Build - ${{env.BUILD_VERSION}}"
+        git push
+        
+# Now we can upload the remaining artifacts as the HelixMod version.
+
+    - name: Upload HelixMod build
+      uses: actions/upload-artifact@v4
+      with:
+        name: 3Dmigoto v${{env.BUILD_VERSION}}
+        path: Zip Release\
