@@ -33,8 +33,9 @@ jobs:
 
     - name: Add MSBuild for vs2022 to PATH
       uses: microsoft/setup-msbuild@v2
-      with:
-        vs-version: '2022'
+# vs2022 should be there in 'windows-latest'       
+#      with:
+#        vs-version: '2022'
 
 
 #    - name: Setup NuGet.exe for use with actions
