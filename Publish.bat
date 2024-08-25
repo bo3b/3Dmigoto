@@ -1,7 +1,13 @@
 @echo off
 SetLocal EnableDelayedExpansion
 Pushd "%~dp0"
-PATH=%PATH%;C:\Program Files (x86)\Git\bin\
+
+REM -----------------------------------------------------------------------------
+REM Updated 8-25-24 for Github Actions server environment.
+REM Removes Git Stash because environment will always be clean.
+REM Remove MSBuild and Git setup as they are done in the Action script.
+REM Remove the git push of new version, now found in Action script.
+REM Removes the 7zip process, because artifact downloads are auto-zipped.
 
 REM -----------------------------------------------------------------------------
 REM Publish batch file to safely build a complete Zip file to be published.
@@ -15,25 +21,10 @@ REM  Arguments:          /k Publish.bat
 REM  Initial Directory:  $(SolutionDir)
 REM
 REM TODO: change Win32 to x86, it's annoying
-REM TODO: remove all invalid build targets like x32 for Mordor.
 
 
 REM -----------------------------------------------------------------------------
-REM Since we are going to autoincrement and Publish a new version, we want to
-REM check-in that new version.h file with the latest revision.
-REM The users git home may be full of junk though, and we don't want to build
-REM stuff they might have half-done.  We'll use "git stash" to temporarily get
-REM a clean check-out for building.
-
-echo(
-echo(
-echo === Git Stash Uncommitted Changes ===
-
-git stash
-
-
-REM -----------------------------------------------------------------------------
-REM Before doing a build, let's bump the version number of the tool. 
+REM Before doing a build, let's bump the version number of the project. 
 REM This is stored in the version.h file at the project root, and is used 
 REM during resource file compiles to build the proper output in the DLLs.
 REM
@@ -64,58 +55,29 @@ echo === Latest Version After Increment ===
 echo(
 echo   !Major!.!Minor!.!NewRev!
 
-
-REM -----------------------------------------------------------------------------
-echo(
-echo(
-echo === Deep Cleaning Output Directories ===
-@echo on
-RMDIR ".\x32\Zip Release\" /S /Q
-RMDIR ".\x64\Zip Release\" /S /Q
-RMDIR ".\Zip Release\" /S /Q
-@echo off
-
-
-REM -----------------------------------------------------------------------------
-REM Activate the VsDevCmds so that we can do MSBUILD easily.
-
-CALL "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\Tools\VsDevCmd.bat"
-
-REM -----------------------------------------------------------------------------
 echo(
 echo(
 echo === Building Win32 target ===
 echo(
 MSBUILD StereoVisionHacks.sln /p:Configuration="Zip Release" /p:Platform=Win32 /v:minimal /target:rebuild
+IF %ERRORLEVEL% NEQ 0 (
+	Echo *** x32 BUILD FAIL ***  
+	EXIT 1)
+
 echo(
 echo(
 echo === Building x64 target ===
 echo(
 MSBUILD StereoVisionHacks.sln /p:Configuration="Zip Release" /p:Platform=x64 /v:minimal /target:rebuild
-
-
-REM -----------------------------------------------------------------------------
-REM Assuming the build completed, check-in the change to the version.h file as
-REM the only thing changed in the working directory.
-
-git commit --all --message="Incremental Publish build: !Major!.!Minor!.!NewRev!"
-
-
-REM -----------------------------------------------------------------------------
-REM With the build complete, and the version.h committed as latest change, we need
-REM to restore the user's Git environment to what it was using "Git Stash Pop".
-
-echo(
-echo(
-echo === Git Stash Pop ===
-
-git stash pop
+IF %ERRORLEVEL% NEQ 0 (
+	Echo *** x64 BUILD FAIL ***  
+	EXIT 1)
 
 
 REM -----------------------------------------------------------------------------
 REM Use 7zip command tool to create a full release that can be unzipped into a
 REM game directory. This builds a Side-by-Side zip of x32/x64.
-REM Includes d3dx.ini and uninstall.bat for x32/x64.
+REM Includes d3dx.ini, d3dxdm.ini, and uninstall.bat for x32/x64.
 
 echo(
 echo(
@@ -125,7 +87,7 @@ echo === Move builds to target zip directory ===
 echo(
 MKDIR ".\Zip Release\x32\"
 MKDIR ".\Zip Release\x32\ShaderFixes\"
-MOVE ".\x32\Zip Release\d3dx.ini"  ".\Zip Release\x32\"
+MOVE ".\x32\Zip Release\*.ini"  ".\Zip Release\x32\"
 MOVE ".\x32\Zip Release\uninstall.bat"  ".\Zip Release\x32\"
 MOVE ".\x32\Zip Release\*.dll"  ".\Zip Release\x32\"
 MOVE ".\x32\Zip Release\ShaderFixes\*.*"  ".\Zip Release\x32\ShaderFixes\"
@@ -133,7 +95,7 @@ MOVE ".\x32\Zip Release\ShaderFixes\*.*"  ".\Zip Release\x32\ShaderFixes\"
 echo(
 MKDIR ".\Zip Release\x64\"
 MKDIR ".\Zip Release\x64\ShaderFixes\"
-MOVE ".\x64\Zip Release\d3dx.ini"  ".\Zip Release\x64\"
+MOVE ".\x64\Zip Release\*.ini"  ".\Zip Release\x64\"
 MOVE ".\x64\Zip Release\uninstall.bat"  ".\Zip Release\x64\"
 MOVE ".\x64\Zip Release\*.dll"  ".\Zip Release\x64\"
 MOVE ".\x64\Zip Release\ShaderFixes\*.*"  ".\Zip Release\x64\ShaderFixes\"
@@ -150,13 +112,9 @@ MKDIR ".\Zip Release\cmd_Decompiler\"
 MOVE ".\x32\Zip Release\cmd_Decompiler.exe"  ".\Zip Release\cmd_Decompiler\"
 COPY ".\Zip Release\x32\d3dcompiler_47.dll"  ".\Zip Release\cmd_Decompiler\"
 
-echo(
-echo(
-echo === Create Zip release for x32 and x64  ===
-7zip\7za a ".\Zip Release\3Dmigoto-!Major!.!Minor!.!NewRev!.zip"   ".\Zip Release\x32\"
-7zip\7za a ".\Zip Release\3Dmigoto-!Major!.!Minor!.!NewRev!.zip"   ".\Zip Release\x64\"
-7zip\7za a ".\Zip Release\3Dmigoto-!Major!.!Minor!.!NewRev!.zip"   ".\Zip Release\loader\"
-7zip\7za a ".\Zip Release\cmd_Decompiler-!Major!.!Minor!.!NewRev!.zip"   ".\Zip Release\cmd_Decompiler\*"
+REM -----------------------------------------------------------------------------
+REM Write new version to a file that we can use in Action script too.
 
-PAUSE
-EXIT
+echo !Major!.!Minor!.!NewRev! > ".\Zip Release\Version-!Major!.!Minor!.!NewRev!.txt"
+
+Dir /s ".\Zip Release\"
