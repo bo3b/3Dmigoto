@@ -1,6 +1,5 @@
 The source code of 3Dmigoto is released under the GPLv3 license - refer to
-LICENSE.GPL.txt for details. We ask that you consider contributing enhancements
-back to the 3Dmigoto project, but this is not strictly required.
+LICENSE.GPL.txt for details.
 
 Any shaders distributed along with 3Dmigoto as part of game fixes are not
 covered by the license of 3Dmigoto, and are owned by their respective copyright
