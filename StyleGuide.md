@@ -35,7 +35,7 @@ Style guide with some _why_:
 
 #### General
 - We want to avoid hungarian notation as most of us don't care for it.  Some exceptions will be skipped like pCamelCase input parameters.
-- Initialize all variables preferably with `{0}` style.  Probably not doable, but Resharper might catch all missing ones.
+- Initialize all variables preferably with `{}` style.  Probably not doable, but Resharper might catch all missing ones.
 - Avoid templates, except where inputs are actually unrelated objects. Avoid using template polymorphism. Templates bugs are really difficult, because the compiler runs amok. Also I personally despise the syntax.  Still, good to use in narrow circumstances. 
 - Never use `auto`.  This is just putting the onus on the reader, and it's much better clarity to just use the type.
 - Always use nullptr instead of NULL or 0 for pointers.  It clarifies that the reference is a ptr.
@@ -72,7 +72,7 @@ OK, sounds good.  I'm going to make an example of an 'after' and post it here so
   
 ---
 
-Regarding the template polymorphism- I'll start by saying that I have very limited expeience with templates, so I'm not a particularly great person to decide.  Also I feel that templates tend to get abused in C++, which puts me in the biased category as well.  I'm not completely opposed, I just think it's often the wrong tool for the job, at least partly because debugging them sucks, and the syntax sucks.  Templates serve a valid and consistent purpose for stuff like handling maps and lists, where you want to store unknown items. 
+Regarding the template polymorphism- I'll start by saying that I have very limited experience with templates, so I'm not a particularly great person to decide.  Also I feel that templates tend to get abused in C++, which puts me in the biased category as well.  I'm not completely opposed, I just think it's often the wrong tool for the job, at least partly because debugging them sucks, and the syntax sucks.  Templates serve a valid and consistent purpose for stuff like handling maps and lists, where you want to store unknown items. 
 
 So having noted that... I'd really prefer if we don't use templates for polymorphism, and stick with conventional object/class dynamics.  There isn't going to be any performance advantage. That would be premature optimization, unless it's been profiled and found that dispatching through a vtable is measureable.  
 
@@ -94,9 +94,21 @@ I do think we should avoid them as much as possible going forward though, becaus
 
 Having noted that however- it was always my goal to have specific shader overrides done on a C++ object level, so that any given shader would know everything it needed to know to do its job, including the original shader, and the replacement.  With this model, there is no need to do shader searching through a mapped set of shaders or manage them via hash code, each object would ideally know and have a reference to everything needed.  
 
+> As I needed to wrap all the shaders anyway, shader override pointers are now passed into the shader constructor, doing away with the map search on draw. This was causing a crash on F10 reload, as existing shaders were then pointing at deallocated overrides, but have fixed this in the latest update.
+
 The current approach using templates is good for coding, but bad for performance, because now everything needs to go through the lookup_shader_map.  The last times I profiled 3Dmigoto quite awhile ago, the map function was taking a measurable and concerning amount of performance.  Not critical, but we are definitely above my 5% overhead criteria, last I checked.
 
 Academic for now.  Unless we hit a particular game or scenario where we prove out a performance problem, there is no need to switch now, even as we are starting semi-fresh.
 
-> As I needed to wrap all the shaders anyway, shader override pointers are now passed into the shader constructor, doing away with the map search on draw. This was causing a crash on F10 reload, as existing shaders were then pointing at deallocated overrides, but have fixed this in the latest update.
+3-26-25: Random thought. We can't use C++ inheritance, because the C++ objects are not COM objects. Based on discussion, what if instead of using C++ objects, we made everything COM objects instead? That would allow us to use standard OO approaches, with a consistent approach, instead of this clunky hybrid.
 
+----
+
+##### 3-26-25 Update:
+
+Coming back to this after a long hiatus. Goal is to finish this up and integrate into master.  Will most likely archive 1.3.16, then rename Rename_Reformat branch to master. Version change to 2.0 as having changed a lot, including toolset, new additions, and massive refactoring. Very likely to move to VS2022.
+
+One cleanup edit here- it's not proper C++ to use initializers like:  
+  ```shader_ins ins = {0};```  
+This works, but is doing two different types of initialization at once. The first element of the struct is cleared specifically to zero, then the rest of the elements get a default zero initialization. In practice identical for plain old data, but it's not considered good form. The only reason to use 0 there is to be explicit, and so let's go to the industry standard of:  
+  ```shader_ins ins = {};```  
