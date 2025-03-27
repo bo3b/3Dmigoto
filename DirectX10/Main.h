@@ -15,8 +15,6 @@
 
 #include <fstream>
 
-using namespace std;
-
 #include "../log.h"
 
 namespace D3D10Base
