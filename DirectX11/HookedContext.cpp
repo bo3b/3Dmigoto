@@ -47,6 +47,10 @@
 #include <unordered_map>
 #include <Windows.h>
 
+using std::unordered_map;
+
+// -----------------------------------------------------------------------------
+
 // Change this to 1 to enable debug logging of hooks and the trampolines back
 // to the original context. Disabled by default as debug logging will already
 // log most of these calls in the HackerDevice, so this would triple the noise
@@ -61,7 +65,7 @@
 #endif
 
 // A map to look up the hacker context from the original context:
-typedef std::unordered_map<ID3D11DeviceContext1*, ID3D11DeviceContext1*> ContextMap;
+typedef unordered_map<ID3D11DeviceContext1*, ID3D11DeviceContext1*> ContextMap;
 
 static ContextMap       context_map;
 static CRITICAL_SECTION context_map_lock;

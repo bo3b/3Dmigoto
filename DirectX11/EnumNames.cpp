@@ -43,6 +43,9 @@
 
 #include <string>
 
+using std::string;
+using std::wstring;
+
 //--------------------------------------------------------------------------------------------------
 
 template <class T1, class T2>
@@ -127,12 +130,12 @@ T2 lookup_enum_val(
 }
 
 template <class T2>
-std::wstring lookup_enum_bit_names(
+wstring lookup_enum_bit_names(
     struct Enum_Name_t<const wchar_t*, T2>* enum_names,
     T2                                      val)
 {
-    std::wstring ret;
-    T2           remaining = val;
+    wstring ret;
+    T2      remaining = val;
 
     for (; enum_names->name; enum_names++)
     {
@@ -161,9 +164,9 @@ std::wstring lookup_enum_bit_names(
 // Since we do these explicit template specializations for every possible usage
 // of the lookup_enum_bit_names template, we will generate a function that will
 // then be seen by the linker.
-template std::wstring lookup_enum_bit_names(struct Enum_Name_t<const wchar_t*, CustomResourceBindFlags>* enum_names, CustomResourceBindFlags val);
-template std::wstring lookup_enum_bit_names(struct Enum_Name_t<const wchar_t*, ResourceCPUAccessFlags>* enum_names, ResourceCPUAccessFlags val);
-template std::wstring lookup_enum_bit_names(struct Enum_Name_t<const wchar_t*, ResourceMiscFlags>* enum_names, ResourceMiscFlags val);
+template wstring lookup_enum_bit_names(struct Enum_Name_t<const wchar_t*, CustomResourceBindFlags>* enum_names, CustomResourceBindFlags val);
+template wstring lookup_enum_bit_names(struct Enum_Name_t<const wchar_t*, ResourceCPUAccessFlags>* enum_names, ResourceCPUAccessFlags val);
+template wstring lookup_enum_bit_names(struct Enum_Name_t<const wchar_t*, ResourceMiscFlags>* enum_names, ResourceMiscFlags val);
 
 // Parses an option string of names given by enum_names. The enum used with
 // this function should have an INVALID entry, other flags declared as powers
@@ -377,9 +380,9 @@ T get_ini_enum_class(
     bool*                               found,
     struct Enum_Name_t<const char*, T>* enum_names)
 {
-    std::string val;
-    T           ret = def;
-    bool        tmp_found;
+    string val;
+    T      ret = def;
+    bool   tmp_found;
 
     if (found)
         *found = false;

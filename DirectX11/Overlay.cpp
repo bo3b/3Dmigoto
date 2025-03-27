@@ -43,8 +43,11 @@
 // the __d3d11_h__ preprocessor and pick up extra calls.
 #include "nvapi.h"
 
-using namespace std;
-using namespace overlay;
+using std::unique_ptr;
+using std::vector;
+using std::wstring;
+
+// -----------------------------------------------------------------------------
 
 #define MAX_SIMULTANEOUS_NOTICES 10
 
@@ -155,7 +158,7 @@ Overlay::Overlay(
     // is of particular importance when we are injected into a Windows
     // Store app and may not even be called that ourselves.
     HMODULE handle = nullptr;
-    GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCWSTR>(log_overlay), &handle);
+    GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCWSTR>(overlay::log_overlay), &handle);
     HRSRC          rc        = FindResource(handle, MAKEINTRESOURCE(IDR_COURIERBOLD), MAKEINTRESOURCE(SPRITEFONT));
     HGLOBAL        rc_data   = LoadResource(handle, rc);
     DWORD          font_size = SizeofResource(handle, rc);

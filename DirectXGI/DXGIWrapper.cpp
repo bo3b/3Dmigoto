@@ -32,6 +32,11 @@
 #include <ShlObj.h>
 #include <Windows.h>
 
+using std::wstring;
+using std::string;
+
+// -----------------------------------------------------------------------------
+
 bool gLogDebug = false;
 FILE *LogFile = 0;
 
@@ -318,13 +323,13 @@ static void InitDXGI()
 
 // -----------------------------------------------------------------------------
 
-std::string UUIDtoString(REFIID id)
+string UUIDtoString(REFIID id)
 {
     wchar_t wiid[128];
     if (SUCCEEDED(StringFromGUID2(id, wiid, 128)))
     {
-        std::wstring convert = std::wstring(wiid);
-        return std::string(convert.begin(), convert.end());
+        wstring convert = wstring(wiid);
+        return string(convert.begin(), convert.end());
     }
     else
     {

@@ -12,10 +12,14 @@
 #include <vector>
 #include <Windows.h>
 
-using namespace std;
+using std::string;
+using std::wstring;
+using std::vector;
+
+// -----------------------------------------------------------------------------
 
 ShaderRegexGroups              shader_regex_groups;
-std::vector<ShaderRegexGroup*> shader_regex_group_index;
+vector<ShaderRegexGroup*>      shader_regex_group_index;
 uint32_t                       shader_regex_hash;
 
 static void log_pcre2_error_nonl(int err, char *fmt, ...)
@@ -32,31 +36,31 @@ static void log_pcre2_error_nonl(int err, char *fmt, ...)
     LOG_INFO(": %s\n", buf);
 }
 
-static bool get_shader_model(std::string *asm_text, std::string *shader_model)
+static bool get_shader_model(string *asm_text, string *shader_model)
 {
     size_t shader_model_pos;
 
     for (
         shader_model_pos = asm_text->find("\n");
-        shader_model_pos != std::string::npos && (*asm_text)[shader_model_pos + 1] == '/';
+        shader_model_pos != string::npos && (*asm_text)[shader_model_pos + 1] == '/';
         shader_model_pos = asm_text->find("\n", shader_model_pos + 1)
     ) {}
 
-    if (shader_model_pos == std::string::npos)
+    if (shader_model_pos == string::npos)
         return false;
 
     *shader_model = asm_text->substr(shader_model_pos + 1, asm_text->find("\n", shader_model_pos + 1) - shader_model_pos - 1);
     return true;
 }
 
-static bool find_dcl_end(std::string *asm_text, size_t *dcl_end_pos)
+static bool find_dcl_end(string *asm_text, size_t *dcl_end_pos)
 {
     // FIXME: Might be better to scan forwards
 
     *dcl_end_pos = asm_text->rfind("\ndcl_");
     *dcl_end_pos = asm_text->find("\n", *dcl_end_pos + 1);
 
-    if (*dcl_end_pos == std::string::npos) {
+    if (*dcl_end_pos == string::npos) {
         LOG_INFO("WARNING: Unable to locate end of shader declarations!\n");
         return false;
     }
@@ -64,10 +68,10 @@ static bool find_dcl_end(std::string *asm_text, size_t *dcl_end_pos)
     return true;
 }
 
-static bool insert_declarations(std::string *asm_text, ShaderRegexDeclarations *declarations)
+static bool insert_declarations(string *asm_text, ShaderRegexDeclarations *declarations)
 {
     ShaderRegexDeclarations::iterator i;
-    std::string insert_str;
+    string insert_str;
     size_t dcl_end;
     bool patch = false;
 
@@ -75,9 +79,9 @@ static bool insert_declarations(std::string *asm_text, ShaderRegexDeclarations *
         return false;
 
     for (i = declarations->begin(); i != declarations->end(); i++) {
-        insert_str = std::string("\n") + *i;
+        insert_str = string("\n") + *i;
 
-        if (asm_text->find(insert_str + std::string("\n")) != std::string::npos)
+        if (asm_text->find(insert_str + string("\n")) != string::npos)
             continue;
 
         asm_text->insert(dcl_end, insert_str);
@@ -89,19 +93,19 @@ static bool insert_declarations(std::string *asm_text, ShaderRegexDeclarations *
     return patch;
 }
 
-static bool find_dcl_temps(std::string *asm_text, size_t *dcl_temps_pos)
+static bool find_dcl_temps(string *asm_text, size_t *dcl_temps_pos)
 {
     // Could use regex for this as well, but given we only need to find a
     // constant string it will be more efficient to just do this:
     *dcl_temps_pos = asm_text->find("\ndcl_temps ", 0);
 
-    if (*dcl_temps_pos == std::string::npos)
+    if (*dcl_temps_pos == string::npos)
         return false;
 
     return true;
 }
 
-static unsigned get_dcl_temps(std::string *asm_text)
+static unsigned get_dcl_temps(string *asm_text)
 {
     size_t dcl_temps;
     unsigned tmp_regs = 0;
@@ -115,10 +119,10 @@ static unsigned get_dcl_temps(std::string *asm_text)
     return tmp_regs;
 }
 
-static bool update_dcl_temps(std::string *asm_text, size_t new_val)
+static bool update_dcl_temps(string *asm_text, size_t new_val)
 {
     size_t dcl_temps, dcl_temps_end, dcl_end;
-    std::string insert_str;
+    string insert_str;
 
     if (find_dcl_temps(asm_text, &dcl_temps)) {
         dcl_temps += 11;
@@ -131,7 +135,7 @@ static bool update_dcl_temps(std::string *asm_text, size_t new_val)
     if (!find_dcl_end(asm_text, &dcl_end))
         return false;
 
-    insert_str = std::string("\ndcl_temps ") + std::to_string(new_val);
+    insert_str = string("\ndcl_temps ") + std::to_string(new_val);
     LOG_INFO("Inserting dcl_temps %Iu\n", new_val);
     asm_text->insert(dcl_end, insert_str);
     dcl_end += insert_str.size();
@@ -150,7 +154,7 @@ ShaderRegexPattern::~ShaderRegexPattern()
     pcre2_code_free(regex);
 }
 
-bool ShaderRegexPattern::compile(std::string *pattern)
+bool ShaderRegexPattern::compile(string *pattern)
 {
     uint32_t name_table_entry_size;
     uint32_t name_table_count;
@@ -181,7 +185,7 @@ bool ShaderRegexPattern::compile(std::string *pattern)
 
     static_assert(PCRE2_CODE_UNIT_WIDTH == 8, "Need to fix name table parsing for non-8bit pcre2");
     for (i = 0; i < name_table_count; i++)
-        named_capture_groups.insert(std::string((char*)(name_table + name_table_entry_size*i + 2)));
+        named_capture_groups.insert(string((char*)(name_table + name_table_entry_size*i + 2)));
 
     return true;
 }
@@ -201,7 +205,7 @@ bool ShaderRegexPattern::named_group_overlaps(ShaderRegexTemps &other_set)
     return intersection.size() != 0;
 }
 
-bool ShaderRegexPattern::matches(std::string *asm_text)
+bool ShaderRegexPattern::matches(string *asm_text)
 {
     pcre2_match_data *match_data = NULL;
     bool match = false;
@@ -230,11 +234,11 @@ out_free:
     return match;
 }
 
-static void replacement_search_and_replace(std::string &str, std::string *search, std::string *replace)
+static void replacement_search_and_replace(string &str, string *search, string *replace)
 {
     size_t pos;
 
-    for (pos = str.find(*search); pos != std::string::npos; pos = str.find(*search, pos + 1)) {
+    for (pos = str.find(*search); pos != string::npos; pos = str.find(*search, pos + 1)) {
         if (pos > 0 && (str[pos-1] == '$' || str[pos-1] == '\\'))
             continue;
 
@@ -242,28 +246,28 @@ static void replacement_search_and_replace(std::string &str, std::string *search
     }
 }
 
-static void substitute_temp_regs(std::string &replacement, ShaderRegexTemps *temp_regs, unsigned dcl_temps)
+static void substitute_temp_regs(string &replacement, ShaderRegexTemps *temp_regs, unsigned dcl_temps)
 {
     ShaderRegexTemps::iterator i;
     unsigned tmp_reg = dcl_temps;
-    std::string search_str, repl_str;
+    string search_str, repl_str;
 
     for (i = temp_regs->begin(); i != temp_regs->end(); i++, tmp_reg++) {
-        repl_str = std::string("r") + std::to_string(tmp_reg);
+        repl_str = string("r") + std::to_string(tmp_reg);
 
-        search_str = std::string("$") + *i;
+        search_str = string("$") + *i;
         replacement_search_and_replace(replacement, &search_str, &repl_str);
 
-        search_str = std::string("${") + *i + std::string("}");
+        search_str = string("${") + *i + string("}");
         replacement_search_and_replace(replacement, &search_str, &repl_str);
     }
 }
 
-bool ShaderRegexPattern::patch(std::string *asm_text, ShaderRegexTemps *temp_regs, unsigned dcl_temps)
+bool ShaderRegexPattern::patch(string *asm_text, ShaderRegexTemps *temp_regs, unsigned dcl_temps)
 {
     pcre2_match_data *match_data = NULL;
     PCRE2_SIZE est_size, output_size;
-    std::string replace_copy;
+    string replace_copy;
     PCRE2_UCHAR *buf = NULL;
     bool patch = false;
     uint32_t options;
@@ -331,7 +335,7 @@ out_free:
     return patch;
 }
 
-void ShaderRegexGroup::apply_regex_patterns(std::string *asm_text, bool *match, bool *patch)
+void ShaderRegexGroup::apply_regex_patterns(string *asm_text, bool *match, bool *patch)
 {
     ShaderRegexPatterns::iterator i;
     ShaderRegexPattern *pattern;
@@ -482,7 +486,7 @@ struct ShaderRegexCacheHeader {
     uint32_t num_matches;
 };
 
-ShaderRegexCache load_shader_regex_cache(UINT64 hash, const wchar_t *shader_type, vector<byte> *bytecode, std::wstring *tagline)
+ShaderRegexCache load_shader_regex_cache(UINT64 hash, const wchar_t *shader_type, vector<byte> *bytecode, wstring *tagline)
 {
     ShaderRegexCache ret = ShaderRegexCache::NO_CACHE;
     HANDLE meta_f = INVALID_HANDLE_VALUE;
@@ -543,7 +547,7 @@ ShaderRegexCache load_shader_regex_cache(UINT64 hash, const wchar_t *shader_type
         LOG_INFO("ShaderRegexCache: %S %016I64x matches [%S]\n", shader_type, hash, group->ini_section.c_str());
 
         if (header->patched && tagline)
-            tagline->append(std::wstring(L"[") + group->ini_section + std::wstring(L"]"));
+            tagline->append(wstring(L"[") + group->ini_section + wstring(L"]"));
 
         group->link_command_lists_and_filter_index(hash);
     }
@@ -572,7 +576,7 @@ out:
 }
 
 static void save_shader_regex_cache_meta(UINT64 hash, const wchar_t *shader_type, vector<uint32_t> *match_ids,
-        bool patched, std::string *asm_text, std::wstring *tagline)
+        bool patched, string *asm_text, wstring *tagline)
 {
     ShaderRegexCacheHeader header;
     wchar_t path[MAX_PATH];
@@ -651,7 +655,7 @@ void save_shader_regex_cache_bin(UINT64 hash, const wchar_t *shader_type, vector
     fclose(f);
 }
 
-bool apply_shader_regex_groups(std::string *asm_text, const wchar_t *shader_type, std::string *shader_model, UINT64 hash, std::wstring *tagline)
+bool apply_shader_regex_groups(string *asm_text, const wchar_t *shader_type, string *shader_model, UINT64 hash, wstring *tagline)
 {
     ShaderRegexGroups::iterator i;
     ShaderRegexGroup *group;
@@ -660,7 +664,7 @@ bool apply_shader_regex_groups(std::string *asm_text, const wchar_t *shader_type
     vector<uint32_t> match_ids;
     uint32_t j;
 
-    if (*shader_model == std::string("bin")) {
+    if (*shader_model == string("bin")) {
         // This will update the data structure, because we may as well
         // - it will save effort if we have to redo this again later.
         if (!get_shader_model(asm_text, shader_model))
@@ -685,7 +689,7 @@ bool apply_shader_regex_groups(std::string *asm_text, const wchar_t *shader_type
         match_ids.push_back(j);
 
         if (patch && tagline)
-            tagline->append(std::wstring(L"[") + group->ini_section + std::wstring(L"]"));
+            tagline->append(wstring(L"[") + group->ini_section + wstring(L"]"));
 
         group->link_command_lists_and_filter_index(hash);
     }

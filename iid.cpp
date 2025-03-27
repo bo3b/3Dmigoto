@@ -35,6 +35,11 @@
 #include "DirectX11/HackerContext.hpp"
 #include "DirectX11/HackerDevice.hpp"
 
+using std::string;
+using std::wstring;
+
+// -----------------------------------------------------------------------------
+
 struct IID_name
 {
     IID   iid;
@@ -330,7 +335,7 @@ void analyse_iunknown(
 // DEFINE_GUID(IID_IDXGIFactory,0x7b7166ec,0x21c7,0x44ae,0xb2,0x1a,0xc9,0xae,0x32,0x1a,0xe3,0x69);
 //
 
-std::string name_from_IID(
+string name_from_IID(
     IID id)
 {
     // Adding every MIDL_INTERFACE from d3d11_1.h to make this reporting complete.
@@ -471,12 +476,12 @@ std::string name_from_IID(
     // For unknown IIDs lets return the hex string.
     // Converting from wchar_t to string using stackoverflow suggestion.
 
-    std::string iid_string;
+    string iid_string;
     wchar_t     wiid[128];
     if (SUCCEEDED(StringFromGUID2(id, wiid, 128)))
     {
-        std::wstring convert = std::wstring(wiid);
-        iid_string           = std::string(convert.begin(), convert.end());
+        wstring convert = wstring(wiid);
+        iid_string           = string(convert.begin(), convert.end());
     }
     else
     {
