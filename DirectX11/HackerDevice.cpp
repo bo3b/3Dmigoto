@@ -54,7 +54,8 @@ using std::unordered_map;
 using std::vector;
 using std::wstring;
 
-using namespace overlay;
+using overlay::log;
+using overlay::log_overlay;
 
 // -----------------------------------------------------------------------------
 

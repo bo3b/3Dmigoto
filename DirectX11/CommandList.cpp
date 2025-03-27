@@ -53,7 +53,8 @@ using std::pair;
 using std::unordered_set;
 using std::shared_ptr;
 
-using namespace overlay;
+using overlay::log;
+using overlay::log_overlay;
 
 // -----------------------------------------------------------------------------
 

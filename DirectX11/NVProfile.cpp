@@ -23,7 +23,8 @@ using std::wstring;
 using std::unordered_map;
 using std::unordered_set;
 
-using namespace overlay;
+using overlay::log;
+using overlay::log_overlay;
 
 // -----------------------------------------------------------------------------
 
