@@ -47,8 +47,15 @@
 // the __d3d11_h__ preprocessor and pick up extra calls.
 #include "nvapi.h"
 
-using namespace std;
+using std::vector;
+using std::wstring;
+using std::pair;
+using std::unordered_set;
+using std::shared_ptr;
+
 using namespace overlay;
+
+// -----------------------------------------------------------------------------
 
 CustomResources                    custom_resources;
 CustomShaders                      custom_shaders;
@@ -471,7 +478,7 @@ static bool parse_clear_view(const wchar_t *section,
 {
     CustomResources::iterator res;
     CustomShaders::iterator shader;
-    wistringstream token_stream(*val);
+    std::wistringstream token_stream(*val);
     wstring token;
     int ret, len1;
     int idx = 0;
@@ -3163,7 +3170,7 @@ static const wchar_t *operator_tokens[] = {
     L"(", L")", L"!", L"*", L"/", L"%", L"+", L"-", L"<", L">",
 };
 
-class CommandListSyntaxError: public exception
+class CommandListSyntaxError: public std::exception
 {
 public:
     wstring msg;

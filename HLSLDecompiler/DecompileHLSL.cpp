@@ -36,6 +36,16 @@
 #include <string>
 #include <vector>
 
+using std::string;
+using std::map;
+using std::vector;
+using std::set;
+using std::to_string;
+using std::pair;
+using std::min;
+
+// -----------------------------------------------------------------------------
+
 // MSVC insists we use MS's secure version of scanf, which in turn insists we
 // pass the size of each string/char array as an unsigned integer. We want to
 // use something like sizeof/_countof/ARRAYSIZE to make that safe even if we
@@ -44,7 +54,6 @@
 // to cast it. That's a bit ugly, so we use this helper:
 #define U_COUNT_OF(...) (unsigned)_countof(__VA_ARGS__)
 
-using namespace std;
 
 enum DataType
 {
@@ -268,7 +277,7 @@ public:
 
         const char *startPos = c + pos;
         const char *eolPos = strchr(startPos, '\n');
-        std::string line(startPos, eolPos);
+        string line(startPos, eolPos);
         sprintf(buffer, "%s\n", line.c_str());
         appendOutput(buffer);
     }
@@ -732,12 +741,12 @@ public:
         return pos;
     }
 
-    void SplitString(const std::string& s, std::vector<std::string>& v, const std::string& c)
+    void SplitString(const string& s, vector<string>& v, const string& c)
     {
-        std::string::size_type pos1, pos2;
+        string::size_type pos1, pos2;
         pos2 = s.find(c);
         pos1 = 0;
-        while (std::string::npos != pos2)
+        while (string::npos != pos2)
         {
             if (pos2 > pos1) //remove c
             {
@@ -931,7 +940,7 @@ public:
                 map<int, string> *mNames = &mTextureNames;
                 map<int, int>    *mNamesArraySize = &mTextureNamesArraySize;
                 map<int, string> *mType = &mTextureType;
-                std::string rw;
+                string rw;
 
                 if (!strcmp(type, "UAV")) {
                     mNames = &mUAVNames;
@@ -1878,7 +1887,7 @@ public:
         // to look for the far right dot instead.  Should be correct, but this is used everywhere.
         const char *strPos = strrchr(left, '.') + 1;
         char idx[4] = { -1, -1, -1, -1 };
-        char map[4] = { 3, 0, 1, 2 };
+        char map[4] = { 3, 0, 1, 2 };              // TODO, bad practice to name var after std::map
         size_t pos = 0;                            // Used as index into string buffer
         if (strPos == (const char *)1)
             strPos = "x";
@@ -3429,7 +3438,7 @@ public:
                             string regName1(pos1 + ShadowPos1.length(), strchr(pos1 + ShadowPos1.length(), '.') + 2);
                             string regName2(pos2 + ShadowPos2.length(), strchr(pos2 + ShadowPos2.length(), '.') + 2);
                             string regName3(pos3 + ShadowPos3.length(), strchr(pos3 + ShadowPos3.length(), '.') + 2);
-                            char *pos = std::min(std::min(pos1, pos2), pos3);
+                            char *pos = min(min(pos1, pos2), pos3);
                             while (*--pos != '\n');
                             char buf[512];
                             if (G->MatrixPos_MUL1.empty())
@@ -3630,9 +3639,9 @@ public:
         return "";
     }
 
-    static std::string shadervar_name(ShaderVarType *var, uint32_t offset)
+    static string shadervar_name(ShaderVarType *var, uint32_t offset)
     {
-        std::string ret;
+        string ret;
         uint32_t var_size, elem_size;
         uint32_t index;
         const char *swiz;
@@ -3652,20 +3661,20 @@ public:
         if (var->Elements) {
             // The index GetShaderVarFromOffset returns is crap, calculate it ourselves:
             index = (offset - var->Offset) / elem_size;
-            ret += "[" + std::to_string(index) + "]";
+            ret += "[" + to_string(index) + "]";
         }
 
         if (offset - var->Offset < var_size) {
             swiz = shadervar_offset2swiz(var, (offset - var->Offset) % elem_size);
             if (swiz[0])
-                ret += "." + std::string(swiz);
+                ret += "." + string(swiz);
         }
 
         return ret;
     }
 
     bool translate_structured_var(Shader *shader, const char *c, size_t &pos, size_t &size, Instruction *instr,
-            std::string ret[4], bool *combined, char *idx, char *off, char *reg, Operand *texture, int swiz_offsets[4])
+            string ret[4], bool *combined, char *idx, char *off, char *reg, Operand *texture, int swiz_offsets[4])
     {
         Operand dst0 = instr->asOperands[0];
         ResourceGroup group = (ResourceGroup)-1;
@@ -3718,7 +3727,7 @@ public:
                         uint32_t swiz = byte_offset % 16 / 4;
                         int32_t index = -1;
                         int32_t rebase = -1;
-                        std::string var_txt;
+                        string var_txt;
 
                         if (!(dst0.ui32CompMask & (1 << component)))
                             continue;
@@ -3827,7 +3836,7 @@ public:
 
     void parse_ld_structured(Shader *shader, const char *c, size_t &pos, size_t &size, Instruction *instr)
     {
-        std::string translated[4];
+        string translated[4];
         char buffer[512];
         bool combined;
 
@@ -3909,7 +3918,7 @@ public:
 
     void parse_store_structured(Shader *shader, const char *c, size_t &pos, size_t &size, Instruction *instr)
     {
-        std::string translated[4];
+        string translated[4];
         char buffer[512];
         bool combined;
 
@@ -6736,12 +6745,12 @@ public:
 
         if (G->IniParamsReg >= 0) {
             declaration +=
-                "Texture1D<float4> IniParams : register(t" + std::to_string(G->IniParamsReg) + ");\n";
+                "Texture1D<float4> IniParams : register(t" + to_string(G->IniParamsReg) + ");\n";
         }
 
         if (G->StereoParamsReg >= 0) {
             declaration +=
-                "Texture2D<float4> StereoParams : register(t" + std::to_string(G->StereoParamsReg) + ");\n";
+                "Texture2D<float4> StereoParams : register(t" + to_string(G->StereoParamsReg) + ");\n";
         }
 
         if (G->ZRepair_DepthBuffer)
@@ -6770,7 +6779,7 @@ public:
     }
 };
 
-const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::string &shaderModel, bool &errorOccurred)
+const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, string &shaderModel, bool &errorOccurred)
 {
     Decompiler d;
 

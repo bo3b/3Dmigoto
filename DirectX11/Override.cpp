@@ -27,10 +27,14 @@
 // the __d3d11_h__ preprocessor and pick up extra calls.
 #include "nvapi.h"
 
+using std::map;
+using std::string;
+using std::vector;
+using std::wstring;
 
-using namespace std;
 using namespace overlay;
 
+// -----------------------------------------------------------------------------
 
 PresetOverrideMap preset_overrides;
 

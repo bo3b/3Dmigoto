@@ -18,8 +18,13 @@
 // the d3d11.h pre-processor defines to avoid mis-matches with Profiling.hpp:
 #include "nvapi.h"
 
-using namespace std;
+using std::wstring;
+using std::unordered_map;
+using std::unordered_set;
+
 using namespace overlay;
+
+// -----------------------------------------------------------------------------
 
 ProfileSettings profile_settings;
 

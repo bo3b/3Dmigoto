@@ -13,8 +13,14 @@
 #include <unordered_set>
 #include <Windows.h>
 
+using std::string;
+using std::unordered_map;
+using std::unordered_set;
+using std::vector;
+
 using namespace overlay;
 
+// -----------------------------------------------------------------------------
 
 // This implements a lock dependency checker to detect possible deadlock
 // scenarios even if no deadlock was actually hit. It is inspired by the
@@ -68,17 +74,17 @@ static BOOL(__stdcall* _TryEnterCriticalSection)(CRITICAL_SECTION* lock) = TryEn
 static void(__stdcall* _DeleteCriticalSection)(CRITICAL_SECTION* lock)   = DeleteCriticalSection;
 
 // We store a list (set) of all locks taken *after* a given lock
-typedef std::unordered_set<CRITICAL_SECTION*>                    lock_graph_node;
-static std::unordered_map<CRITICAL_SECTION*, lock_graph_node>    lock_graph;
+typedef unordered_set<CRITICAL_SECTION*>                         lock_graph_node;
+static unordered_map<CRITICAL_SECTION*, lock_graph_node>         lock_graph;
 static CRITICAL_SECTION                                          graph_lock;
-static std::unordered_map<size_t, LockStack>                     cached_stacks;
-static std::unordered_set<size_t>                                reported_stacks;
+static unordered_map<size_t, LockStack>                          cached_stacks;
+static unordered_set<size_t>                                     reported_stacks;
 static std::set<std::pair<CRITICAL_SECTION*, CRITICAL_SECTION*>> overlay_reported;
 
 static bool      lock_dependency_checks_enabled;
 static uintptr_t ntdll_base, ntdll_end;
 
-static std::unordered_map<CRITICAL_SECTION*, std::string> lock_names;
+static unordered_map<CRITICAL_SECTION*, string> lock_names;
 
 static const char* lock_name(
     CRITICAL_SECTION* lock,
@@ -117,8 +123,8 @@ static void dump_stack_trace()
 }
 
 static void log_held_locks(
-    LockStack&              held_locks,
-    std::vector<LockStack>& other_sides)
+    LockStack&         held_locks,
+    vector<LockStack>& other_sides)
 {
     HMODULE    module;
     wchar_t    path[MAX_PATH];
@@ -221,9 +227,9 @@ static void validate_lock(
     LockStack&        locks_held,
     CRITICAL_SECTION* new_lock)
 {
-    std::vector<std::pair<CRITICAL_SECTION*, bool>> issues;
-    std::vector<LockStack>                          other_sides;
-    bool                                            reported = false;
+    vector<std::pair<CRITICAL_SECTION*, bool>> issues;
+    vector<LockStack>                          other_sides;
+    bool                                       reported = false;
 
     // First lock taken in any thread cannot lead to a deadlock - only
     // starvation if we are already in deadlock:

@@ -16,8 +16,13 @@
 #include <Windows.h>
 #include <Xinput.h>
 
-using namespace std;
+using std::shared_ptr;
+using std::wstring;
+using std::vector;
+
 using namespace overlay;
+
+// -----------------------------------------------------------------------------
 
 // Set a function pointer to the xinput get state call. By default, set it to
 // XInputGetState() in whichever xinput we are linked to (xinput9_1_0.dll). If
@@ -64,7 +69,7 @@ static void SwitchToXinpuGetStateEx()
 }
 
 // VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
-class KeyParseError: public exception {} keyParseError;
+class KeyParseError: public std::exception {} keyParseError;
 
 void InputListener::UpEvent(HackerDevice *device)
 {
@@ -481,7 +486,7 @@ bool RegisterIniKeyBinding(LPCWSTR app, LPCWSTR ini_key,
         InputCallback down_cb, InputCallback up_cb, int auto_repeat,
         void *private_data)
 {
-    shared_ptr<InputCallbacks> callbacks = make_shared<InputCallbacks>(down_cb, up_cb, private_data);
+    shared_ptr<InputCallbacks> callbacks = std::make_shared<InputCallbacks>(down_cb, up_cb, private_data);
     wchar_t keyName[MAX_PATH];
 
     if (!get_ini_string(app, ini_key, 0, keyName, MAX_PATH))

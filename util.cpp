@@ -28,8 +28,13 @@
 #include <vector>
 #include <Windows.h>
 
-using namespace std;
+using std::string;
+using std::vector;
+using std::map;
+
 using namespace overlay;
+
+// -----------------------------------------------------------------------------
 
 // Sometimes game directories get funny permissions that cause us problems. I
 // have no clue how or why this happens, and the usual way to deal with it is

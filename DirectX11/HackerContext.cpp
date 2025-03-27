@@ -42,10 +42,15 @@
 // Must come after any <d3d11_1.h> include, in order to setup __d3d11_h__
 #include "nvapi.h"
 
-using namespace std;
+using std::map;
+using std::set;
+using std::string;
+using std::vector;
+using std::wstring;
+
 using namespace overlay;
 
-// -----------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 HackerContext* HackerContextFactory(
     ID3D11Device1*        device1,
@@ -676,7 +681,7 @@ void HackerContext::DeferredShaderReplacement(
                     for (auto& parse_error : parse_errors)
                         log_overlay(log::notice, "%016I64x-%S %S: %s\n", hash, shader_type, tagline.c_str(), parse_error.what());
                 }
-                catch (const exception& e)
+                catch (const std::exception& e)
                 {
                     log_overlay(log::warning, "Error assembling ShaderRegex patched %016I64x-%S\n%S\n%s\n", hash, shader_type, tagline.c_str(), e.what());
                     goto out_drop;

@@ -43,10 +43,19 @@
 
 #define INI_FILENAME L"d3dx.ini"
 
-using namespace std;
+using std::hash;
+using std::map;
+using std::set;
+using std::shared_ptr;
+using std::string;
+using std::unordered_map;
+using std::unordered_set;
+using std::vector;
+using std::wstring;
+
 using namespace overlay;
 
-//--------------------------------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
 
 // List all the section prefixes which may contain a command list here and
 // whether they are a prefix or an exact match. Listing a section here will not
@@ -653,7 +662,7 @@ static void parse_ini_key_val_line(
 }
 
 static void parse_ini_stream(
-    istream*       stream,
+    std::istream*  stream,
     const wstring* _ini_namespace)
 {
     string            aline;
@@ -751,7 +760,7 @@ static void parse_namespaced_ini_file(
     const wchar_t* ini,
     const wstring* ini_namespace)
 {
-    ifstream f(ini, ios::in, _SH_DENYNO);
+    std::ifstream f(ini, std::ios::in, _SH_DENYNO);
     if (!f)
     {
         log_overlay(log::warning, "  Error opening %S\n", ini);
@@ -1295,7 +1304,7 @@ static int get_ini_hex_string(
 }
 
 // VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
-class EnumParseError : public exception
+class EnumParseError : public std::exception
 {
 } enum_parse_error;
 
@@ -1558,15 +1567,15 @@ static void register_preset_key_bindings()
 
         if (type == Key_Override_Type::cycle)
         {
-            shared_ptr<KeyOverrideCycle>     cycle_preset = make_shared<KeyOverrideCycle>();
-            shared_ptr<KeyOverrideCycleBack> cycle_back   = make_shared<KeyOverrideCycleBack>(cycle_preset);
+            shared_ptr<KeyOverrideCycle>     cycle_preset = std::make_shared<KeyOverrideCycle>();
+            shared_ptr<KeyOverrideCycleBack> cycle_back   = std::make_shared<KeyOverrideCycleBack>(cycle_preset);
             preset                                        = cycle_preset;
             for (wstring key : back)
                 RegisterKeyBinding(L"Back", key.c_str(), cycle_back, 0, delay, release_delay);
         }
         else
         {
-            preset = make_shared<KeyOverride>(type);
+            preset = std::make_shared<KeyOverride>(type);
         }
 
         preset->ParseIniSection(id);
@@ -2280,15 +2289,15 @@ static void parse_driver_profile()
 
 static void parse_constants_section()
 {
-    VariableFlags                              flags;
-    IniSectionVector*                          section = nullptr;
-    IniSectionVector::iterator                 entry, next;
-    wstring *                                  key, *val, name;
-    const wchar_t*                             name_pos;
-    const wstring*                             ini_namespace;
-    pair<CommandListVariables::iterator, bool> inserted;
-    float                                      fval;
-    int                                        len;
+    VariableFlags                                   flags;
+    IniSectionVector*                               section = nullptr;
+    IniSectionVector::iterator                      entry, next;
+    wstring *                                       key, *val, name;
+    const wchar_t*                                  name_pos;
+    const wstring*                                  ini_namespace;
+    std::pair<CommandListVariables::iterator, bool> inserted;
+    float                                           fval;
+    int                                             len;
 
     // The naming on this one is historical - [Constants] used to define
     // iniParams that couldn't change, then later we allowed them to be
