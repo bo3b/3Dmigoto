@@ -17,14 +17,19 @@
     #include <d3dx9shader.h>
 #endif
 
-using namespace std;
+using std::memcpy;
+using std::string;
+using std::unordered_map;
+using std::vector;
+
+// -----------------------------------------------------------------------------
 
 // This is defined in the Windows 10 SDK, but seems not in the 8.0 SDK:
 #ifndef DBL_DECIMAL_DIG
     #define DBL_DECIMAL_DIG 17
 #endif
 
-// for sscanf_s convinience. Explanation in DecompileHLSL.cpp
+// for sscanf_s convenience. Explanation in DecompileHLSL.cpp
 #define U_COUNT_OF(...) (unsigned)_countof(__VA_ARGS__)
 
 static unordered_map<string, vector<DWORD>> code_bin;
@@ -3359,9 +3364,9 @@ HRESULT disassembler(
     // the header, etc). I've added a check for numChunks < 1 as that
     // would lead to codeByteStart being used uninitialised
     byte* p_position = buffer->data();
-    std::memcpy(fourcc, p_position, 4);
+    memcpy(fourcc, p_position, 4);
     p_position += 4;
-    std::memcpy(f_hash, p_position, 16);
+    memcpy(f_hash, p_position, 16);
     p_position += 16;
     one = *reinterpret_cast<DWORD*>(p_position);
     p_position += 4;
@@ -3372,7 +3377,7 @@ HRESULT disassembler(
         return S_FALSE;
     p_position += 4;
     chunk_offsets.resize(num_chunks);
-    std::memcpy(chunk_offsets.data(), p_position, 4 * num_chunks);
+    memcpy(chunk_offsets.data(), p_position, 4 * num_chunks);
 
     char*        asm_buffer;
     size_t       asm_size;
@@ -3595,23 +3600,23 @@ static vector<DWORD> compute_hash(
                 {
                     dst[0]         = size << 3;
                     DWORD rem_size = size - processed_size;
-                    std::memcpy(&dst[1], p_src, rem_size);
-                    std::memcpy(&dst[1 + rem_size / 4], data, rest_size);
+                    memcpy(&dst[1], p_src, rem_size);
+                    memcpy(&dst[1 + rem_size / 4], data, rest_size);
                     dst[15] = (size * 2) | 1;
                     p_src   = dst;
                 }
                 else
                 {
                     DWORD rem_size = size - processed_size;
-                    std::memcpy(&dst[0], p_src, rem_size);
-                    std::memcpy(&dst[rem_size / 4], data, 64 - rem_size);
+                    memcpy(&dst[0], p_src, rem_size);
+                    memcpy(&dst[rem_size / 4], data, 64 - rem_size);
                     p_src = dst;
                 }
             }
             else if (i > loop_size2)
             {
                 dst[0] = size << 3;
-                std::memcpy(&dst[1], &data[1], 56);
+                memcpy(&dst[1], &data[1], 56);
                 dst[15] = (size * 2) | 1;
                 p_src   = dst;
             }
@@ -3700,7 +3705,7 @@ static vector<DWORD> compute_hash(
         }
     }
     vector<DWORD> hash(4);
-    std::memcpy(hash.data(), h, 16);
+    memcpy(hash.data(), h, 16);
     return hash;
 }
 
@@ -3722,9 +3727,9 @@ vector<byte> assembler(
     // the header, etc). I've added a check for numChunks < 1 as that
     // would lead to codeByteStart being used uninitialised
     byte* p_position = orig_bytecode.data();
-    std::memcpy(fourcc, p_position, 4);
+    memcpy(fourcc, p_position, 4);
     p_position += 4;
-    std::memcpy(f_hash, p_position, 16);
+    memcpy(f_hash, p_position, 16);
     p_position += 16;
     one = *reinterpret_cast<DWORD*>(p_position);
     p_position += 4;
@@ -3735,7 +3740,7 @@ vector<byte> assembler(
         throw std::invalid_argument("assembler: Bad shader binary");
     p_position += 4;
     chunk_offsets.resize(num_chunks);
-    std::memcpy(chunk_offsets.data(), p_position, 4 * num_chunks);
+    memcpy(chunk_offsets.data(), p_position, 4 * num_chunks);
 
     char*  asm_buffer;
     size_t asm_size;
@@ -3856,7 +3861,7 @@ vector<byte> assembler_dx9(vector<char>* asmFile)
         size_t size   = pAssembly->GetBufferSize();
         LPVOID buffer = pAssembly->GetBufferPointer();
         ret.resize(size);
-        std::memcpy(ret.data(), buffer, size);
+        memcpy(ret.data(), buffer, size);
         pAssembly->Release();
         // FIXME: Pass warnings back to the caller
     }

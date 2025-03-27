@@ -42,6 +42,10 @@
 #include <unordered_map>
 #include <Windows.h>
 
+using std::unordered_map;
+
+// -----------------------------------------------------------------------------
+
 // Change this to 1 to enable debug logging of hooks and the trampolines back
 // to the original device. Disabled by default as debug logging will already
 // log most of these calls in the HackerDevice, so this would triple the noise
@@ -56,7 +60,7 @@
 #endif
 
 // A map to look up the hacker device from the original device:
-typedef std::unordered_map<ID3D11Device1*, ID3D11Device1*> DeviceMap;
+typedef unordered_map<ID3D11Device1*, ID3D11Device1*> DeviceMap;
 
 static DeviceMap        device_map;
 static CRITICAL_SECTION device_map_lock;

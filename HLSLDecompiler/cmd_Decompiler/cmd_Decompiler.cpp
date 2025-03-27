@@ -18,12 +18,15 @@
 #include <vector>
 #include <Windows.h>
 
-#define MIGOTO_DX 11  // Selects the DX11 disassembler in util.h - the DX9 dis/assembler is not very
-// interesting since it is just Microsoft's - we can add it later, but low priority.
-                     // The DX9 decompiler is more interesting, which is unrelated to this flag.
+#define MIGOTO_DX 11    // Selects the DX11 disassembler in util.h - the DX9 dis/assembler is not very
+                        // interesting since it is just Microsoft's - we can add it later, but low priority.
+                        // The DX9 decompiler is more interesting, which is unrelated to this flag.
 #include "Assembler.h"
 
-using namespace std;
+using std::string;
+using std::vector;
+
+// -----------------------------------------------------------------------------
 
 FILE *LogFile = stderr; // Log to stderr by default
 bool gLogDebug = false;
@@ -38,7 +41,7 @@ static void PrintHelp(int argc, char *argv[])
     // We can do this via fxc easily enough for now, and would need to pass in the shader model:
     LOG_INFO("  -C, --compile\n");
     LOG_INFO("\t\t\tCompile binary shaders with Microsoft's compiler\n");
-    LOG_INFO("\t\t\Use the fxc compiler in VS cmd window.\n");
+    LOG_INFO("\t\t\tUse the fxc compiler in VS cmd window.\n");
 
     LOG_INFO("  -d, --disassemble, --disassemble-flugan\n");
     LOG_INFO("\t\t\tDisassemble binary shaders with Flugan's disassembler\n");
@@ -91,7 +94,7 @@ static void PrintVersion()
 }
 
 static struct {
-    std::vector<std::string> files;
+    vector<string> files;
     bool decompile;
     bool compile;
     bool disassemble_ms;
@@ -99,7 +102,7 @@ static struct {
     int disassemble_hexdump;
     bool disassemble_46;
     bool patch_cb_offsets;
-    std::string reflection_reference;
+    string reflection_reference;
     bool assemble;
     bool force;
     bool validate;
@@ -242,12 +245,12 @@ static HRESULT DisassembleMS(const void *pShaderBytecode, size_t BytecodeLength,
 static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLength, string *asmText,
         int hexdump, bool d3dcompiler_46_compat)
 {
-    std::string       comments;
-    std::vector<byte> byte_code(BytecodeLength);
-    std::vector<byte> disassembly;
+    string       comments;
+    vector<byte> byte_code(BytecodeLength);
+    vector<byte> disassembly;
     HRESULT           r;
 
-    comments = "//   using 3Dmigoto v" + std::string(VER_FILE_VERSION_STR) + " on " + log_time() + "//\n";
+    comments = "//   using 3Dmigoto v" + string(VER_FILE_VERSION_STR) + " on " + log_time() + "//\n";
     memcpy(byte_code.data(), pShaderBytecode, BytecodeLength);
 
     r = disassembler(&byte_code, &disassembly, comments.c_str(), hexdump, d3dcompiler_46_compat, true, args.patch_cb_offsets);
@@ -258,7 +261,7 @@ static HRESULT DisassembleFlugan(const void *pShaderBytecode, size_t BytecodeLen
         return E_FAIL;
     }
 
-    *asmText = std::string(disassembly.begin(), disassembly.end());
+    *asmText = string(disassembly.begin(), disassembly.end());
 
     return S_OK;
 }

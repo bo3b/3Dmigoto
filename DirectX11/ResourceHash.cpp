@@ -23,7 +23,9 @@
 #include <unordered_map>
 #include <Windows.h>
 
-using namespace std;
+using std::wstring;
+using std::unordered_map;
+using std::shared_ptr;
 using namespace overlay;
 
 
