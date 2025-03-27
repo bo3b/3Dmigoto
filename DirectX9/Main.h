@@ -16,7 +16,6 @@
 #include <unordered_map>
 #include <stdint.h>
 
-using namespace std;
 
 #include <d3d9.h>
 #include <nvapi.h>
@@ -25,6 +24,8 @@ using namespace std;
 #include <nvstereo.h>
 #include "Globals.h"
 #include "Overlay.hpp"
+
+// -----------------------------------------------------------------------------
 
 namespace D3D9Wrapper
 {
