@@ -30,6 +30,8 @@ Style guide with some _why_:
 #### Headers
 - Rename .h files to .hpp 
 - Never use _using namespace_ in header files.  We don't use namespaces much, but I'll check this.
+- Prefer to always avoid _using namespace_ even in cpp files, in favor of specific uses like _using std::vector;_
+- Prefer to always use specific _using std::string;_ clause instead of inline _std::..._
 - Always include `#pragma once` guards in headers.  We already do this I think.
 - Use "" for local headers versus <> for system/SDK headers.  I'm sure there are some errors here.
 
@@ -59,6 +61,8 @@ Style guide with some _why_:
 Some notes based on research. Hard to understand details of tools.
 
 clang-format has limited abilities, not enough detail in specifications to get exactly what I'd want.  In particular, the function parameters for definitions cannot be wrapped, if the line limit is 0.  There are no flags to wrap those.  In addition, setting it low to like 40, which forces wraps then breaks the ability to align assignments. Not enough flexibility.  So, we'll leave it at 0, and format those using Resharper for a first pass, and manually later on.
+
+Do not use VS2017. The clang support is much more limited there, and the clang-tidy options are also missing key aspects we want. VS2019 was used by default here, but moving to VS2022 is likely.
 
 <br>
 -----
@@ -112,3 +116,5 @@ One cleanup edit here- it's not proper C++ to use initializers like:
   ```shader_ins ins = {0};```  
 This works, but is doing two different types of initialization at once. The first element of the struct is cleared specifically to zero, then the rest of the elements get a default zero initialization. In practice identical for plain old data, but it's not considered good form. The only reason to use 0 there is to be explicit, and so let's go to the industry standard of:  
   ```shader_ins ins = {};```  
+
+Will change to never use _using namespace_ even in cpp files, in favor of specific uses like _using std::vector;_  This is the current best practice recommendation for clarity. Anything in _std::_ should be named in a _using std::..._ clause to avoid inline noise of obvious, standard, data types.
