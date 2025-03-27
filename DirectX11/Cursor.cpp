@@ -9,7 +9,10 @@
 
 #include <Windows.h>
 
-using namespace overlay;
+using overlay::log;
+using overlay::log_overlay;
+
+// -----------------------------------------------------------------------------
 
 //////////////////////////// HARDWARE MOUSE CURSOR SUPPRESSION //////////////////////////
 // To suppress the hardware mouse cursor you would think we just have to call

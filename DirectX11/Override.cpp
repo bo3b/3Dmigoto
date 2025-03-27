@@ -32,7 +32,8 @@ using std::string;
 using std::vector;
 using std::wstring;
 
-using namespace overlay;
+using overlay::log;
+using overlay::log_overlay;
 
 // -----------------------------------------------------------------------------
 

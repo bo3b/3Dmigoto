@@ -39,7 +39,10 @@
     #include <d3d11on12.h>
 #endif
 
-using namespace overlay;
+using overlay::log;
+using overlay::log_overlay;
+
+// -----------------------------------------------------------------------------
 
 // This class is for a different approach than the wrapping of the system objects
 // like we do with ID3D11Device for example.  When we wrap a COM object like that,
@@ -66,11 +69,11 @@ using namespace overlay;
 // Deviare.
 
 #ifdef NTDDI_WIN10
-    // 3DMigoto was built with the Win 10 SDK (vs2015 branch) - we can use the
-    // 11On12 compatibility mode to enable some 3DMigoto functionality on DX12 to
-    // get the overlay working and display a warning. This won't be enough to
-    // enable hunting or replace shaders or anything, and the only noteworthy call
-    // from the game we will be intercepting is Present().
+// 3DMigoto was built with the Win 10 SDK (vs2015 branch) - we can use the
+// 11On12 compatibility mode to enable some 3DMigoto functionality on DX12 to
+// get the overlay working and display a warning. This won't be enough to
+// enable hunting or replace shaders or anything, and the only noteworthy call
+// from the game we will be intercepting is Present().
 
 static HackerDevice* prepare_devices_for_dx12_warning(
     IUnknown* unknown_device)
@@ -143,7 +146,7 @@ static HackerDevice* prepare_devices_for_dx12_warning(
     return nullptr;
 }
 
-#endif // NTDDI_WIN10
+#endif  // NTDDI_WIN10
 
 // Takes an IUnknown device and finds the corresponding HackerDevice and
 // DirectX device interfaces. The passed in IUnknown may be modified to point

@@ -18,7 +18,8 @@ using std::unordered_map;
 using std::unordered_set;
 using std::vector;
 
-using namespace overlay;
+using overlay::log;
+using overlay::log_overlay;
 
 // -----------------------------------------------------------------------------
 

@@ -44,7 +44,8 @@ using std::string;
 using std::vector;
 using std::wstring;
 
-using namespace overlay;
+using overlay::log;
+using overlay::log_overlay;
 
 // -----------------------------------------------------------------------------
 
@@ -1404,7 +1405,7 @@ static void reload_fixes(
         // The config reload is separate and will also attempt to clear old
         // notices - ClearNotices() itself will ensure that only the first one
         // of these actually takes effect in the current frame.
-        clear_notices();
+        overlay::clear_notices();
 
         for (ShaderReloadMap::iterator iter = G->mReloadedShaders.begin(); iter != G->mReloadedShaders.end(); iter++)
             iter->second.found = false;
@@ -2007,7 +2008,7 @@ static void mark_shader_end(
     // that any notices that haven't timed out yet (e.g. from a previous
     // failed dump attempt) are removed so that the only messages
     // displayed will be relevant to the current dump attempt.
-    clear_notices();
+    overlay::clear_notices();
 
     if (G->marking_actions & MarkingAction::CLIPBOARD)
         hash_to_clipboard(long_type, selected);
