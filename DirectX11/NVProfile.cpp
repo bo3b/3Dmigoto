@@ -10,6 +10,7 @@
 #include <d3d11_1.h>
 #include <fstream>
 #include <iosfwd>
+#include <shellapi.h>
 #include <string>
 #include <unordered_set>
 #include <Windows.h>
@@ -18,12 +19,13 @@
 // the d3d11.h pre-processor defines to avoid mis-matches with Profiling.hpp:
 #include "nvapi.h"
 
-#include <fstream>
-#include <shellapi.h>
-#include <unordered_set>
+using std::wstring;
+using std::unordered_map;
+using std::unordered_set;
 
-using namespace std;
 using namespace overlay;
+
+// -----------------------------------------------------------------------------
 
 ProfileSettings profile_settings;
 

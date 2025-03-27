@@ -38,8 +38,15 @@
 // Included after <d3d11_1.h> to define macro.
 #include "nvapi.h"
 
-using namespace std;
+using std::map;
+using std::set;
+using std::string;
+using std::vector;
+using std::wstring;
+
 using namespace overlay;
+
+// -----------------------------------------------------------------------------
 
 // Hunting is considered enabled in either:
 //  1:showing overlay, or 2:soft disabled
@@ -802,7 +809,7 @@ static bool regenerate_shader(
             // be a shaderhacker at the keyboard ready to fix their bugs.
             byte_code_copy = assemble_flugan_with_optional_signature_parsing(&src_data, G->assemble_signature_comments, &byte_code_copy);
         }
-        catch (const exception& e)
+        catch (const std::exception& e)
         {
             log_overlay(log::notice, "Error assembling %S: %s\n", file_name, e.what());
             return true;

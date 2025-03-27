@@ -16,7 +16,11 @@
 // the __d3d11_h__ preprocessor and pick up extra calls.
 #include "nvapi.h"
 
-using namespace std;
+using std::vector;
+using std::wstring;
+using std::unordered_set;
+
+// -----------------------------------------------------------------------------
 
 void profiling::Overhead::clear()
 {

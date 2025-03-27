@@ -11,6 +11,8 @@
 #define COMPILER_DLL_VERSION "46"
 #define COMPILER_DLL_VERSIONL L"46"
 
+// -----------------------------------------------------------------------------
+
 // Standalone DLL needs its own log file reference, as log.h just exports them.
 bool gLogDebug = false;
 FILE *LogFile = 0;
@@ -19,10 +21,6 @@ static bool gInitialized = false;
 
 static bool EXPORT_SHADERS = false;
 static wchar_t SHADER_PATH[MAX_PATH] = {};
-
-using namespace std;
-
-
 
 void InitializeDLL()
 {

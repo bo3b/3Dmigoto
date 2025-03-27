@@ -49,8 +49,14 @@
 // the __d3d11_h__ preprocessor and pick up extra calls.
 #include "nvapi.h"
 
-using namespace std;
+using std::string;
+using std::unordered_map;
+using std::vector;
+using std::wstring;
+
 using namespace overlay;
+
+// -----------------------------------------------------------------------------
 
 // A map to look up the HackerDevice from an IUnknown. The reason for using an
 // IUnknown as the key is that an ID3D11Device and IDXGIDevice are actually two

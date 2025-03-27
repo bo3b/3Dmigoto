@@ -10,7 +10,12 @@
 #include <vector>
 #include <Windows.h>
 
-using namespace std;
+using std::cout;
+using std::endl;
+using std::string;
+using std::vector;
+
+// -----------------------------------------------------------------------------
 
 bool  gLogDebug = false;
 FILE* LogFile   = nullptr;
@@ -173,7 +178,7 @@ int _tmain(
         files = enumerate_files(path_name, "*.bin");
         if (files.size() > 0)
         {
-            std::cout << "bin->asm validate: ";
+            cout << "bin->asm validate: ";
             for (DWORD i = 0; i < files.size(); i++)
             {
                 string file_name = files[i];

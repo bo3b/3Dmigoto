@@ -9,7 +9,10 @@
 #include <vector>
 #include <Windows.h>
 
-using namespace std;
+using std::string;
+using std::vector;
+
+// -----------------------------------------------------------------------------
 
 #define SFI_RAW_STRUCT_BUF (1LL << 1)
 #define SFI_MIN_PRECISION (1LL << 4)
@@ -23,7 +26,7 @@ class AsmSignatureParseError : public std::exception
 {
 } parse_error;
 
-static std::string next_line(
+static string next_line(
     string* shader,
     size_t* pos)
 {
@@ -268,12 +271,12 @@ static uint32_t pad(
 }
 
 static void* serialise_signature_section(
-    char*                                       section24,
-    char*                                       section28,
-    char*                                       section32,
-    int                                         entry_size,
-    std::vector<struct sgn_entry_unserialised>* entries,
-    uint32_t                                    name_len)
+    char*                                  section24,
+    char*                                  section28,
+    char*                                  section32,
+    int                                    entry_size,
+    vector<struct sgn_entry_unserialised>* entries,
+    uint32_t                               name_len)
 {
     void*                  section;
     uint32_t               section_size, padding, alloc_size, name_off;

@@ -36,7 +36,10 @@
 // the __d3d11_h__ preprocessor and pick up extra calls.
 #include "nvapi.h"
 
-using namespace std;
+using std::unordered_map;
+using std::wstring;
+
+// -----------------------------------------------------------------------------
 
 // Flag introduced in Windows 10 Fall Creators Update
 // Someone was clearly on crack when they decided this flag was necessary
