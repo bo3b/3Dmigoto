@@ -53,7 +53,9 @@ using std::unordered_set;
 using std::vector;
 using std::wstring;
 
-using namespace overlay;
+using overlay::log;
+using overlay::log_overlay;
+using overlay::log_overlay_w;
 
 // -----------------------------------------------------------------------------
 
@@ -5033,7 +5035,7 @@ void reload_config(
         // The shader reload is separate and will also attempt to clear old
         // notices - ClearNotices() itself will ensure that only the first one
         // of these actually takes effect in the current frame.
-        clear_notices();
+        overlay::clear_notices();
 
         // Clear the key bindings. There may be other things that need to be
         // cleared as well, but for the sake of clarity I'd rather clear as

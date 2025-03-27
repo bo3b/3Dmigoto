@@ -80,9 +80,11 @@
 #include <dxgi1_2.h>
 #include <Windows.h>
 
-using namespace overlay;
+using overlay::log;
+using overlay::log_overlay;
 
 // -----------------------------------------------------------------------------
+
 // SetWindowPos hook, activated by full_screen=2 in d3dx.ini
 
 static BOOL(WINAPI* fn_orig_SetWindowPos)(HWND hWnd, HWND hWndInsertAfter, int X, int Y, int cx, int cy, UINT uFlags) = nullptr;

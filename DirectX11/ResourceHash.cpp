@@ -34,7 +34,8 @@ using std::wstring;
 using std::unordered_map;
 using std::shared_ptr;
 
-using namespace overlay;
+using overlay::log;
+using overlay::log_overlay;
 
 // -----------------------------------------------------------------------------
 

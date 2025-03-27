@@ -28,11 +28,12 @@
 #include <vector>
 #include <Windows.h>
 
+using std::map;
 using std::string;
 using std::vector;
-using std::map;
 
-using namespace overlay;
+using overlay::log;
+using overlay::log_overlay;
 
 // -----------------------------------------------------------------------------
 
