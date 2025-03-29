@@ -1,0 +1,48 @@
+Refactoring to do: (as done previously, in order)
+
+-- From HackerContext.hpp --
+Rename all m* vars. to lowerCamelCase
+NULL -> nullptr
+Rename structs to lower_case
+Fix all parameters for style - don't alter dx11 function types
+Manually tweak templates for alignment - auto tools are sketchy. Make match style of params for functions.
+clang-format entire file
+    Primary changes:
+    Pointer specification is left justified
+    All assignments are aligned for visual simplicity.
+    All declarations are aligned for visual simplicty.
+    All input parameters are on separate lines in cpp file, on a single line in hpp file.
+    All if/then/while/for are on separate lines.
+    Brace style forced to Allman.
+    Indenting in blocks is enforced.
+    No line limit, so no wrapping.
+Remove all SAL notation from cpp - left in hpp with no-format guard
+struct definitions go to lower_snake_case
+All parameters are lower_snake_case 
+
+
+-- From HackerContext.cpp --
+Using namespace std is removed in all cases - using namespace should be gone
+ENTER_CRITICAL with brackets
+Rename all m* vars to lowerCamelCase - should be done
+NULL->nullptr
+clang-tidy automatic naming with --fix  patch p_ errors
+Rename structs to lower_snake_case
+Rename global functions to lower_case
+All casts to static_cast<>
+Fix all parameters for lower_case style - no change to DX11 namespace
+Manually tweak templates for style
+Add {} around Criticals
+clang-format entire file - all whitespace biffed
+    Primary changes:
+    Pointer specification is left justified
+    All assignments are aligned for visual simplicity.
+    All declarations are aligned for visual simplicty.
+    All input parameters are on separate lines in cpp file, on a single line in hpp file.
+    All if/then/while/for are on separate lines.
+    Brace style forced to Allman.
+    Indenting in blocks is enforced.
+    No line limit, so no wrapping.
+Remove all SAL notations - left in hpp
+Fix mismatch names from hpp to cpp functions
+Fix Enum naming - use namespace as needed
