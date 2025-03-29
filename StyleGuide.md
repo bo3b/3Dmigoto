@@ -14,7 +14,7 @@ Style guide with some _why_:
 #### Classes
 - Class references will remain CamelCase for definitions.  Microsoft objects that we subclass are always CamelCase, so keeping these consistent will make it clear when we are talking about Objects.
 - All class methods will be CamelCase.  A lot of these are defined by Microsoft objects that we want to respect. The difference between our methods and Microsoft methods will be clear because of how they are called.
-- Field references in objects will be lowerCamelCase style. To remove the m that neither Helifax nor I like, but still keep them in the CamelCase variant to indicate 'object', instead of a local variable. No differences for public vs. private, but lowerSnakeCase will clearly indicate an object field.
+- Field references in objects will be lowerCamelCase style. To remove the m that neither Helifax nor I like, but still keep them in the CamelCase variant to indicate 'object', instead of a local variable. No differences for public vs. private, but lowerSnakeCase will clearly indicate an object field and also clearly differentiate with Microsoft COM object vars.
 - Operator overloads.  Only to be used when it cannot be confused.  These are as risky as bad macros.
 - A general goal is to make object references and usages clearly different than regular variables or subroutines.
 
@@ -34,16 +34,18 @@ Style guide with some _why_:
 - Prefer to always use specific _using std::string;_ clause instead of inline _std::..._
 - Always include `#pragma once` guards in headers.  We already do this I think.
 - Use "" for local headers versus <> for system/SDK headers.  I'm sure there are some errors here.
+- Use Google best practice of 'main header/windows/c++ headers/vendor SDK/our local' sorting. And alphabetic sorting in subgroups.
 
 #### General
 - We want to avoid hungarian notation as most of us don't care for it.  Some exceptions will be skipped like pCamelCase input parameters.
-- Initialize all variables preferably with `{}` style.  Probably not doable, but Resharper might catch all missing ones.
+- Initialize all variables preferably with `var_name = {}` style.  Probably not doable, but AI can catch all missing ones. Specifically do _not_ use `var_name{}` or `var_name = {0}`
 - Avoid templates, except where inputs are actually unrelated objects. Avoid using template polymorphism. Templates bugs are really difficult, because the compiler runs amok. Also I personally despise the syntax.  Still, good to use in narrow circumstances. 
-- Never use `auto`.  This is just putting the onus on the reader, and it's much better clarity to just use the type.
-- Always use nullptr instead of NULL or 0 for pointers.  It clarifies that the reference is a ptr.
+- Avoid using `auto`.  This is just putting the onus on the reader, and it's much better clarity to just use the type. Acceptable use case is *for* loop indexers.
+- Always use nullptr instead of NULL or 0 for pointers.  It clarifies that the reference is a ptr. Use NULL for other DX11 API use. Prefer `if (ptrName)` for null checks.
 - Use Rule of Zero.  Don't add stuff we aren't actively using just to be 'complete.'  Like every possible constructor or every possible overload or override.
 - Use TODO in comments as reminders for unfinished code.
 - Always check error results, just as a good habit.  If it's something 'impossible', have it throw a fatal error using a fatal macro.
+- Best practices recommends that local variables should be declared close to first use, not at top of function. Variables used in full function scope, multiple times, should be declared at top.
 
 #### Formatting
 - Using spaces for whitespace, instead of tabs.  Spaces are generally preferred (Stackoverflow), but the whole project is already tabs set to 4. Mild preference for spaces, so we'll switch to that. Especially because we plan to use no wrapping, this is much less important.
@@ -110,7 +112,15 @@ Academic for now.  Unless we hit a particular game or scenario where we prove ou
 
 ##### 3-26-25 Update:
 
-Coming back to this after a long hiatus. Goal is to finish this up and integrate into master.  Will most likely archive 1.3.16, then rename Rename_Reformat branch to master. Version change to 2.0 as having changed a lot, including toolset, new additions, and massive refactoring. Very likely to move to VS2022.
+Coming back to this after a long hiatus. Goal is to finish this up and integrate into master.  Will most likely archive 1.3.16, then rename Rename_Reformat branch to master. Version change to 2.0 as having changed a lot, including toolset, new additions, and massive refactoring. Very likely to move to VS2022.  
+
+We want to maintain compatibility with Win7, as some games will only work when run in Compatibility. 
+
+ChatGPT suggests:
+Can decide if we want to update to C++ v17 from v14. Likely a good time to move to C++17 now, as it should be compatible to everything we use.  Cannot move to C++20 because it requires Win8. C++17 *might* break Win7 Compatibility from ```<memory>``` functions, so C++14 is preferred unless we test.
+VS2022 should work fine, as well as v143 toolset. This would be a good time. Cannot use any SDK higher than 10.0.19041 as newer versions drop Win7 support. Spectre mitigations must be disabled for Win7 support.
+Need to define the ```_WIN32_WINNT_WIN7=0x0601```
+DirectXTK works with all toolsets and can allow Win7 support if we only use XInput 9.1.0
 
 One cleanup edit here- it's not proper C++ to use initializers like:  
   ```shader_ins ins = {0};```  
@@ -120,3 +130,94 @@ This works, but is doing two different types of initialization at once. The firs
 Will change to never use _using namespace_ even in cpp files, in favor of specific uses like _using std::vector;_  This is the current best practice recommendation for clarity. Anything in _std::_ should be named in a _using std::..._ clause to avoid inline noise of obvious, standard, data types. For items that are pretty rare, like _std::wistringstream_, we'd prefer inline usage as opposed to the _using_ clause. Like a lot of this, this is a bit arbitrary. If something only has a single use, inline is better. In .h or .hpp files we want to never use 'using' of any form because it is then used in cpp files.
 
 Would like to move everything to using ComPtr<>, which would simplify our memory management and clean up some code. It's also the recommended approach for anything DX11. It adds some line noise, but the automatic dispose upon losing scope is worth the price of admission.
+
+##### Work in progress:
+
+Projects required:
+	Assembler
+	BinaryDecompiler 		- Done
+	cmd_Decompiler
+	DirectX11
+	DirectXGI
+	DirectXTK_Desktop_2017	- Done
+	Injector
+	NVAPI
+
+We specifically do *not* want to Refactor BinaryDecompiler and DirectXTK_Desktop_2017, because these are external projects that might need updates.  We should strongly consider using git submodules for externals of: Nektra, pcre2, crc32c-hw, DirectXTK, BinaryDecompiler (james-jones).
+
+We should rename D3D_Shaders because it's far too generic and misleading. It's Assembler. Maybe DXBC_Assembler.
+
+All FIXME->TODO
+
+Reformatting still needed DirectX11:
+03/28/2025  09:46 PM               253 DLLMainHook.h
+03/28/2025  09:46 PM             2,168 DrawCallInfo.h
+03/28/2025  09:46 PM            25,597 Globals.h
+03/28/2025  09:46 PM             6,080 IniHandler.h
+03/28/2025  09:46 PM               489 NVProfile.h
+
+03/28/2025  01:07 AM            48,700 CommandList.hpp
+03/26/2025  02:16 PM            60,537 FrameAnalysis.hpp
+03/26/2025  02:16 PM             6,545 Input.hpp
+03/26/2025  02:16 PM             4,593 Profiling.hpp
+03/26/2025  02:16 PM            17,667 ResourceHash.hpp
+03/26/2025  02:16 PM             3,117 ShaderRegex.hpp
+
+03/28/2025  09:49 PM           317,085 CommandList.cpp
+03/28/2025  09:49 PM            14,629 DLLMainHook.cpp
+03/28/2025  09:49 PM           233,084 FrameAnalysis.cpp
+03/28/2025  09:49 PM            17,796 Input.cpp
+03/28/2025  09:49 PM            81,423 NVProfile.cpp
+03/28/2025  09:49 PM            27,251 Profiling.cpp
+03/28/2025  09:49 PM            75,721 ResourceHash.cpp
+03/28/2025  09:49 PM            25,509 ShaderRegex.cpp
+
+
+Remaining Refactoring technique in order (from git log):
+
+-- From HackerContext.hpp --
+Rename all m* vars. to lowerCamelCase
+NULL -> nullptr
+Rename structs to lower_case
+Fix all parameters for style - don't alter dx11 function types
+Manually tweak templates for alignment - auto tools are sketchy. Make match style of params for functions.
+clang-format entire file
+    Primary changes:
+    Pointer specification is left justified
+    All assignments are aligned for visual simplicity.
+    All declarations are aligned for visual simplicty.
+    All input parameters are on separate lines in cpp file, on a single line in hpp file.
+    All if/then/while/for are on separate lines.
+    Brace style forced to Allman.
+    Indenting in blocks is enforced.
+    No line limit, so no wrapping.
+Remove all SAL notation from cpp - left in hpp with no-format guard
+struct definitions go to lower_snake_case
+All parameters are lower_snake_case 
+
+
+-- From HackerContext.cpp --
+Using namespace std is removed in all cases - using namespace should be gone
+ENTER_CRITICAL with brackets
+Rename all m* vars to lowerCamelCase - should be done
+NULL->nullptr
+clang-tidy automatic naming with --fix  patch p_ errors
+Rename structs to lower_snake_case
+Rename global functions to lower_case
+All casts to static_cast<>
+Fix all parameters for lower_case style - no change to DX11 namespace
+Manually tweak templates for style
+Add {} around Criticals
+clang-format entire file - all whitespace biffed
+    Primary changes:
+    Pointer specification is left justified
+    All assignments are aligned for visual simplicity.
+    All declarations are aligned for visual simplicty.
+    All input parameters are on separate lines in cpp file, on a single line in hpp file.
+    All if/then/while/for are on separate lines.
+    Brace style forced to Allman.
+    Indenting in blocks is enforced.
+    No line limit, so no wrapping.
+Remove all SAL notations - left in hpp
+Fix mismatch names from hpp to cpp functions
+Fix Enum naming - use namespace as needed
