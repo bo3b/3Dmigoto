@@ -3,11 +3,19 @@ SetLocal EnableDelayedExpansion
 Pushd "%~dp0"
 
 REM -----------------------------------------------------------------------------
+REM Updated 6-1-25 to add an input parameter to determine whether to bump
+REM the version number or not. For regular builds (zip_release.yml) we bump the 
+REM build and git commit that new version.h. 
+REM For tagged Releases (release_on_tag.yml), we want to keep the version as tagged.
+
 REM Updated 8-25-24 for Github Actions server environment.
 REM Removes Git Stash because environment will always be clean.
 REM Remove MSBuild and Git setup as they are done in the Action script.
 REM Remove the git push of new version, now found in Action script.
 REM Removes the 7zip process, because artifact downloads are auto-zipped.
+
+REM Updated 7-2-22 to add an input parameter to decide SpatialLabs 
+REM build or not. This is passed in from Github Action as %1=SPATIAL_LABS
 
 REM -----------------------------------------------------------------------------
 REM Publish batch file to safely build a complete Zip file to be published.
@@ -20,7 +28,7 @@ REM  Command:            %systemroot%\system32\cmd.exe
 REM  Arguments:          /k Publish.bat
 REM  Initial Directory:  $(SolutionDir)
 REM
-REM TODO: change Win32 to x86, it's annoying
+REM TODO: change Win32 to x32, it's annoying
 
 
 REM -----------------------------------------------------------------------------
@@ -30,28 +38,44 @@ REM during resource file compiles to build the proper output in the DLLs.
 REM
 REM This awesome batch sequence to auto-increment VERSION_REVISION is courtesy of
 REM   *** TsaebehT ***
+REM -----------------------------------------------------------------------------
+REM For regular builds, we'll bump the Build number here. 
+REM For Release builds, we calculate this but skip saving to keep the tagged build version.
 
 For /F "tokens=1,2 delims=[]" %%? in ('Type Version.h ^| Find /V /N ""') do (
-Set "Line=%%@"
-if "!Line:~0,16!" == "#define VERSION_" (
-For /F "tokens=3,4 delims=_ " %%? in ("%%@") do (
-if "%%?" == "MAJOR" Set "Major=%%@"
-if "%%?" == "MINOR" Set "Minor=%%@"
-if "%%?" == "REVISION" (
-Set /A "NewRev=%%@+1","OldRev=%%@"
-Call Set "Line=%%Line:!OldRev!=!NewRev!%%"
-)))
-Set "Line%%?=!Line!"&&Set "Count=%%?"
+	Set "Line=%%@"
+	if "!Line:~0,16!" == "#define VERSION_" (
+		For /F "tokens=3,4 delims=_ " %%? in ("%%@") do (
+			if "%%?" == "MAJOR" Set "Major=%%@"
+			if "%%?" == "MINOR" Set "Minor=%%@"
+			if "%%?" == "REVISION" (
+				Set /A "NewRev=%%@+1","OldRev=%%@"
+				Call Set "Line=%%Line:!OldRev!=!NewRev!%%"
+			)
+		)
+	)
+	Set "Line%%?=!Line!"&&Set "Count=%%?"
 )
 
-> Version.h (
-For /L %%? in (1,1,!Count!) do (
-Echo/!Line%%?!
-))
+REM If it's a Release build we won't change the Version.h file, so the
+REM build numbers are whatever the last zip_release calculated.
+REM
+REM This sequence rewrites the whole file using the Line array.
+if [%1] NEQ [RELEASE] (
+	> Version.h (
+		For /L %%? in (1,1,!Count!) do (
+			Echo/!Line%%?!
+		)
+	)
+) else (
+	echo(
+	echo(
+	echo === Creating Release Build ===
+)
 
 echo(
 echo(
-echo === Latest Version After Increment ===
+echo === Latest Version Info ===
 echo(
 echo   !Major!.!Minor!.!NewRev!
 
@@ -77,7 +101,7 @@ IF %ERRORLEVEL% NEQ 0 (
 
 
 REM -----------------------------------------------------------------------------
-REM Use 7zip command tool to create a full release that can be unzipped into a
+REM Use 7zip command tool to create a full release that can be dropped into a
 REM game directory. This builds a Side-by-Side zip of x32/x64.
 REM Includes d3dx.ini, d3dxdm.ini, and uninstall.bat for x32/x64.
 
