@@ -37,13 +37,14 @@ Style guide with some _why_:
 
 #### General
 - We want to avoid hungarian notation as most of us don't care for it.  Some exceptions will be skipped like pCamelCase input parameters.
-- Initialize all variables preferably with `{}` style.  Probably not doable, but Resharper might catch all missing ones.
+- Initialize all variables preferably with `var_name {}` style.  Probably not doable, but Resharper might catch all missing ones.
 - Avoid templates, except where inputs are actually unrelated objects. Avoid using template polymorphism. Templates bugs are really difficult, because the compiler runs amok. Also I personally despise the syntax.  Still, good to use in narrow circumstances. 
 - Avoid using `auto`.  This is just putting the onus on the reader, and it's much better clarity to just use the type. Acceptable use case is *for* loop indexers.
 - Always use nullptr instead of NULL or 0 for pointers.  It clarifies that the reference is a ptr.
 - Use Rule of Zero.  Don't add stuff we aren't actively using just to be 'complete.'  Like every possible constructor or every possible overload or override.
 - Use TODO in comments as reminders for unfinished code.
 - Always check error results, just as a good habit.  If it's something 'impossible', have it throw a fatal error using a fatal macro.
+- Best practices recommends that local variables should be declared close to first use, not at top of function. Variables used in full function scope, multiple times, should be declared at top.
 
 #### Formatting
 - Using spaces for whitespace, instead of tabs.  Spaces are generally preferred (Stackoverflow), but the whole project is already tabs set to 4. Mild preference for spaces, so we'll switch to that. Especially because we plan to use no wrapping, this is much less important.
