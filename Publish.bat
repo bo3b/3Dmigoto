@@ -89,30 +89,30 @@ echo === Move builds to target zip directory ===
 echo(
 MKDIR ".\Zip Release\x32\"
 MKDIR ".\Zip Release\x32\ShaderFixes\"
-MOVE ".\x32\Zip Release\*.ini"  ".\Zip Release\x32\"
-MOVE ".\x32\Zip Release\uninstall.bat"  ".\Zip Release\x32\"
-MOVE ".\x32\Zip Release\*.dll"  ".\Zip Release\x32\"
-MOVE ".\x32\Zip Release\ShaderFixes\*.*"  ".\Zip Release\x32\ShaderFixes\"
+MOVE ".\builds\x32\Zip Release\*.ini"  ".\Zip Release\x32\"
+MOVE ".\builds\x32\Zip Release\uninstall.bat"  ".\Zip Release\x32\"
+MOVE ".\builds\x32\Zip Release\*.dll"  ".\Zip Release\x32\"
+MOVE ".\builds\x32\Zip Release\ShaderFixes\*.*"  ".\Zip Release\x32\ShaderFixes\"
 
 echo(
 MKDIR ".\Zip Release\x64\"
 MKDIR ".\Zip Release\x64\ShaderFixes\"
-MOVE ".\x64\Zip Release\*.ini"  ".\Zip Release\x64\"
-MOVE ".\x64\Zip Release\uninstall.bat"  ".\Zip Release\x64\"
-MOVE ".\x64\Zip Release\*.dll"  ".\Zip Release\x64\"
-MOVE ".\x64\Zip Release\ShaderFixes\*.*"  ".\Zip Release\x64\ShaderFixes\"
+MOVE ".\builds\x64\Zip Release\*.ini"  ".\Zip Release\x64\"
+MOVE ".\builds\x64\Zip Release\uninstall.bat"  ".\Zip Release\x64\"
+MOVE ".\builds\x64\Zip Release\*.dll"  ".\Zip Release\x64\"
+MOVE ".\builds\x64\Zip Release\ShaderFixes\*.*"  ".\Zip Release\x64\ShaderFixes\"
 
 echo(
 MKDIR ".\Zip Release\loader\"
 MKDIR ".\Zip Release\loader\x32\"
 MKDIR ".\Zip Release\loader\x64\"
-MOVE ".\x32\Zip Release\3DMigoto Loader.exe"  ".\Zip Release\loader\x32\"
-MOVE ".\x64\Zip Release\3DMigoto Loader.exe"  ".\Zip Release\loader\x64\"
+MOVE ".\builds\x32\Zip Release\3DMigoto Loader.exe"  ".\Zip Release\loader\x32\"
+MOVE ".\builds\x64\Zip Release\3DMigoto Loader.exe"  ".\Zip Release\loader\x64\"
 
 echo(
 MKDIR ".\Zip Release\cmd_Decompiler\"
-MOVE ".\x32\Zip Release\cmd_Decompiler.exe"  ".\Zip Release\cmd_Decompiler\"
-COPY ".\Zip Release\x32\d3dcompiler_47.dll"  ".\Zip Release\cmd_Decompiler\"
+MOVE ".\builds\x32\Zip Release\cmd_Decompiler.exe"  ".\Zip Release\cmd_Decompiler\"
+COPY ".\builds\Zip Release\x32\d3dcompiler_47.dll"  ".\Zip Release\cmd_Decompiler\"
 
 REM -----------------------------------------------------------------------------
 REM Write new version to a file that we can use in Action script too.
