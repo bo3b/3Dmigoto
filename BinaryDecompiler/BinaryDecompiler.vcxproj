@@ -97,33 +97,33 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <IncludePath>$(ProjectDir)include;$(VC_IncludePath)</IncludePath>
-    <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <IncludePath>$(ProjectDir)include;$(VC_IncludePath)</IncludePath>
-    <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <IncludePath>$(ProjectDir)include;$(VC_IncludePath)</IncludePath>
-    <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <IncludePath>$(ProjectDir)include;$(VC_IncludePath)</IncludePath>
-    <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
     <IncludePath>$(ProjectDir)include;$(VC_IncludePath)</IncludePath>
-    <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
     <IncludePath>$(ProjectDir)include;$(VC_IncludePath)</IncludePath>
-    <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
