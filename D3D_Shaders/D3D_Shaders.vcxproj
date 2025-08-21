@@ -22,7 +22,7 @@
     <ProjectGuid>{59A9B0C6-8302-48A9-96E0-126FB32FB9ED}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>D3D_Shaders</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
