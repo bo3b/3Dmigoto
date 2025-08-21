@@ -30,7 +30,7 @@
     <ProjectGuid>{25E1F732-DCF5-428E-928D-D39C499CC95F}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>cmd_Decompiler</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
