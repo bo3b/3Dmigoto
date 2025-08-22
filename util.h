@@ -13,6 +13,7 @@
 #include <D3Dcompiler.h>
 #include <d3d9.h>
 #include <DirectXMath.h>
+#include <vcruntime_typeinfo.h>
 
 #include "version.h"
 #include "log.h"

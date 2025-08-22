@@ -18,6 +18,14 @@
 #include "ShaderRegex.h"
 #include "cursor.h"
 
+#include "shellscalingapi.h"
+
+#include <filesystem>
+// TODO: We probably don't need this <filesystem> header
+// TODO: Remove this #define after we switch to C++17 and remove 'experimental'
+#define _SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
+#include <experimental/filesystem>
+
 #define INI_FILENAME L"d3dx.ini"
 
 // List all the section prefixes which may contain a command list here and
