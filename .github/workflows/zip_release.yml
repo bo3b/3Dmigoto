@@ -1,7 +1,9 @@
-# This workflow will build geo-11 for Release use, but is specifically set
-# up to build the HelixMod version.
-# This is a basic workflow that will only be manually triggered, but will
-# call through to the main Release workflow.
+# This workflow will build geo-11 for Release use.
+# This is a basic workflow that will only be manually triggered.
+# This is used to verify builds are successful, and for testing. Build Version will
+# be incremented for every build, and committed back to the repo.
+#
+# To make a new Release, Tag a successful build, and the release_on_tag.yml will run.
 
 name: HelixMod Manual Build
 
@@ -12,7 +14,7 @@ on:
     inputs:
       name:
         # Friendly description to be shown in the UI instead of 'name'
-        description: 'Create a Release build for HelixMod use'
+        description: 'Create ZipRelease for HelixMod use'
         # Default value if no value is explicitly provided
         default: 'World'
         # Input has to be provided for the workflow to run
@@ -25,13 +27,27 @@ on:
 jobs:
   zip_release_workflow:
 
-    runs-on: windows-latest
+    # Now runs on latest runners with VS2022 as default.
+    runs-on: windows-2025
 
     steps:
     - name: Checkout vs2022
       uses: actions/checkout@v3
 
-    - name: Add MSBuild for vs2022 to PATH
+    - name: Show all Visual Studio installs
+      shell: cmd
+      run: |
+        "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -all
+        echo(
+        echo === Installed VS ===
+        dir "C:\Program Files (x86)\Microsoft Visual Studio"
+        dir "C:\Program Files\Microsoft Visual Studio"
+        echo(
+        echo === Installed toolsets ===
+        dir "C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC"
+        dir "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC"
+          
+    - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
 # vs2022 should be there in 'windows-latest'       
 #      with:
@@ -72,6 +88,7 @@ jobs:
         git push
         
 # Now we can upload the remaining artifacts as the HelixMod version.
+# These artifacts are for testing, and not actual Releases.
 
     - name: Upload HelixMod build
       uses: actions/upload-artifact@v4
