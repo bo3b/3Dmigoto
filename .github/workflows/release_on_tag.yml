@@ -1,0 +1,77 @@
+# We want to create a new Release whenever we Tag a given commit/build.
+# Typically this will be for a given CI build that we've tested as working.
+#
+# Expected workflow is to test a manual zip_release.yml build, and if it's
+# working, tag it for release. This yml will auto-build and release that Tag.
+#
+# Because Github Actions aren't at all sensible, we repeat a lot of the script
+# from zip_release.yml. We can't use that script directly because Actions don't
+# allow sharing artifacts between workflows, at all.
+
+name: Release upon Tag
+
+# Watch for Tags and run when we see a new one pushed.
+# The release branch must be the default branch for this to trigger.
+
+on:
+  push:
+    tags:
+      - '*'
+
+jobs:
+  tagged_release:
+    name: Create Release
+    runs-on: windows-2025
+
+    permissions:
+      contents: write
+      actions: read
+
+    steps:
+      - name: Checkout master
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+# Build via Publish.bat, but tell the script to skip version bump as "RELEASE"
+
+      - name: Build into Zip Release
+        shell: cmd
+        run: |
+          call .\Publish.bat RELEASE
+
+# From zip_release.yml:
+#   name: 3Dmigoto_v${{env.BUILD_VERSION}}
+#   path: Zip Release\
+
+      - name: Get tag name
+        shell: bash
+        run: |
+          echo "TAG_NUM=${GITHUB_REF##*/}" >> $GITHUB_ENV
+
+      - name: Compress release to .7z
+        shell: bash
+        run: |
+          cd "Zip Release"
+          7z a -t7z "3Dmigoto_v${TAG_NUM}.7z" "./*"
+      
+      - name: List contents of .7z file for log info
+        shell: bash
+        run: |
+          7z l "Zip Release/3Dmigoto_v${TAG_NUM}.7z"
+
+# Specifically create a Pre-Release version to avoid being 'latest'
+# We expect a dev to manually promote a pre-release to latest.
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          prerelease: true
+          tag_name: ${{ env.TAG_NUM }}
+          name: Release build for v${{ env.TAG_NUM }} (x32, x64)
+          files: "Zip Release/3Dmigoto_v${{ env.TAG_NUM }}.7z"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
