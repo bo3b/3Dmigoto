@@ -28,7 +28,7 @@ jobs:
   zip_release_workflow:
 
     # Now runs on latest runners with VS2022 as default.
-    runs-on: windows-2025
+    runs-on: windows-2022
 
     steps:
     - name: Checkout vs2022
