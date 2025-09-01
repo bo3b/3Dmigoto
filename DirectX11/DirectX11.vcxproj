@@ -106,7 +106,7 @@
     <ProjectGuid>{92A679C7-A67F-4B16-B055-7A2F4C23DD80}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>DirectX11</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.19041.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -176,68 +176,67 @@
     <TargetName>d3d11</TargetName>
     <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSDK_LibraryPath_x86);$(VC_LibraryPath_x86)</LibraryPath>
-    <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)builds\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
     <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSDK_LibraryPath_x64);$(VC_LibraryPath_x64)</LibraryPath>
-    <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)builds\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
     <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSDK_LibraryPath_x86);$(VC_LibraryPath_x86)</LibraryPath>
-    <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)builds\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
     <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSDK_LibraryPath_x64);$(VC_LibraryPath_x64)</LibraryPath>
-    <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)builds\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
     <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSDK_LibraryPath_x86);$(VC_LibraryPath_x86)</LibraryPath>
-    <OutDir>$(SolutionDir)x32\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x32\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)builds\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
     <LinkIncremental>false</LinkIncremental>
     <TargetName>d3d11</TargetName>
     <IncludePath>$(SolutionDir)crc32c-hw-1.0.5\include;$(SolutionDir)BinaryDecompiler;$(SolutionDir)BinaryDecompiler\include;$(WindowsSDK_IncludePath);$(VC_IncludePath)</IncludePath>
     <LibraryPath>$(WindowsSDK_LibraryPath_x64);$(VC_LibraryPath_x64)</LibraryPath>
-    <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
-    <IntDir>$(ProjectDir)x64\$(Configuration)\</IntDir>
+    <OutDir>$(SolutionDir)builds\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;_DEBUG_LAYER=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;_DEBUG_LAYER=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)DirectXTK\Inc;$(SolutionDir)D3D_Shaders;$(SolutionDir)pcre2</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;$(SolutionDir)D3D_Shaders;$(SolutionDir)pcre2</AdditionalIncludeDirectories>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib_Debug.lib;..\pcre2\pcre2-8-32d.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib_Debug.lib;..\pcre2\pcre2-8-32d.lib;$(OutDir)nvapi.lib;..\nvapi.lib;$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x32\Debug\DirectXTK.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ForceSymbolReferences>_CreateDXGIFactory@8</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
@@ -252,20 +251,19 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;_DEBUG_LAYER=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;_DEBUG_LAYER=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)DirectXTK\Inc;$(SolutionDir)D3D_Shaders;$(SolutionDir)pcre2</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;$(SolutionDir)D3D_Shaders;$(SolutionDir)pcre2</AdditionalIncludeDirectories>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib64_Debug.lib;..\pcre2\pcre2-8-64d.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib64_Debug.lib;..\pcre2\pcre2-8-64d.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x64\Debug\DirectXTK.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ForceSymbolReferences>CreateDXGIFactory</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
@@ -282,14 +280,13 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)DirectXTK\Inc;$(SolutionDir)D3D_Shaders;$(SolutionDir)pcre2</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;$(SolutionDir)D3D_Shaders;$(SolutionDir)pcre2</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -297,7 +294,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib.lib;..\pcre2\pcre2-8-32.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib.lib;..\pcre2\pcre2-8-32.lib;$(OutDir)nvapi.lib;..\nvapi.lib;$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x32\Release\DirectXTK.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
       <ForceSymbolReferences>_CreateDXGIFactory@8</ForceSymbolReferences>
@@ -316,14 +313,13 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)DirectXTK\Inc;$(SolutionDir)D3D_Shaders;$(SolutionDir)pcre2</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;$(SolutionDir)D3D_Shaders;$(SolutionDir)pcre2</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -331,7 +327,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib.lib;..\pcre2\pcre2-8-32.lib;$(OutDir)nvapi.lib;..\nvapi.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib.lib;..\pcre2\pcre2-8-32.lib;$(OutDir)nvapi.lib;..\nvapi.lib;$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x32\Release\DirectXTK.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ForceSymbolReferences>_CreateDXGIFactory@8</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
@@ -348,14 +344,13 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /S
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)DirectXTK\Inc;$(SolutionDir)D3D_Shaders;$(SolutionDir)pcre2</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;$(SolutionDir)D3D_Shaders;$(SolutionDir)pcre2</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -363,7 +358,7 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /S
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;..\pcre2\pcre2-8-64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;..\pcre2\pcre2-8-64.lib;$(OutDir)nvapi64.lib;$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x64\Release\DirectXTK.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ForceSymbolReferences>CreateDXGIFactory</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
@@ -380,14 +375,13 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)DirectXTK\Inc;$(SolutionDir)D3D_Shaders;$(SolutionDir)pcre2</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)HLSLDecompiler;$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;$(SolutionDir)D3D_Shaders;$(SolutionDir)pcre2</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -395,7 +389,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;..\pcre2\pcre2-8-64.lib;$(OutDir)nvapi64.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>..\Nektra\NktHookLib64.lib;..\pcre2\pcre2-8-64.lib;$(OutDir)nvapi64.lib;$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x64\Release\DirectXTK.lib;..\nvapi64.lib;XINPUT9_1_0.lib;d3dcompiler.lib;DXGI.lib;Shlwapi.lib;Dbghelp.lib;Dbghelp.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ForceSymbolReferences>CreateDXGIFactory</ForceSymbolReferences>
     </Link>
     <PostBuildEvent>
