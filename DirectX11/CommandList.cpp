@@ -6,6 +6,7 @@
 
 #include <DDSTextureLoader.h>
 #include <WICTextureLoader.h>
+
 #include <algorithm>
 #include <sstream>
 #include "HackerDevice.h"
@@ -4492,13 +4493,13 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 		hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
 				D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
-				false, &resource, NULL, NULL);
+				DirectX::DX11::DDS_LOADER_DEFAULT, &resource, NULL, NULL);
 	} else {
 		LogInfoW(L"Loading custom resource %s as WIC, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
 		hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice1,
 				filename.c_str(), 0,
 				D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
-				false, &resource, NULL);
+				DirectX::DX11::WIC_LOADER_DEFAULT, &resource, NULL);
 	}
 	if (SUCCEEDED(hr)) {
 		device = mOrigDevice1;
