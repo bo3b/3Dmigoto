@@ -33,9 +33,6 @@
     <ProjectReference Include="..\D3D_Shaders\D3D_Shaders.vcxproj">
       <Project>{59a9b0c6-8302-48a9-96e0-126fb32fb9ed}</Project>
     </ProjectReference>
-    <ProjectReference Include="..\DirectXTK\DirectXTK_Desktop_2017.vcxproj">
-      <Project>{e0b52ae7-e160-4d32-bf3f-910b785e5a8e}</Project>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\crc32c-hw-1.0.5\src\crc32c.cpp" />
