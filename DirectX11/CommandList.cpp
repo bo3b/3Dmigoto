@@ -4487,27 +4487,27 @@ void CustomResource::LoadFromFile(ID3D11Device *mOrigDevice1)
 	// could do something smart here, like only using it if the
 	// bind_flags indicate it will be used as a shader resource.
 
-	ext = filename.substr(filename.rfind(L"."));
-	if (!_wcsicmp(ext.c_str(), L".dds")) {
-		LogInfoW(L"Loading custom resource %s as DDS, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
-		hr = DirectX::CreateDDSTextureFromFileEx(mOrigDevice1,
-				filename.c_str(), 0,
-				D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
-				DirectX::DX11::DDS_LOADER_DEFAULT, &resource, NULL, NULL);
-	} else {
-		LogInfoW(L"Loading custom resource %s as WIC, bind_flags=0x%03x\n", filename.c_str(), bind_flags);
-		hr = DirectX::CreateWICTextureFromFileEx(mOrigDevice1,
-				filename.c_str(), 0,
-				D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
-				DirectX::DX11::WIC_LOADER_DEFAULT, &resource, NULL);
-	}
-	if (SUCCEEDED(hr)) {
-		device = mOrigDevice1;
-		is_null = false;
-		// TODO:
-		// format = ...
-	} else
-		LogOverlay(LOG_WARNING, "Failed to load custom texture resource %S: 0x%x\n", filename.c_str(), hr);
+    ext = filename.substr(filename.rfind(L"."));
+    if (!_wcsicmp(ext.c_str(), L".dds")) {
+        LOG_INFO_W(L"Loading custom resource %s as DDS, bind_flags=0x%03x\n", filename.c_str(), bindFlags);
+        hr = DirectX::CreateDDSTextureFromFileEx(orig_device,
+                filename.c_str(), 0,
+                D3D11_USAGE_DEFAULT, bindFlags, 0, miscFlags,
+                DirectX::DX11::DDS_LOADER_DEFAULT, &resource, NULL, NULL);
+    } else {
+        LOG_INFO_W(L"Loading custom resource %s as WIC, bind_flags=0x%03x\n", filename.c_str(), bindFlags);
+        hr = DirectX::CreateWICTextureFromFileEx(orig_device,
+                filename.c_str(), 0,
+                D3D11_USAGE_DEFAULT, bindFlags, 0, miscFlags,
+                DirectX::DX11::WIC_LOADER_DEFAULT, &resource, NULL);
+    }
+    if (SUCCEEDED(hr)) {
+        device = orig_device;
+        isNull = false;
+        // TODO:
+        // format = ...
+    } else
+        log_overlay(log::warning, "Failed to load custom texture resource %S: 0x%x\n", filename.c_str(), hr);
 }
 
 void CustomResource::SubstantiateBuffer(ID3D11Device *mOrigDevice1, void **buf, DWORD size)
