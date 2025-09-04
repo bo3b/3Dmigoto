@@ -7,8 +7,9 @@
 // the d3d11.h pre-processor defines to avoid mis-matches with profiling.h:
 #include "nvprofile.h"
 
-#include <unordered_set>
 #include <fstream>
+#include <shellapi.h>
+#include <unordered_set>
 
 ProfileSettings profile_settings;
 
