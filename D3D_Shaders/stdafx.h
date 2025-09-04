@@ -15,13 +15,10 @@
 #include <vector>
 #include <unordered_map>
 
-using std::byte;
-using std::vector;
-using std::string;
-
+using namespace std;
 
 // VS2013 BUG WORKAROUND: Make sure this class has a unique type name!
-class AssemblerParseError: public std::exception {
+class AssemblerParseError: public exception {
 public:
 	string context, desc, msg;
 	int line_no;
@@ -38,7 +35,7 @@ public:
 	{
 		msg = "Assembly parse error";
 		if (line_no > 0)
-			msg += string(" on line ") + std::to_string(line_no);
+			msg += string(" on line ") + to_string(line_no);
 		msg += ", " + desc + ":\n\"" + context + "\"";
 	}
 
@@ -87,7 +84,7 @@ struct token_operand
 };
 
 vector<string> stringToLines(const char* start, size_t size);
-HRESULT disassembler(vector<byte> *buffer, vector<char> *ret, const char *comment,
+HRESULT disassembler(vector<byte> *buffer, vector<byte> *ret, const char *comment,
 		int hexdump = 0, bool d3dcompiler_46_compat = false,
 		bool disassemble_undecipherable_data = false,
 		bool patch_cb_offsets = false);
