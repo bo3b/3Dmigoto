@@ -31,8 +31,10 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    - name: Checkout vs2022
-      uses: actions/checkout@v3
+    - name: Checkout branch vs2022
+      uses: actions/checkout@v4
+      with:
+        ref: vs2022  
 
     - name: Show all Visual Studio installs
       shell: cmd
@@ -49,15 +51,10 @@ jobs:
           
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v2
-# vs2022 should be there in 'windows-latest'       
+      
+# VisualStudio2022 should be there in 'windows-latest'       
 #      with:
 #        vs-version: '2022'
-
-
-#    - name: Setup NuGet.exe for use with actions
-#      uses: NuGet/setup-nuget@v1.0.6
-#    - name: Restore nuget packages
-#      run: nuget restore StereovisionHacks.sln
 
     - name: Build via Publish.bat
       shell: cmd
