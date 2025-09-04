@@ -586,14 +586,7 @@ static int process(string const *filename)
 		// if (args.validate)
 		// disassemble again and perform fuzzy compare
 
-		// c++17 requires a stricter byte vs char, so this approach no longer works.
-		//		output = string(new_bytecode.begin(), new_bytecode.end());
-		// Instead of that, let's just do the obvious loop to build the string.
-		// In this case, it's not actually a string or chars, it actually is bytes,
-		// so probably we'd rather have a better WriteOutput
-		for (std::byte b : new_bytecode) 
-			output.push_back(static_cast<char>(b));
-
+		output = string(new_bytecode.begin(), new_bytecode.end());
 		if (WriteOutput(filename, ".shdr", &output))
 			return EXIT_FAILURE;
 
