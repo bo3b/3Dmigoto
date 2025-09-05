@@ -231,6 +231,7 @@
       <AdditionalIncludeDirectories>
 $(SolutionDir);
 $(SolutionDir)HLSLDecompiler;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x86-windows-static\include;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
 $(SolutionDir)D3D_Shaders;
@@ -244,7 +245,7 @@ $(SolutionDir)D3D_Shaders;
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>
 ..\Nektra\NktHookLib_Debug.lib;
-..\nvapi.lib;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main\x86\nvapi.lib;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x86-windows-static\debug\lib\pcre2-8d.lib;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x32\Debug\DirectXTK.lib;
 XINPUT9_1_0.lib;
@@ -275,7 +276,8 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <AdditionalIncludeDirectories>
 $(SolutionDir);
 $(SolutionDir)HLSLDecompiler;
-$(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x86-windows-static\include;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
+$(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\include;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
 $(SolutionDir)D3D_Shaders;
       </AdditionalIncludeDirectories>
@@ -288,7 +290,7 @@ $(SolutionDir)D3D_Shaders;
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>
 ..\Nektra\NktHookLib64_Debug.lib;
-..\nvapi64.lib;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main\amd64\nvapi64.lib;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\debug\lib\pcre2-8d.lib;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x64\Debug\DirectXTK.lib;
 XINPUT9_1_0.lib;
@@ -320,6 +322,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <AdditionalIncludeDirectories>
 $(SolutionDir);
 $(SolutionDir)HLSLDecompiler;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x86-windows-static\include;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
 $(SolutionDir)D3D_Shaders;
@@ -336,7 +339,7 @@ $(SolutionDir)D3D_Shaders;
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>
 ..\Nektra\NktHookLib.lib;
-..\nvapi.lib;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main\x86\nvapi.lib;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x86-windows-static\lib\pcre2-8.lib;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x32\Release\DirectXTK.lib;
 XINPUT9_1_0.lib;
@@ -370,6 +373,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <AdditionalIncludeDirectories>
 $(SolutionDir);
 $(SolutionDir)HLSLDecompiler;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x86-windows-static\include;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
 $(SolutionDir)D3D_Shaders;
@@ -386,7 +390,7 @@ $(SolutionDir)D3D_Shaders;
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>
 ..\Nektra\NktHookLib.lib;
-..\nvapi.lib;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main\x86\nvapi.lib;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x86-windows-static\lib\pcre2-8.lib;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x32\Release\DirectXTK.lib;
 XINPUT9_1_0.lib;
@@ -418,7 +422,8 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /S
       <AdditionalIncludeDirectories>
 $(SolutionDir);
 $(SolutionDir)HLSLDecompiler;
-$(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x86-windows-static\include;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
+$(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\include;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
 $(SolutionDir)D3D_Shaders;
       </AdditionalIncludeDirectories>
@@ -434,9 +439,9 @@ $(SolutionDir)D3D_Shaders;
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>
 ..\Nektra\NktHookLib64.lib;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main\amd64\nvapi64.lib;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\lib\pcre2-8.lib;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x64\Release\DirectXTK.lib;
-..\nvapi64.lib;
 XINPUT9_1_0.lib;
 d3dcompiler.lib;
 DXGI.lib;
@@ -466,7 +471,8 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <AdditionalIncludeDirectories>
 $(SolutionDir);
 $(SolutionDir)HLSLDecompiler;
-$(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x86-windows-static\include;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
+$(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\include;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
 $(SolutionDir)D3D_Shaders;
       </AdditionalIncludeDirectories>
@@ -482,9 +488,9 @@ $(SolutionDir)D3D_Shaders;
       <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
       <AdditionalDependencies>
 ..\Nektra\NktHookLib64.lib;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main\amd64\nvapi64.lib;
 $(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\lib\pcre2-8.lib;
 $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x64\Release\DirectXTK.lib;
-..\nvapi64.lib;
 XINPUT9_1_0.lib;
 d3dcompiler.lib;
 DXGI.lib;
