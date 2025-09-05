@@ -1,0 +1,14 @@
+prefix=${pcfiledir}/../..
+# Package Information for pkg-config
+
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: libpcre2-posix
+Description: Posix compatible interface to libpcre2-8
+Version: 10.46
+
+Libs: "-L${libdir}" -lpcre2-posix
+Requires: libpcre2-8
+Cflags: "-I${includedir}" 
