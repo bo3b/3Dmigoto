@@ -5,7 +5,7 @@
 #include <d3d9.h>
 
 #include "../util.h"
-#include "../nvapi.h"
+#include "nvapi.h"
 #include "../log.h"
 
 using namespace std;
