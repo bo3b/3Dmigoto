@@ -219,6 +219,7 @@
     <OutDir>$(SolutionDir)builds\x$(PlatformArchitecture)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
+  
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -264,51 +265,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <ClCompile>
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-      <WarningLevel>Level3</WarningLevel>
-      <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;_DEBUG_LAYER=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <ExceptionHandling>Async</ExceptionHandling>
-      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalIncludeDirectories>
-$(SolutionDir);
-$(SolutionDir)HLSLDecompiler;
-$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
-$(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\include;
-$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
-$(SolutionDir)D3D_Shaders;
-      </AdditionalIncludeDirectories>
-      <BufferSecurityCheck>true</BufferSecurityCheck>
-      <MultiProcessorCompilation>true</MultiProcessorCompilation>
-    </ClCompile>
-    <Link>
-      <SubSystem>Windows</SubSystem>
-      <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
-      <AdditionalDependencies>
-..\Nektra\NktHookLib64_Debug.lib;
-$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main\amd64\nvapi64.lib;
-$(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\debug\lib\pcre2-8d.lib;
-$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x64\Debug\DirectXTK.lib;
-XINPUT9_1_0.lib;
-d3dcompiler.lib;
-DXGI.lib;
-Shlwapi.lib;
-Dbghelp.lib;
-%(AdditionalDependencies)
-      </AdditionalDependencies>
-      <ForceSymbolReferences>CreateDXGIFactory</ForceSymbolReferences>
-    </Link>
-    <PostBuildEvent>
-      <Command>xcopy "$(WindowsSdkDir)Redist\D3D\x64\d3dcompiler_47.dll" "$(TargetDir)" /E /Y
-xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /S
-call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
-      <Message>Copy all Dependencies to target directory.</Message>
-    </PostBuildEvent>
-  </ItemDefinitionGroup>
+  
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -360,6 +317,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
+  
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -409,6 +367,53 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /S
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
+  
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;_DEBUG_LAYER=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ExceptionHandling>Async</ExceptionHandling>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>
+$(SolutionDir);
+$(SolutionDir)HLSLDecompiler;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main;
+$(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\include;
+$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
+$(SolutionDir)D3D_Shaders;
+      </AdditionalIncludeDirectories>
+      <BufferSecurityCheck>true</BufferSecurityCheck>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <ModuleDefinitionFile>d3d11Wrapper.def</ModuleDefinitionFile>
+      <AdditionalDependencies>
+..\Nektra\NktHookLib64_Debug.lib;
+$(SolutionDir)ThirdPartyLibs\nvapi-lib\nvapi-main\amd64\nvapi64.lib;
+$(SolutionDir)ThirdPartyLibs\pcre2-lib\pcre2_x64-windows-static\debug\lib\pcre2-8d.lib;
+$(SolutionDir)ThirdPartyLibs\DirectXTK-lib\lib\x64\Debug\DirectXTK.lib;
+XINPUT9_1_0.lib;
+d3dcompiler.lib;
+DXGI.lib;
+Shlwapi.lib;
+Dbghelp.lib;
+%(AdditionalDependencies)
+      </AdditionalDependencies>
+      <ForceSymbolReferences>CreateDXGIFactory</ForceSymbolReferences>
+    </Link>
+    <PostBuildEvent>
+      <Command>xcopy "$(WindowsSdkDir)Redist\D3D\x64\d3dcompiler_47.dll" "$(TargetDir)" /E /Y
+xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /S
+call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"</Command>
+      <Message>Copy all Dependencies to target directory.</Message>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -458,6 +463,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
+  
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -507,6 +513,7 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /S
       <Message>Copy all Dependencies to target directory.</Message>
     </PostBuildEvent>
   </ItemDefinitionGroup>
+  
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
