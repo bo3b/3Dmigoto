@@ -220,6 +220,10 @@
     <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
   
+<!-- - - - - - - - - - - - - - - - -->
+<!--         Debug Win32           -->
+<!-- - - - - - - - - - - - - - - - -->
+
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -266,6 +270,10 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
     </PostBuildEvent>
   </ItemDefinitionGroup>
   
+<!-- - - - - - - - - - - - - - - - -->
+<!--        Release Win32          -->
+<!-- - - - - - - - - - - - - - - - -->
+
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -318,6 +326,10 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
     </PostBuildEvent>
   </ItemDefinitionGroup>
   
+<!-- - - - - - - - - - - - - - - - -->
+<!--      Zip Release Win32        -->
+<!-- - - - - - - - - - - - - - - - -->
+
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -368,6 +380,10 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /S
     </PostBuildEvent>
   </ItemDefinitionGroup>
   
+<!-- - - - - - - - - - - - - - - - -->
+<!--          Debug x64            -->
+<!-- - - - - - - - - - - - - - - - -->
+
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -414,6 +430,10 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
     </PostBuildEvent>
   </ItemDefinitionGroup>
   
+<!-- - - - - - - - - - - - - - - - -->
+<!--         Release x64           -->
+<!-- - - - - - - - - - - - - - - - -->
+
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -464,6 +484,10 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
     </PostBuildEvent>
   </ItemDefinitionGroup>
   
+<!-- - - - - - - - - - - - - - - - -->
+<!--       Zip Release x64         -->
+<!-- - - - - - - - - - - - - - - - -->
+
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
