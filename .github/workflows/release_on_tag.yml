@@ -21,7 +21,7 @@ on:
 jobs:
   tagged_release:
     name: Create Release
-    runs-on: windows-2025
+    runs-on: windows-2022
 
     permissions:
       contents: write
@@ -36,6 +36,19 @@ jobs:
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
 
+      - name: Show all Visual Studio installs
+        shell: cmd
+        run: |
+          "C:\Program Files (x86)\Microsoft Visual Studio\Installer\vswhere.exe" -all
+          echo(
+          echo === Installed VS ===
+          dir "C:\Program Files (x86)\Microsoft Visual Studio"
+          dir "C:\Program Files\Microsoft Visual Studio"
+          echo(
+          echo === Installed toolsets ===
+          dir "C:\Program Files (x86)\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC"
+          dir "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC"
+        
 # Build via Publish.bat, but tell the script to skip version bump as "RELEASE"
 
       - name: Build into Zip Release
