@@ -31,10 +31,8 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    - name: Checkout branch vs2022
+    - name: Checkout branch master
       uses: actions/checkout@v4
-      with:
-        ref: vs2022  
 
     - name: Show all Visual Studio installs
       shell: cmd
