@@ -949,6 +949,8 @@ public:
 					}
 				if (!strcmp(dim, "1d"))
 					(*mType)[slot] = rw + "Texture1D<" + string(format) + ">";
+				else if (!strcmp(dim, "1darray"))
+					(*mType)[slot] = rw + "Texture1DArray<" + string(format) + ">";
 				else if(!strcmp(dim, "2d"))
 					(*mType)[slot] = rw + "Texture2D<" + string(format) + ">";
 				else if (!strcmp(dim, "2darray"))
@@ -4348,6 +4350,23 @@ public:
 					}
 				}
 			}
+			else if (!strcmp(statement, "dcl_resource_texture1darray"))	// dcl_resource_texture1darray (float,float,float,float) t6
+			{
+				if (op2[0] == 't')
+				{
+					int bufIndex = 0;
+					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
+					{
+						logDecompileError("Error parsing texture1darray register index: " + string(op2));
+						return;
+					}
+					map<int, string>::iterator i = mTextureNames.find(bufIndex);
+					if (i == mTextureNames.end())
+					{
+						CreateRawFormat("Texture1DArray", bufIndex);
+					}
+				}
+			}
 			else if (!strcmp(statement, "dcl_resource_texture2darray"))	// dcl_resource_texture2darray (float,float,float,float) t0
 			{
 				if (op2[0] == 't')
@@ -4472,6 +4491,30 @@ public:
 					if (i == mTextureNames.end())
 					{
 						CreateRawFormat("Buffer", bufIndex);
+					}
+				}
+			}
+			else if (!strcmp(statement, "dcl_resource_raw"))		// dcl_resource_raw t2
+			{
+				if (op2[0] == 't')
+				{
+					int bufIndex = 0;
+					if (sscanf_s(op2 + 1, "%d", &bufIndex) != 1)
+					{
+						logDecompileError("Error parsing raw buffer register index: " + string(op2));
+						return;
+					}
+					map<int, string>::iterator i = mTextureNames.find(bufIndex);
+					if (i == mTextureNames.end())
+					{
+						// Raw buffer has no format parameter; create a ByteAddressBuffer directly.
+						char buffer[128];
+						sprintf(buffer, "t%d", bufIndex);
+						mTextureNames[bufIndex] = buffer;
+						mTextureType[bufIndex] = "ByteAddressBuffer";
+						sprintf(buffer, "ByteAddressBuffer t%d : register(t%d);\n\n", bufIndex, bufIndex);
+						mOutput.insert(mOutput.begin(), buffer, buffer + strlen(buffer));
+						mCodeStartPos += strlen(buffer);
 					}
 				}
 			}
@@ -6355,12 +6398,25 @@ public:
 						break;
 					}
 
+					case OPCODE_LD_RAW:
+					{
+						remapTarget(op1);
+						applySwizzle(".xyzw", op2);
+						applySwizzle(op1, op3);
+						int textureId;
+						sscanf_s(op3, "t%d.", &textureId);
+						// ByteAddressBuffer.Load(byteOffset) — offset is a raw byte offset, no texture-pos truncation
+						sprintf(buffer, "  %s = %s.Load(%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+						appendOutput(buffer);
+						removeBoolean(op1);
+						break;
+					}
+
 						// Missing opcodes for SM5.  Not implemented yet, but we want to generate some sort of code, in case
 						// these are used in needed shaders.  That way we can hand edit the shader to make it usable, until 
 						// this is completed.
 					case OPCODE_STORE_UAV_TYPED:
 					case OPCODE_LD_UAV_TYPED:
-					case OPCODE_LD_RAW:
 					case OPCODE_STORE_RAW:
 					{
 						sprintf(buffer, "// No code for instruction (needs manual fix):\n");
