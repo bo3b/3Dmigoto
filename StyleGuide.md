@@ -14,7 +14,7 @@ Style guide with some _why_:
 #### Classes
 - Class references will remain CamelCase for definitions.  Microsoft objects that we subclass are always CamelCase, so keeping these consistent will make it clear when we are talking about Objects.
 - All class methods will be CamelCase.  A lot of these are defined by Microsoft objects that we want to respect. The difference between our methods and Microsoft methods will be clear because of how they are called.
-- Field references in objects will be lowerCamelCase style. To remove the m that neither Helifax nor I like, but still keep them in the CamelCase variant to indicate 'object', instead of a local variable. No differences for public vs. private, but lowerSnakeCase will clearly indicate an object field.
+- Field references in objects will be lowerCamelCase style. To remove the m that neither Helifax nor I like, but still keep them in the CamelCase variant to indicate 'object', instead of a local variable. No differences for public vs. private, but lowerSnakeCase will clearly indicate an object field and also clearly differentiate with Microsoft COM object vars.
 - Operator overloads.  Only to be used when it cannot be confused.  These are as risky as bad macros.
 - A general goal is to make object references and usages clearly different than regular variables or subroutines.
 
@@ -34,13 +34,14 @@ Style guide with some _why_:
 - Prefer to always use specific _using std::string;_ clause instead of inline _std::..._
 - Always include `#pragma once` guards in headers.  We already do this I think.
 - Use "" for local headers versus <> for system/SDK headers.  I'm sure there are some errors here.
+- Use Google best practice of 'main header/windows/c++ headers/vendor SDK/our local' sorting. And alphabetic sorting in subgroups.
 
 #### General
 - We want to avoid hungarian notation as most of us don't care for it.  Some exceptions will be skipped like pCamelCase input parameters.
-- Initialize all variables preferably with `var_name {}` style.  Probably not doable, but Resharper might catch all missing ones.
+- Initialize all variables preferably with `var_name = {}` style.  Probably not doable, but AI can catch all missing ones. Specifically do _not_ use `var_name{}` or `var_name = {0}`
 - Avoid templates, except where inputs are actually unrelated objects. Avoid using template polymorphism. Templates bugs are really difficult, because the compiler runs amok. Also I personally despise the syntax.  Still, good to use in narrow circumstances. 
 - Avoid using `auto`.  This is just putting the onus on the reader, and it's much better clarity to just use the type. Acceptable use case is *for* loop indexers.
-- Always use nullptr instead of NULL or 0 for pointers.  It clarifies that the reference is a ptr.
+- Always use nullptr instead of NULL or 0 for pointers.  It clarifies that the reference is a ptr. Use NULL for other DX11 API use. Prefer `if (ptrName)` for null checks.
 - Use Rule of Zero.  Don't add stuff we aren't actively using just to be 'complete.'  Like every possible constructor or every possible overload or override.
 - Use TODO in comments as reminders for unfinished code.
 - Always check error results, just as a good habit.  If it's something 'impossible', have it throw a fatal error using a fatal macro.
