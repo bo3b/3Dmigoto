@@ -147,7 +147,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>DXGI_LOGGING=1;_DEBUG_LAYER=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;_DEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN32_WINNT=_WIN32_WINNT_WIN7;DXGI_LOGGING=1;_DEBUG_LAYER=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;_DEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)DirectX11;$(SolutionDir)\DirectXTK\Inc</AdditionalIncludeDirectories>
@@ -166,7 +166,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>DXGI_LOGGING=1;HOOK_SYSTEM32=1;_DEBUG_LAYER=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_DEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN32_WINNT=_WIN32_WINNT_WIN7;DXGI_LOGGING=1;HOOK_SYSTEM32=1;_DEBUG_LAYER=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_DEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)DirectX11;$(SolutionDir)\DirectXTK\Inc</AdditionalIncludeDirectories>
@@ -187,7 +187,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>DXGI_LOGGING=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;NDEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN32_WINNT=_WIN32_WINNT_WIN7;DXGI_LOGGING=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;NDEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)DirectX11;$(SolutionDir)\DirectXTK\Inc</AdditionalIncludeDirectories>
     </ClCompile>
@@ -208,7 +208,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;NDEBUG;_WINDOWS;_USRDLL;DIRECTXGI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN32_WINNT=_WIN32_WINNT_WIN7;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;WIN32;NDEBUG;_WINDOWS;_USRDLL;DIRECTXGI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -227,7 +227,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>DXGI_LOGGING=1;HOOK_SYSTEM32=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;NDEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN32_WINNT=_WIN32_WINNT_WIN7;DXGI_LOGGING=1;HOOK_SYSTEM32=1;DIRECTINPUT_VERSION=0x0800;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;NDEBUG;_WINDOWS;_USRDLL;DIRECTX11_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>$(SolutionDir);$(SolutionDir)DirectX11;$(SolutionDir)\DirectXTK\Inc</AdditionalIncludeDirectories>
       <ExceptionHandling>Async</ExceptionHandling>
@@ -249,7 +249,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;DIRECTXGI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WIN32_WINNT=_WIN32_WINNT_WIN7;NDEBUG;_WINDOWS;_USRDLL;DIRECTXGI_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>

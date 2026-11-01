@@ -229,7 +229,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;_DEBUG_LAYER=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WIN7;_DEBUG_LAYER=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -282,7 +282,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WIN7;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>
@@ -339,7 +339,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WIN7;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>
@@ -392,7 +392,7 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /S
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;_DEBUG_LAYER=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WIN7;_DEBUG_LAYER=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -445,7 +445,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WIN7;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>
@@ -500,7 +500,7 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WINBLUE;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>QUEUE_USE_CONFORMANT_NEW;CRC32C_STATIC=1;PCRE2_STATIC;PCRE2_CODE_UNIT_WIDTH=8;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES_COUNT=1;_WINDOWS;_USRDLL;MIGOTO_DX=11;WIN32_LEAN_AND_MEAN;_WIN32_WINNT=_WIN32_WINNT_WIN7;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ExceptionHandling>Async</ExceptionHandling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>
