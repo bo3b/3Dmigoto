@@ -7,14 +7,14 @@ I've reviewed 6 or 7 different coding styles, including all the ones specified b
 [gitbooks best practices](https://lefticus.gitbooks.io/cpp-best-practices/content/03-Style.html)
 [style guidelines recommendations](https://style-guides.readthedocs.io/en/latest/cpp.html)
 
-Starting point will be Google coding style, but will have tweaks for our purposes.  Also using Reshade code as a reference as a visually desirable style.  Goal is not be too heroic here, renaming everything in every file is too much. So we want to blend in desirable goals without spending inordinate effort on anything that has lesser value.  If anything gets into taking too much time/effort, it'll be skipped.  The consistency is the big win, not individual formatting pieces.
+Starting point will be Google coding style, but will have tweaks for our purposes.  Also using Reshade code as a reference as a visually desirable style.  Goal is not be too heroic here, renaming everything in every file is too much. So we want to blend in desirable goals without spending inordinate effort on anything that has lesser value. We also want to maintain git history, and massive renamings become too noisy. If anything gets into taking too much time/effort, it'll be skipped.  The consistency is the big win, not individual formatting pieces.
 
 Style guide with some _why_:
 
 #### Classes
 - Class references will remain CamelCase for definitions.  Microsoft objects that we subclass are always CamelCase, so keeping these consistent will make it clear when we are talking about Objects.
 - All class methods will be CamelCase.  A lot of these are defined by Microsoft objects that we want to respect. The difference between our methods and Microsoft methods will be clear because of how they are called.
-- Field references in objects will be lowerCamelCase style. To remove the m that neither Helifax nor I like, but still keep them in the CamelCase variant to indicate 'object', instead of a local variable. No differences for public vs. private, but lowerSnakeCase will clearly indicate an object field and also clearly differentiate with Microsoft COM object vars.
+- Field references in objects will be lowerCamelCase style. We will keep m* naming for lower git noise. No differences for public vs. private.
 - Operator overloads.  Only to be used when it cannot be confused.  These are as risky as bad macros.
 - A general goal is to make object references and usages clearly different than regular variables or subroutines.
 
@@ -44,7 +44,7 @@ Style guide with some _why_:
 - Always use nullptr instead of NULL or 0 for pointers.  It clarifies that the reference is a ptr. Use NULL for other DX11 API use. Prefer `if (ptrName)` for null checks.
 - Use Rule of Zero.  Don't add stuff we aren't actively using just to be 'complete.'  Like every possible constructor or every possible overload or override.
 - Use TODO in comments as reminders for unfinished code.
-- Always check error results, just as a good habit.  If it's something 'impossible', have it throw a fatal error using a fatal macro.
+- Always check error results, just as a good habit.  If it's something 'impossible', have it throw a fatal error using a fatal macro like HR.
 - Best practices recommends that local variables should be declared close to first use, not at top of function. Variables used in full function scope, multiple times, should be declared at top.
 
 #### Formatting
@@ -65,6 +65,19 @@ Some notes based on research. Hard to understand details of tools.
 clang-format has limited abilities, not enough detail in specifications to get exactly what I'd want.  In particular, the function parameters for definitions cannot be wrapped, if the line limit is 0.  There are no flags to wrap those.  In addition, setting it low to like 40, which forces wraps then breaks the ability to align assignments. Not enough flexibility.  So, we'll leave it at 0, and format those using Resharper for a first pass, and manually later on.
 
 Do not use VS2017. The clang support is much more limited there, and the clang-tidy options are also missing key aspects we want. VS2019 was used by default here, but moving to VS2022 is likely.
+
+<br>
+-----
+<br>
+
+#### 11-11-26 Update
+Coming back to this after a long hiatus, and the branches are divergent and hard to merge. The world is also now completely different in that AI does not care about formatting or style whatsoever, and no one sensible is going to forgo using AI for these code bases. That makes renaming and clean-up quite a lot less valuable than it was. 
+
+Currently thinking that there are a number of high-value changes that are worth moving into 3Dmigoto/master, but that we definitely do not want everything in Rename_Reformat, particularly the Renaming. Renaming all the variables and function names would make for a much better code base, but no one is going to be reading code anymore, so it's not worth the effort. Lots and lots of conflicts in a merge, and would also add a lot of noise into the git history, so it's no longer worth doing. 
+
+Current goal will be to merge in the pieces that clearly help maintain the code, like improved 'using' handling, and standarized variable initialization. All renaming except for odd use cases like MACROS will be avoided. File renamings for consistency are acceptable, as long as the commits are small and git recogizes the move, it will also track history over the renames.
+
+This will also be moving to VS2026 as a much better IDE for those of us who still read code, and we'll update to later SDK, toolset, and C++17. The idea is to have both 3Dmigoto and geo-11 on the same toolsets so that we can merge between them as needed.
 
 <br>
 -----
