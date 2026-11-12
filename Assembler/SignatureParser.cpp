@@ -1,4 +1,5 @@
 #include "Assembler.h"
+
 #include "log.h"
 #include "shader.h"
 
@@ -7,6 +8,7 @@
 #include <exception>
 #include <string>
 #include <vector>
+
 #include <Windows.h>
 
 using std::string;
