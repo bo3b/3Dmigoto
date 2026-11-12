@@ -7,6 +7,7 @@
 #include <exception>
 #include <string>
 #include <vector>
+
 #include <Windows.h>
 
 // VS2013 BUG WORKAROUND: Make sure this class has a unique type name!

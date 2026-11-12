@@ -9,9 +9,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-#include <Windows.h>
 
-#include <stdexcept>
+#include <Windows.h>
 
 #if MIGOTO_DX == 9
     #include <d3dx9shader.h>
