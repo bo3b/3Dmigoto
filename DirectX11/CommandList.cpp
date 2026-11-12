@@ -20,8 +20,8 @@
 #include "ResourceHash.hpp"
 #include "util.h"
 
-#include "DirectXTK/Inc/DDSTextureLoader.h"
-#include "DirectXTK/Inc/WICTextureLoader.h"
+#include "DDSTextureLoader.h"
+#include "WICTextureLoader.h"
 
 #include <algorithm>
 #include <cfloat>

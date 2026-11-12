@@ -14,7 +14,7 @@
 #include "ResourceHash.hpp"
 #include "util.h"
 
-#include "DirectXTK/Inc/ScreenGrab.h"
+#include "ScreenGrab.h"
 
 #include <algorithm>
 #include <cstdint>
