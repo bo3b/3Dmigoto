@@ -5,7 +5,7 @@
 #include "log.h"
 #include "Overlay.hpp"
 
-#include "Nektra/NktHookLib.h"
+#include "NktHookLib.h"
 
 #include <Windows.h>
 
