@@ -4580,7 +4580,7 @@ public:
 				const char *varDecl = "  float4 ";
 				mOutput.insert(mOutput.end(), varDecl, varDecl + strlen(varDecl));
 				int numTemps;
-				sscanf_s(c + pos, "%s %d", statement, UCOUNTOF(statement), &numTemps);
+				sscanf_s(c + pos, "%s %d", statement, U_COUNT_OF(statement), &numTemps);
 				for (int i = 0; i < numTemps; ++i)
 				{
 					sprintf(buffer, "r%d,", i);
