@@ -4,8 +4,9 @@
 #include <d3d11_1.h>
 
 #include "../log.h"
-#include "../nvapi.h"
 #include "../version.h"
+
+#include "nvapi.h"
 
 #include <cstdio>
 #include <map>

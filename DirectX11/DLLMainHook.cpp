@@ -4,7 +4,7 @@
 #include "HookedDXGI.h"
 #include "ini_parser_lite.h"
 
-#include "Nektra/NktHookLib.h"
+#include "NktHookLib.h"
 
 #include <d3d11_1.h>
 #include <Windows.h>
