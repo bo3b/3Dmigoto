@@ -4536,7 +4536,7 @@ void CustomResource::LoadFromFile(ID3D11Device *orig_device)
         LOG_INFO_W(L"Loading custom resource %s as WIC, bind_flags=0x%03x\n", filename.c_str(), bindFlags);
         hr = DirectX::CreateWICTextureFromFileEx(orig_device,
                 filename.c_str(), 0,
-                D3D11_USAGE_DEFAULT, bind_flags, 0, misc_flags,
+                D3D11_USAGE_DEFAULT, bindFlags, 0, miscFlags,
                 DirectX::DX11::WIC_LOADER_DEFAULT, &resource, NULL);
     }
     if (SUCCEEDED(hr)) {
