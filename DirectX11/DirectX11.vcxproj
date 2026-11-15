@@ -235,9 +235,9 @@
     <IntDir>$(ProjectDir)bin\x$(PlatformArchitecture)\$(Configuration)\</IntDir>
   </PropertyGroup>
 
-<!-- - - - - - - - - - - - - - - - -->
-<!--         Debug Win32           -->
-<!-- - - - - - - - - - - - - - - - -->
+  <!-- - - - - - - - - - - - - - - - -->
+  <!--         Debug Win32           -->
+  <!-- - - - - - - - - - - - - - - - -->
 
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -259,6 +259,7 @@ $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
       </AdditionalIncludeDirectories>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -287,9 +288,9 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
     </PostBuildEvent>
   </ItemDefinitionGroup>
   
-<!-- - - - - - - - - - - - - - - - -->
-<!--        Release Win32          -->
-<!-- - - - - - - - - - - - - - - - -->
+  <!-- - - - - - - - - - - - - - - - -->
+  <!--        Release Win32          -->
+  <!-- - - - - - - - - - - - - - - - -->
 
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -313,6 +314,7 @@ $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -345,9 +347,9 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
     </PostBuildEvent>
   </ItemDefinitionGroup>
   
-<!-- - - - - - - - - - - - - - - - -->
-<!--      Zip Release Win32        -->
-<!-- - - - - - - - - - - - - - - - -->
+  <!-- - - - - - - - - - - - - - - - -->
+  <!--      Zip Release Win32        -->
+  <!-- - - - - - - - - - - - - - - - -->
 
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|Win32'">
     <ClCompile>
@@ -371,6 +373,7 @@ $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -401,9 +404,9 @@ xcopy "$(SolutionDir)Dependencies\*.*" "$(TargetDir)"  /E /Y /S
     </PostBuildEvent>
   </ItemDefinitionGroup>
   
-<!-- - - - - - - - - - - - - - - - -->
-<!--          Debug x64            -->
-<!-- - - - - - - - - - - - - - - - -->
+  <!-- - - - - - - - - - - - - - - - -->
+  <!--          Debug x64            -->
+  <!-- - - - - - - - - - - - - - - - -->
 
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -425,6 +428,7 @@ $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
       </AdditionalIncludeDirectories>
       <BufferSecurityCheck>true</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -453,9 +457,9 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
     </PostBuildEvent>
   </ItemDefinitionGroup>
   
-<!-- - - - - - - - - - - - - - - - -->
-<!--         Release x64           -->
-<!-- - - - - - - - - - - - - - - - -->
+  <!-- - - - - - - - - - - - - - - - -->
+  <!--         Release x64           -->
+  <!-- - - - - - - - - - - - - - - - -->
 
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -479,6 +483,7 @@ $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -509,9 +514,9 @@ call "$(SolutionDir)CopyToGames.bat" "$(TargetDir)" "$(TargetedSDKArchitecture)"
     </PostBuildEvent>
   </ItemDefinitionGroup>
   
-<!-- - - - - - - - - - - - - - - - -->
-<!--       Zip Release x64         -->
-<!-- - - - - - - - - - - - - - - - -->
+  <!-- - - - - - - - - - - - - - - - -->
+  <!--       Zip Release x64         -->
+  <!-- - - - - - - - - - - - - - - - -->
 
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
     <ClCompile>
@@ -535,6 +540,7 @@ $(SolutionDir)ThirdPartyLibs\DirectXTK-lib\include;
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
