@@ -29,12 +29,12 @@ jobs:
 
     steps:
       - name: Checkout master
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.ref }}
 
       - name: Add MSBuild to PATH
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Show all Visual Studio installs
         shell: cmd
@@ -80,7 +80,7 @@ jobs:
 # We expect a dev to manually promote a pre-release to latest.
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           prerelease: true
           tag_name: ${{ env.TAG_NUM }}

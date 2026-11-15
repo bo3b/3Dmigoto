@@ -1,4 +1,4 @@
-# This workflow will build geo-11 for Release use.
+# This workflow will build 3Dmigoto for Release use.
 # This is a basic workflow that will only be manually triggered.
 # This is used to verify builds are successful, and for testing. Build Version will
 # be incremented for every build, and committed back to the repo.
@@ -28,11 +28,12 @@ jobs:
   zip_release_workflow:
 
     # Now runs on latest runners with VS2022 as default.
+    # We want to stay on windows-2022 so that we can use v143 and 10.0.19041.0
     runs-on: windows-2022
 
     steps:
     - name: Checkout branch master
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Show all Visual Studio installs
       shell: cmd
@@ -48,9 +49,9 @@ jobs:
         dir "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Tools\MSVC"
           
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v2
+      uses: microsoft/setup-msbuild@v3
       
-# VisualStudio2022 should be there in 'windows-latest'       
+# VisualStudio2022 should be there in 'windows-2022'       
 #      with:
 #        vs-version: '2022'
 
@@ -86,7 +87,7 @@ jobs:
 # These artifacts are for testing, and not actual Releases.
 
     - name: Upload HelixMod build
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: 3Dmigoto v${{env.BUILD_VERSION}}
         path: Zip Release\
