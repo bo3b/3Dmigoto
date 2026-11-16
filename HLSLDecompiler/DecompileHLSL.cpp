@@ -20,6 +20,7 @@
 #include <map>
 #include <string>
 #include <cstdio>
+#include <cstdlib>
 #include <vector>
 #include <set>
 #include <algorithm>
@@ -153,6 +154,9 @@ public:
 
 	map<string, string> mStructuredBufferTypes;
 	set<string> mStructuredBufferUsedNames;
+	map<string, string> mStructuredBufferDeclarations;
+	map<string, vector<pair<int, int> > > mStructuredBufferFieldRanges;
+	map<string, set<int> > mStructuredBufferIntegerOffsets;
 
 	//dx9
 	map<int, string> mUniformNames;
@@ -173,6 +177,11 @@ public:
 	StringStringMap mRemappedOutputRegisters;
 	vector<pair<string, string> > mRemappedInputRegisters;
 	set<string> mBooleanRegisters;
+	map<string, string> mIntegerAliases;
+	map<string, string> mIntegerReadAliases;
+	set<string> mDeclaredIntegerAliases;
+	set<string> mIntegerBitPatternComponents;
+	set<string> mIntegerReadBitPatternComponents;
 
 	DecompilerSettings *G;
 
@@ -1768,12 +1777,271 @@ public:
 				} else {
 					// Add the stripped line to the HLSL output, unless blank:
 					NextLine(c, pos, size);
-					if (c[fpos] != '\n')
-						hlsl += string(c, spos, pos - spos);
+					if (c[fpos] != '\n') {
+						string field(c, spos, pos - spos);
+						const char *layout = strstr(field.c_str(), "Offset:");
+						int field_offset = 0;
+						int field_size = 0;
+						if (layout && sscanf_s(layout, "Offset: %d Size: %d", &field_offset, &field_size) == 2)
+							mStructuredBufferFieldRanges[type_name].push_back(make_pair(field_offset, field_size));
+						hlsl += field;
+					}
 				}
 			}
 			hlsl += "};\n";
+			mStructuredBufferDeclarations[type_name] = hlsl;
+		}
+	}
+
+	void WriteStructureDefinitions()
+	{
+		for (map<string, string>::iterator declaration = mStructuredBufferDeclarations.begin();
+			declaration != mStructuredBufferDeclarations.end(); ++declaration)
+		{
+			string hlsl = declaration->second;
+			map<string, vector<pair<int, int> > >::iterator ranges = mStructuredBufferFieldRanges.find(declaration->first);
+			set<int> *integer_offsets = NULL;
+			map<string, set<int> >::iterator integer_type = mStructuredBufferIntegerOffsets.find(declaration->first);
+			if (integer_type != mStructuredBufferIntegerOffsets.end())
+				integer_offsets = &integer_type->second;
+
+			if (ranges != mStructuredBufferFieldRanges.end() && integer_offsets && !integer_offsets->empty())
+			{
+				string rewritten;
+				size_t line_start = 0;
+				size_t range_index = 0;
+				while (line_start < hlsl.size())
+				{
+					size_t line_end = hlsl.find('\n', line_start);
+					if (line_end == string::npos)
+						line_end = hlsl.size();
+					string line = hlsl.substr(line_start, line_end - line_start);
+					bool integer_field = false;
+					if (line.find("Offset:") != string::npos && range_index < ranges->second.size())
+					{
+						int field_offset = ranges->second[range_index].first;
+						int field_size = ranges->second[range_index].second;
+						for (set<int>::iterator offset = integer_offsets->begin(); offset != integer_offsets->end(); ++offset)
+						{
+							if (*offset >= field_offset && *offset < field_offset + field_size)
+							{
+								integer_field = true;
+								break;
+							}
+						}
+						++range_index;
+					}
+
+					if (integer_field)
+					{
+						size_t type = line.find("float");
+						if (type != string::npos)
+							line.replace(type, 5, "uint");
+					}
+					rewritten += line;
+					if (line_end < hlsl.size())
+						rewritten += '\n';
+					line_start = line_end < hlsl.size() ? line_end + 1 : hlsl.size();
+				}
+				hlsl.swap(rewritten);
+			}
 			mOutput.insert(mOutput.end(), hlsl.begin(), hlsl.end());
+		}
+	}
+
+	void InferStructuredBufferIntegerTypes(Shader *shader)
+	{
+		struct StructuredOrigin
+		{
+			string type_name;
+			int byte_offset;
+		};
+
+		map<pair<uint32_t, int>, StructuredOrigin> origins;
+
+		for (uint32_t phase = 0; phase < NUM_PHASES; ++phase)
+		{
+			for (size_t instance = 0; instance < shader->asPhase[phase].ppsInst.size(); ++instance)
+			{
+				vector<Instruction> &instructions = shader->asPhase[phase].ppsInst[instance];
+				for (size_t instruction_index = 0; instruction_index < instructions.size(); ++instruction_index)
+				{
+					Instruction &instruction = instructions[instruction_index];
+
+					auto source_component = [](const Operand &operand, int lane) -> int {
+						if (operand.eSelMode == OPERAND_4_COMPONENT_SELECT_1_MODE)
+							return (int)operand.aui32Swizzle[0];
+						if (operand.eSelMode == OPERAND_4_COMPONENT_SWIZZLE_MODE)
+							return (int)operand.aui32Swizzle[lane];
+						return lane;
+					};
+
+					auto source_origin = [&](const Operand &operand, int lane, StructuredOrigin &origin) -> bool {
+						if (operand.eType != OPERAND_TYPE_TEMP)
+							return false;
+						int component = source_component(operand, lane);
+						if (component < 0 || component > 3)
+							return false;
+						map<pair<uint32_t, int>, StructuredOrigin>::iterator found =
+							origins.find(make_pair(operand.ui32RegisterNumber, component));
+						if (found == origins.end())
+							return false;
+						origin = found->second;
+						return true;
+					};
+
+					auto mark_integer_use = [&](const Operand &operand, int lane) {
+						StructuredOrigin origin;
+						if (source_origin(operand, lane, origin))
+							mStructuredBufferIntegerOffsets[origin.type_name].insert(origin.byte_offset);
+					};
+
+					auto clear_destination = [&](const Operand &operand) {
+						if (operand.eType != OPERAND_TYPE_TEMP)
+							return;
+						for (int lane = 0; lane < 4; ++lane)
+						{
+							if (operand.ui32CompMask & (1u << lane))
+								origins.erase(make_pair(operand.ui32RegisterNumber, lane));
+						}
+					};
+
+					// These instructions consume a raw integer value.  This is the
+					// reverse edge that lets a later use refine the type of an earlier
+					// structured load.
+					switch (instruction.eOpcode)
+					{
+					case OPCODE_FIRSTBIT_HI:
+					case OPCODE_FIRSTBIT_LO:
+					case OPCODE_FIRSTBIT_SHI:
+					case OPCODE_COUNTBITS:
+					case OPCODE_NOT:
+						mark_integer_use(instruction.asOperands[1], 0);
+						break;
+					case OPCODE_AND:
+					case OPCODE_OR:
+					case OPCODE_XOR:
+			case OPCODE_ISHL:
+			case OPCODE_ISHR:
+			case OPCODE_USHR:
+			case OPCODE_IADD:
+			case OPCODE_IMAD:
+			case OPCODE_IMUL:
+			case OPCODE_INEG:
+			case OPCODE_IEQ:
+					case OPCODE_IGE:
+					case OPCODE_ILT:
+					case OPCODE_INE:
+					case OPCODE_ULT:
+					case OPCODE_UGE:
+					case OPCODE_IMIN:
+					case OPCODE_IMAX:
+					case OPCODE_UMIN:
+			case OPCODE_UMAX:
+			case OPCODE_UMUL:
+			case OPCODE_UMAD:
+			case OPCODE_UDIV:
+			case OPCODE_UBFE:
+			case OPCODE_IBFE:
+			case OPCODE_BFI:
+			case OPCODE_BFREV:
+						for (uint32_t operand_index = 1; operand_index < instruction.ui32NumOperands; ++operand_index)
+							for (int lane = 0; lane < 4; ++lane)
+								if (instruction.asOperands[operand_index].ui32CompMask & (1u << lane))
+									mark_integer_use(instruction.asOperands[operand_index], lane);
+						break;
+					case OPCODE_LD_STRUCTURED:
+						// The index operand is an integer sink as well (t6[t8[x]]).
+						// Index operands are commonly select-one operands. Those do
+						// not reliably expose a component mask, so checking the mask
+						// here loses the t8[probeBit] -> probeIndex type edge.
+						// source_component() resolves select-one/swizzled operands.
+						for (int lane = 0; lane < 4; ++lane)
+							mark_integer_use(instruction.asOperands[1], lane);
+						break;
+					default:
+						break;
+					}
+
+					if (instruction.eOpcode == OPCODE_MOV && instruction.ui32NumOperands >= 2 &&
+						instruction.asOperands[0].eType == OPERAND_TYPE_TEMP)
+					{
+						map<pair<uint32_t, int>, StructuredOrigin> moved;
+						for (int lane = 0; lane < 4; ++lane)
+						{
+							if (!(instruction.asOperands[0].ui32CompMask & (1u << lane)))
+								continue;
+							StructuredOrigin origin;
+							if (source_origin(instruction.asOperands[1], lane, origin))
+								moved[make_pair(instruction.asOperands[0].ui32RegisterNumber, lane)] = origin;
+						}
+						clear_destination(instruction.asOperands[0]);
+						origins.insert(moved.begin(), moved.end());
+						continue;
+					}
+
+					if (instruction.eOpcode == OPCODE_LD_STRUCTURED && instruction.ui32NumOperands >= 4)
+					{
+						clear_destination(instruction.asOperands[0]);
+						string type_name;
+						Operand &resource = instruction.asOperands[3];
+						ResourceGroup group = resource.eType == OPERAND_TYPE_UNORDERED_ACCESS_VIEW ? RGROUP_UAV : RGROUP_TEXTURE;
+						ResourceBinding *bind_info = NULL;
+						if (GetResourceFromBindingPoint(group, resource.ui32RegisterNumber, shader->sInfo, &bind_info))
+						{
+							map<string, string>::iterator type = mStructuredBufferTypes.find(bind_info->Name);
+							if (type != mStructuredBufferTypes.end())
+								type_name = type->second;
+						}
+						if (type_name.empty())
+						{
+							string resource_name = (group == RGROUP_UAV ? "u" : "t") + to_string(resource.ui32RegisterNumber);
+							map<string, string>::iterator type = mStructuredBufferTypes.find(resource_name);
+							if (type != mStructuredBufferTypes.end())
+								type_name = type->second;
+						}
+
+						if (!type_name.empty() && instruction.asOperands[2].eType == OPERAND_TYPE_IMMEDIATE32)
+						{
+							int base_offset = (int)instruction.asOperands[2].afImmediates[0];
+							for (int lane = 0; lane < 4; ++lane)
+							{
+								if (!(instruction.asOperands[0].ui32CompMask & (1u << lane)))
+									continue;
+								int source_lane = (int)resource.aui32Swizzle[lane];
+								if (source_lane < 0 || source_lane > 3)
+									continue;
+								StructuredOrigin origin = { type_name, base_offset + source_lane * 4 };
+								origins[make_pair(instruction.asOperands[0].ui32RegisterNumber, lane)] = origin;
+							}
+						}
+						continue;
+					}
+
+					// Any other instruction writing a temporary kills the old load
+					// origin.  Source-only/control-flow instructions have no temp
+					// destination and are naturally ignored here.
+					if (instruction.ui32NumOperands && instruction.asOperands[0].eType == OPERAND_TYPE_TEMP)
+					{
+						switch (instruction.eOpcode)
+						{
+						case OPCODE_IF:
+						case OPCODE_LOOP:
+						case OPCODE_SWITCH:
+						case OPCODE_CASE:
+						case OPCODE_BREAKC:
+						case OPCODE_CONTINUEC:
+						case OPCODE_RETC:
+						case OPCODE_CALL:
+						case OPCODE_CALLC:
+							break;
+						default:
+							clear_destination(instruction.asOperands[0]);
+							break;
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -2754,6 +3022,372 @@ public:
 		return _convertToUInt(target, false);
 	}
 
+	// For a masked destination, DXBC source swizzles are indexed by the
+	// physical destination lane.  A destination of .yzw therefore consumes
+	// source/literal lanes y, z and w, not the compact x, y and z sequence.
+	// Build each lane independently so aliases such as r0.yzw = imin(r0.yyzw,
+	// l(0,31,15,23)) are read before the write and retain the literal mapping.
+	string integerLaneOperand(const char *source, int lane, bool unsignedValue)
+	{
+		if (!strncmp(source, "l(", 2))
+		{
+			// integerImmediate supplied exact decimal DWORDs. Select their
+			// text directly: applySwizzleLiteral parses through float and
+			// would round integers larger than 2^24.
+			string literal = source;
+			size_t start = 2;
+			if (literal.find(',') != string::npos)
+				for (int component = 0; component < lane; ++component)
+					start = literal.find(',', start) + 1;
+			string value = literal.substr(start, literal.find_first_of(",)", start) - start);
+			return unsignedValue ? "uint(" + value + ")" : value;
+		}
+		char left[8];
+		char value[opcodeSize];
+		sprintf_s(left, sizeof(left), ".%c", "xyzw"[lane]);
+		strcpy_s(value, opcodeSize, source);
+		applySwizzle(left, value, true);
+		if (unsignedValue)
+			bitcastToUInt(value);
+		else
+			bitcastToInt(value);
+		return value;
+	}
+
+	bool isIntegerLiteral(const char *value)
+	{
+		if (!value || !*value)
+			return false;
+		char *end = NULL;
+		strtol(value, &end, 0);
+		return end && *end == 0;
+	}
+
+	string integerMinMaxExpression(const char *destination, const char *source0, const char *source1,
+		bool unsignedValue, bool maximum)
+	{
+		const char *mask = strrchr(destination, '.');
+		string lanes = mask ? mask + 1 : "xyzw";
+		string lhs, rhs;
+
+		for (size_t i = 0; i < lanes.size(); ++i)
+		{
+			const char *lane_position = strchr("xyzw", lanes[i]);
+			if (!lane_position)
+				continue;
+			int lane = (int)(lane_position - "xyzw");
+			if (!lhs.empty())
+			{
+				lhs += ", ";
+				rhs += ", ";
+			}
+			lhs += integerLaneOperand(source0, lane, unsignedValue);
+			rhs += integerLaneOperand(source1, lane, unsignedValue);
+		}
+
+		if (lanes.size() > 1)
+		{
+			string type = unsignedValue ? "uint" : "int";
+			lhs = type + to_string(lanes.size()) + "(" + lhs + ")";
+			rhs = type + to_string(lanes.size()) + "(" + rhs + ")";
+		}
+
+		return string(maximum ? "max(" : "min(") + lhs + ", " + rhs + ")";
+	}
+
+	bool singleTempComponent(const char *operand, string &key, int &register_number, char &component)
+	{
+		const char *dot = strchr(operand, '.');
+		if (operand[0] != 'r' || !dot || !strchr("xyzw", dot[1]) || dot[2] != 0)
+			return false;
+		register_number = atoi(operand + 1);
+		component = dot[1];
+		key = operand;
+		return true;
+	}
+
+	string integerAliasForOperand(const char *operand)
+	{
+		string value = operand;
+		bool negative = false;
+		if (!value.empty() && value[0] == '-')
+		{
+			negative = true;
+			value.erase(0, 1);
+		}
+
+		map<string, string>::iterator exact = mIntegerAliases.find(value);
+		if (exact != mIntegerAliases.end())
+			return (negative ? "-" : "") + exact->second;
+		exact = mIntegerReadAliases.find(value);
+		if (exact != mIntegerReadAliases.end())
+			return (negative ? "-" : "") + exact->second;
+
+		size_t dot = value.find('.');
+		if (dot == string::npos || value[0] != 'r')
+			return "";
+		string register_name = value.substr(0, dot);
+		string components = value.substr(dot + 1);
+		if (components.empty() || components.size() > 4)
+			return "";
+
+		string result;
+		for (size_t i = 0; i < components.size(); ++i)
+		{
+			if (!strchr("xyzw", components[i]))
+				return "";
+			string key = register_name + "." + components.substr(i, 1);
+			map<string, string>::iterator alias = mIntegerAliases.find(key);
+			if (alias == mIntegerAliases.end())
+			{
+				alias = mIntegerReadAliases.find(key);
+				if (alias == mIntegerReadAliases.end())
+					return "";
+			}
+			if (!result.empty())
+				result += ", ";
+			result += alias->second;
+		}
+		if (components.size() > 1)
+			result = "uint" + to_string(components.size()) + "(" + result + ")";
+		if (negative)
+			result = "-" + result;
+		return result;
+	}
+
+	void preserveIntegerReadOperand(const char *operand)
+	{
+		if (!operand)
+			return;
+
+		const char *value = operand[0] == '-' ? operand + 1 : operand;
+		if (value[0] != 'r')
+			return;
+
+		const char *dot = strchr(value, '.');
+		string register_name = dot ? string(value, dot - value) : string(value);
+		string components = dot ? dot + 1 : "xyzw";
+		for (size_t i = 0; i < components.size(); ++i)
+		{
+			if (!strchr("xyzw", components[i]))
+				continue;
+			string key = register_name + "." + components.substr(i, 1);
+			map<string, string>::iterator alias = mIntegerAliases.find(key);
+			if (alias != mIntegerAliases.end())
+				mIntegerReadAliases[key] = alias->second;
+			if (mIntegerBitPatternComponents.find(key) != mIntegerBitPatternComponents.end())
+				mIntegerReadBitPatternComponents.insert(key);
+		}
+	}
+
+	// Texture Load coordinates are integer values.  DXBC temporary registers
+	// still carry the integer bit pattern as floats, so an implicit HLSL float
+	// to int conversion changes the coordinate instead of preserving it.
+	void integerLoadCoordinate(char *target)
+	{
+		if (!target || (target[0] != 'r' && !(target[0] == '-' && target[1] == 'r')))
+			return;
+
+		const char *register_start = target[0] == '-' ? target + 1 : target;
+		const char *dot = strchr(register_start, '.');
+		if (!dot || !dot[1] || dot[1] == '0')
+			return;
+
+		string register_name(register_start, dot - register_start);
+		string components = dot + 1;
+		if (components.empty() || components.size() > 4)
+			return;
+
+		string values;
+		for (size_t i = 0; i < components.size(); ++i)
+		{
+			char component = components[i];
+			if (!strchr("xyzw", component))
+				return;
+
+			string key = register_name + "." + component;
+			string value;
+			map<string, string>::iterator alias = mIntegerAliases.find(key);
+			if (alias != mIntegerAliases.end())
+				value = alias->second;
+			else if ((alias = mIntegerReadAliases.find(key)) != mIntegerReadAliases.end())
+				value = alias->second;
+			else if (mIntegerBitPatternComponents.find(key) != mIntegerBitPatternComponents.end() ||
+				mIntegerReadBitPatternComponents.find(key) != mIntegerReadBitPatternComponents.end())
+				value = "asint(" + key + ")";
+			else
+				// A temporary used as a DXBC Load coordinate is a typeless
+				// register carrying the integer bit pattern, even when the
+				// destination overlaps one of the coordinate components.
+				value = "asint(" + key + ")";
+
+			if (!values.empty())
+				values += ", ";
+			values += value;
+		}
+
+		string result = components.size() == 1
+			? values
+			: "int" + to_string(components.size()) + "(" + values + ")";
+		strcpy_s(target, opcodeSize, result.c_str());
+	}
+
+	void invalidateIntegerAliases(const char *operand)
+	{
+		const char *dot = strchr(operand, '.');
+		if (operand[0] != 'r')
+			return;
+		string register_name = dot ? string(operand, dot - operand) : string(operand);
+		if (!dot)
+		{
+			for (map<string, string>::iterator i = mIntegerAliases.begin(); i != mIntegerAliases.end(); )
+			{
+				if (i->first.compare(0, register_name.size(), register_name) == 0)
+					i = mIntegerAliases.erase(i);
+				else
+					++i;
+			}
+			return;
+		}
+		for (const char *component = dot + 1; *component; ++component)
+		{
+			if (strchr("xyzw", *component))
+			{
+				mIntegerAliases.erase(register_name + "." + string(1, *component));
+				mIntegerBitPatternComponents.erase(register_name + "." + string(1, *component));
+			}
+		}
+	}
+
+	void markIntegerBitPatternComponents(const char *operand)
+	{
+		if (!operand || operand[0] != 'r')
+			return;
+		const char *dot = strchr(operand, '.');
+		string register_name = dot ? string(operand, dot - operand) : string(operand);
+		if (!dot)
+		{
+			for (const char *component = "xyzw"; *component; ++component)
+				mIntegerBitPatternComponents.insert(register_name + "." + string(1, *component));
+			return;
+		}
+		for (const char *component = dot + 1; *component; ++component)
+			if (strchr("xyzw", *component))
+				mIntegerBitPatternComponents.insert(register_name + "." + string(1, *component));
+	}
+
+	bool isIntegerBitPatternOperand(const char *operand) const
+	{
+		return mIntegerBitPatternComponents.find(operand) != mIntegerBitPatternComponents.end() ||
+			mIntegerReadBitPatternComponents.find(operand) != mIntegerReadBitPatternComponents.end();
+	}
+
+	void markIntegerBitPatternLane(const char *target, int lane)
+	{
+		if (!target || target[0] != 'r' || lane < 0 || lane > 3)
+			return;
+		const char *dot = strchr(target, '.');
+		string register_name = dot ? string(target, dot - target) : string(target);
+		mIntegerBitPatternComponents.insert(register_name + "." + string(1, "xyzw"[lane]));
+	}
+
+	string declareIntegerAlias(const char *target, bool unsigned_value)
+	{
+		string key;
+		int register_number;
+		char component;
+		if (!singleTempComponent(target, key, register_number, component))
+			return "";
+		string alias = "r" + to_string(register_number) + (unsigned_value ? "_uint_" : "_int_") + component;
+		if (mDeclaredIntegerAliases.insert(alias).second)
+		{
+			string declaration = "  " + string(unsigned_value ? "uint " : "int ") + alias + ";\n";
+			mOutput.insert(mOutput.begin() + mCodeStartPos, declaration.begin(), declaration.end());
+			mCodeStartPos += declaration.size();
+		}
+		mIntegerAliases[key] = alias;
+		return alias;
+	}
+
+	bool emitIntegerAssignment(const char *target, const char *expression, bool unsigned_value)
+	{
+		string alias = declareIntegerAlias(target, unsigned_value);
+		if (alias.empty())
+			return false;
+
+		char buffer[opcodeSize * 2];
+		char target_copy[opcodeSize];
+		strcpy_s(target_copy, opcodeSize, target);
+		sprintf(buffer, "  %s = %s;\n", alias.c_str(), expression);
+		appendOutput(buffer);
+		sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(target_copy), alias.c_str());
+		appendOutput(buffer);
+		return true;
+	}
+
+	void emitTextureLoad(char *target, int textureId, const char *expression)
+	{
+		const string &type = mTextureType[textureId];
+		bool unsignedValue = type.find("<uint") != string::npos;
+		bool integerValue = unsignedValue || type.find("<int") != string::npos;
+		if (integerValue)
+		{
+			markIntegerBitPatternComponents(target);
+			if (emitIntegerAssignment(target, expression, unsignedValue))
+				return;
+		}
+		char assignment[opcodeSize * 2];
+		if (integerValue)
+			sprintf(assignment, "  %s = asfloat(%s);\n", writeTarget(target), expression);
+		else
+			sprintf(assignment, "  %s = %s;\n", writeTarget(target), expression);
+		appendOutput(assignment);
+	}
+
+	// DXBC bitwise instructions operate on the raw 32-bit register contents.
+	// The decompiler keeps temporary registers as float4 for compatibility with
+	// the rest of the generated shader, so numeric casts are not sufficient here:
+	// a comparison mask such as 0xffffffff must remain the NaN bit pattern when
+	// it is stored in a float register.
+	void bitcastToUInt(char *target)
+	{
+		char buffer[opcodeSize];
+		if (isIntegerLiteral(target))
+			return;
+		string alias = integerAliasForOperand(target);
+		if (!alias.empty())
+		{
+			_snprintf_s(target, opcodeSize, opcodeSize, "asuint(%s)", alias.c_str());
+			return;
+		}
+		if (!strncmp(target, "uint", 4) ||
+			!strncmp(target, "asint(", 6) || !strncmp(target, "asuint(", 7))
+			return;
+		_snprintf_s(buffer, opcodeSize, opcodeSize, "asuint(%s)", target);
+		strcpy_s(target, opcodeSize, buffer);
+	}
+
+	// Integer DXBC results are kept in the float-shaped temporary register file
+	// as their original 32-bit pattern.  Integer consumers must therefore use a
+	// reinterpret cast, not a numeric float-to-int conversion.
+	void bitcastToInt(char *target)
+	{
+		char buffer[opcodeSize];
+		if (isIntegerLiteral(target))
+			return;
+		string alias = integerAliasForOperand(target);
+		if (!alias.empty())
+		{
+			_snprintf_s(target, opcodeSize, opcodeSize, "asint(%s)", alias.c_str());
+			return;
+		}
+		if (!strncmp(target, "int", 3) ||
+			!strncmp(target, "asint(", 6) || !strncmp(target, "asuint(", 7))
+			return;
+		_snprintf_s(buffer, opcodeSize, opcodeSize, "asint(%s)", target);
+		strcpy_s(target, opcodeSize, buffer);
+	}
+
 	// The boolean check routines had the problem that they only looked for the actual register
 	// name, like r1, instead of including the component, like r1.x.  This fails in some cases
 	// because another component can legally be used in between, which would not clear the 
@@ -2769,10 +3403,10 @@ public:
 	// Well, another example is a n "and r0.xyzw, r0.yyyy, r2.xyzw" where r0.y is set early. 
 	// This requires at least single component entries in the mBooleanRegisters.
 
-	// 12-5-15: New change to all users of addBoolean, is that they will call a small helper
-	//  routine to do 'cmp', in order to return -1 or 0, instead of the HLSL 1 or 0.  This
-	//  is intended to fix the problems we see where the assembly is using the -1 numerically
-	//  and not as a boolean.  The helper is now just a macro "#define cmp -" to negate.
+	// Comparison and bitwise instructions use this set to remember components
+	// whose float-shaped storage contains a DXBC all-bits mask.  It is used by
+	// control-flow and movc so those consumers test the mask as uint bits rather
+	// than relying on floating-point NaN behavior.
 
 	void addBoolean(char *arg)
 	{
@@ -2837,6 +3471,22 @@ public:
 		}
 	}
 
+	string conditionExpression(char *arg, bool testZero)
+	{
+		// DXBC tests the raw DWORD, including integers and comparison masks.
+		bool isMask = isBoolean(arg) || arg[0] == 'r';
+		string value = ci(arg);
+		string alias = integerAliasForOperand(arg);
+		if (!alias.empty())
+		{
+			value = "asuint(" + alias + ")";
+			isMask = true;
+		}
+		else if (isMask)
+			value = "asuint(" + value + ")";
+		return "(" + value + (testZero ? " == " : " != ") + (isMask ? "0u" : "0") + ")";
+	}
+
 
 	char *fixImm(char *op, Operand &o)
 	{
@@ -2857,6 +3507,23 @@ public:
 					sprintf_s(op, opcodeSize, "l(%.9g)", o.afImmediates[0]);
 			}
 		}
+		return op;
+	}
+
+	char *integerImmediate(char *op, const Operand &operand)
+	{
+		if (operand.eType != OPERAND_TYPE_IMMEDIATE32)
+			return op;
+		string literal = "l(";
+		for (int lane = 0; lane < operand.iNumComponents; ++lane)
+		{
+			int32_t bits;
+			memcpy(&bits, &operand.afImmediates[lane], sizeof(bits));
+			if (lane) literal += ",";
+			literal += to_string(bits);
+		}
+		literal += ")";
+		strcpy_s(op, opcodeSize, literal.c_str());
 		return op;
 	}
 
@@ -3483,6 +4150,7 @@ public:
 		mTextureNames[bufIndex] = buffer;
 
 		sscanf_s(op1, "(%[^,]", format, 16);	// Match first xx of (xx,xx,xx,xx)
+		if (!strcmp(format, "sint")) strcpy_s(format, sizeof(format), "int");
 		string form4 = string(format) + "4";	// Grim. Known to fail sometimes.
 		mTextureType[bufIndex] = texType + "<" + form4 + ">";
 
@@ -3651,7 +4319,10 @@ public:
 		ret += var->Name;
 
 		var_size = ShaderVarSize(var, &elem_size);
-		if (var->Elements) {
+		// Reflection reports a single-element field as Elements == 1, but
+		// its HLSL declaration is a scalar ("float val"), not "float val[1]".
+		// Indexing it as val[0] makes the regenerated shader invalid.
+		if (var->Elements > 1) {
 			// The index GetShaderVarFromOffset returns is crap, calculate it ourselves:
 			index = (offset - var->Offset) / elem_size;
 			ret += "[" + std::to_string(index) + "]";
@@ -3666,6 +4337,32 @@ public:
 		return ret;
 	}
 
+	bool IsStructuredBufferIntegerOffset(const string &type_name, int byte_offset)
+	{
+		map<string, set<int> >::iterator integer_type = mStructuredBufferIntegerOffsets.find(type_name);
+		if (integer_type == mStructuredBufferIntegerOffsets.end())
+			return false;
+
+		map<string, vector<pair<int, int> > >::iterator ranges = mStructuredBufferFieldRanges.find(type_name);
+		if (ranges == mStructuredBufferFieldRanges.end())
+			return integer_type->second.find(byte_offset) != integer_type->second.end();
+
+		for (size_t i = 0; i < ranges->second.size(); ++i)
+		{
+			int field_offset = ranges->second[i].first;
+			int field_end = field_offset + ranges->second[i].second;
+			if (byte_offset < field_offset || byte_offset >= field_end)
+				continue;
+			for (set<int>::iterator offset = integer_type->second.begin(); offset != integer_type->second.end(); ++offset)
+			{
+				if (*offset >= field_offset && *offset < field_end)
+					return true;
+			}
+			return false;
+		}
+		return false;
+	}
+
 	bool translate_structured_var(Shader *shader, const char *c, size_t &pos, size_t &size, Instruction *instr,
 			std::string ret[4], bool *combined, char *idx, char *off, char *reg, Operand *texture, int swiz_offsets[4])
 	{
@@ -3676,6 +4373,21 @@ public:
 
 		applySwizzle(".x", idx);
 		applySwizzle(".x", off);
+		if (isIntegerBitPatternOperand(idx) || !integerAliasForOperand(idx).empty())
+			bitcastToUInt(idx);
+
+		// Resolve the old address before killing the actual destination.
+		// The text parser's op1 may be "stride=..." for indexable loads.
+		if (instr->eOpcode == OPCODE_LD_STRUCTURED && dst0.eType == OPERAND_TYPE_TEMP)
+		{
+			string destination = "r" + to_string(dst0.ui32RegisterNumber) + ".";
+			for (int lane = 0; lane < 4; ++lane)
+				if (dst0.ui32CompMask & (1u << lane)) destination += "xyzw"[lane];
+			invalidateIntegerAliases(destination.c_str());
+			// Even an unreflected float field is a raw DWORD when used by
+			// a subsequent integer consumer or resource address.
+			markIntegerBitPatternComponents(destination.c_str());
+		}
 
 		*combined = false;
 
@@ -3739,7 +4451,27 @@ public:
 								bindInfo->Name.c_str(),
 								ci(idx).c_str(),
 								var_txt.c_str());
-						ret[component] = buffer;
+						if (IsStructuredBufferIntegerOffset(struct_type_i->second, byte_offset))
+						{
+							string raw_value = buffer;
+							ret[component] = "asfloat(" + raw_value + ")";
+							if (dst0.eType == OPERAND_TYPE_TEMP)
+							{
+								string target = "r" + to_string(dst0.ui32RegisterNumber);
+								target += ".";
+								target += "xyzw"[component];
+								string alias = declareIntegerAlias(target.c_str(), true);
+								if (!alias.empty())
+								{
+									sprintf(buffer, "  %s = asuint(%s);\n", alias.c_str(), raw_value.c_str());
+									appendOutput(buffer);
+									ret[component] = "asfloat(" + alias + ")";
+								}
+								markIntegerBitPatternLane(target.c_str(), component);
+							}
+						}
+						else
+							ret[component] = buffer;
 					}
 					return true;
 				} else {
@@ -3789,10 +4521,10 @@ public:
 			// type information instead. Our fake type information is
 			// an array of floats for the greatest compatibility with
 			// any possible stride value that StructuredBuffers may posess,
-			// but that means we have to break up instructions to assign
-			// each component in the mask separately, adjusting the offset
-			// based on the swizzle. TODO: We could recombine them using
-			// a floatN(x,y,z,w); construct. We can't fix up types that
+			// but that means we have to calculate each component in the mask
+			// separately, adjusting the offset based on the swizzle. The caller
+			// recombines these expressions into a floatN(x,y,z,w) assignment.
+			// We can't fix up types that
 			// aren't floats here, because we won't know what types they
 			// are until they are used - ideally we should switch to a
 			// model that uses asfloat/asint where non-floats are used
@@ -3892,17 +4624,19 @@ public:
 			if (combined) {
 				sprintf(buffer, "  %s = %s;\n", writeTarget(dst), translated[0].c_str());
 				appendOutput(buffer);
-			} else {
+			} else if (!writeStructuredComponents(dst, translated, dst0.ui32CompMask)) {
+				DeferredWrite result = deferWrite(dst);
 				stripMask(dst);
 				for (int component = 0; component < 4; component++) {
 					if (!(dst0.ui32CompMask & (1 << component)))
 						continue;
 					sprintf(buffer, "  %s.%c = %s;\n",
-							writeTarget(dst),
+							result.temporary.c_str(),
 							component == 3 ? 'w' : 'x' + component,
 							translated[component].c_str());
 					appendOutput(buffer);
 				}
+				commitWrite(result);
 			}
 		}
 
@@ -4057,10 +4791,107 @@ public:
 	}
 	//dx9
 
+	struct DeferredWrite
+	{
+		string target;
+		string temporary;
+		string mask;
+	};
+
+	// DXBC reads all sources before writing any destination. Instructions expanded
+	// into several statements must finish their calculations before committing
+	// results, including when another destination aliases a source.
+	DeferredWrite deferWrite(const string &target, const char *type = "float4")
+	{
+		char destination[opcodeSize];
+		strcpy_s(destination, opcodeSize, target.c_str());
+		remapTarget(destination);
+		const char *mask = strrchr(destination, '.');
+		DeferredWrite result;
+		result.mask = mask ? mask : ".xyzw";
+		result.target = mask ? string(destination, mask - destination) : destination;
+		result.temporary = "instructionResult" + to_string(uuidVar++);
+		char buffer[512];
+		sprintf(buffer, "  %s %s;\n", type, result.temporary.c_str());
+		appendOutput(buffer);
+		return result;
+	}
+
+	void commitWrite(const DeferredWrite &result)
+	{
+		// Preserve output registers split across multiple HLSL parameters.
+		for (size_t i = 1; i < result.mask.size(); ++i)
+		{
+			char target[opcodeSize], buffer[512];
+			sprintf(target, "%s.%c", result.target.c_str(), result.mask[i]);
+			sprintf(buffer, "  %s = %s.%c;\n", writeTarget(target),
+				result.temporary.c_str(), result.mask[i]);
+			appendOutput(buffer);
+		}
+	}
+
+	// Recombine a structured load that was split into per-component expressions.
+	// This keeps the generated HLSL compact while preserving DXBC's read-before-
+	// write behavior when the destination aliases the index register.
+	bool writeStructuredComponents(const char *destination, const string translated[4], unsigned mask)
+	{
+		const char *maskText = strrchr(destination, '.');
+		if (!maskText)
+			return false;
+
+		string target(destination, maskText - destination);
+		string components(maskText + 1);
+		string vectorTarget = target + "." + components;
+
+		// A whole-vector remap is safe. If only individual components are
+		// remapped, keep the DeferredWrite path because those components may
+		// belong to different output registers.
+		StringStringMap::iterator remapped = mRemappedOutputRegisters.find(vectorTarget);
+		if (remapped != mRemappedOutputRegisters.end())
+			vectorTarget = remapped->second;
+		else
+		{
+			for (size_t i = 0; i < components.size(); ++i)
+			{
+				string componentTarget = target + "." + components[i];
+				if (mRemappedOutputRegisters.find(componentTarget) != mRemappedOutputRegisters.end())
+					return false;
+			}
+		}
+
+		string values;
+		int componentCount = 0;
+		for (int component = 0; component < 4; ++component)
+		{
+			if (!(mask & (1 << component)))
+				continue;
+			if (!values.empty())
+				values += ", ";
+			values += translated[component];
+			++componentCount;
+		}
+
+		if (!componentCount)
+			return false;
+
+		string expression = componentCount == 1
+			? values
+			: "float" + to_string(componentCount) + "(" + values + ")";
+		char buffer[opcodeSize * 8];
+		sprintf(buffer, "  %s = %s;\n", vectorTarget.c_str(), expression.c_str());
+		appendOutput(buffer);
+		return true;
+	}
+
 	void ParseCode(Shader *shader, const char *c, size_t size)
 	{
 		mOutputRegisterValues.clear();
 		mBooleanRegisters.clear();
+		mIntegerAliases.clear();
+		mIntegerReadAliases.clear();
+		mDeclaredIntegerAliases.clear();
+		mIntegerBitPatternComponents.clear();
+		mIntegerReadBitPatternComponents.clear();
 		mCodeStartPos = mOutput.size();
 
 		char buffer[512];
@@ -4631,32 +5462,105 @@ public:
 			}//dx9
 			else
 			{
+				// Capture the integer meaning of source components before the
+				// destination invalidation below. DXBC permits read/write
+				// overlap, e.g. ld_structured r9.z, r9.z, ..., t8.
+				// The old value must remain available while translating the
+				// source operand, but must not become a live alias afterwards.
+				mIntegerReadAliases.clear();
+				mIntegerReadBitPatternComponents.clear();
+				char *read_operands[] = { op2, op3, op4, op5, op6, op7, op8, op9, op10, op11, op12, op13, op14, op15 };
+				for (uint32_t read_index = 1; read_index < instr->ui32NumOperands && read_index <= 14; ++read_index)
+					preserveIntegerReadOperand(read_operands[read_index - 1]);
+
+				bool sourceOnly = instr->eOpcode == OPCODE_SWITCH || instr->eOpcode == OPCODE_IF ||
+					instr->eOpcode == OPCODE_BREAKC || instr->eOpcode == OPCODE_CONTINUEC ||
+					instr->eOpcode == OPCODE_RETC || instr->eOpcode == OPCODE_DISCARD;
+				if (!sourceOnly && instr->eOpcode != OPCODE_LD_STRUCTURED && instr->ui32NumOperands && instr->asOperands[0].eType == OPERAND_TYPE_TEMP)
+					invalidateIntegerAliases(op1);
+				switch (instr->eOpcode)
+				{
+				case OPCODE_FTOI:
+				case OPCODE_FTOU:
+				case OPCODE_IMIN:
+				case OPCODE_IMAX:
+				case OPCODE_UMIN:
+				case OPCODE_UMAX:
+				case OPCODE_IADD:
+				case OPCODE_IMAD:
+				case OPCODE_UMAD:
+				case OPCODE_INEG:
+				case OPCODE_ISHL:
+				case OPCODE_ISHR:
+				case OPCODE_USHR:
+				case OPCODE_AND:
+				case OPCODE_OR:
+				case OPCODE_XOR:
+				case OPCODE_NOT:
+				case OPCODE_FIRSTBIT_HI:
+				case OPCODE_FIRSTBIT_LO:
+				case OPCODE_FIRSTBIT_SHI:
+				case OPCODE_COUNTBITS:
+				case OPCODE_UBFE:
+				case OPCODE_IBFE:
+				case OPCODE_BFI:
+				case OPCODE_BFREV:
+				case OPCODE_UDIV:
+					markIntegerBitPatternComponents(op1);
+					break;
+				case OPCODE_IMUL:
+				case OPCODE_UMUL:
+					invalidateIntegerAliases(op2);
+					markIntegerBitPatternComponents(op2);
+					break;
+				default:
+					break;
+				}
 				switch (instr->eOpcode)
 				{
 
 					case OPCODE_ITOF:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
+						bitcastToInt(op2);
+						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 					case OPCODE_UTOF:
 						remapTarget(op1);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						bitcastToUInt(op2);
+						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
 
 					case OPCODE_MOV:
+					{
 						remapTarget(op1);
+						bool sourceIsBoolean = isBoolean(op2);
+						bool movedIntegerBitPattern = isIntegerBitPatternOperand(op2);
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(op2).c_str());
-						else
-							sprintf(buffer, "  %s = saturate(%s);\n", writeTarget(op1), ci(op2).c_str());
-						appendOutput(buffer);
+						string movedIntegerAlias = integerAliasForOperand(op2);
+						bool emittedIntegerMove = false;
+						if (!instr->bSaturate && !movedIntegerAlias.empty())
+						{
+							// A DXBC mov copies a value, not a variable identity. Keep
+							// tile index, probe masks, probe bit and probe index in
+							// separate HLSL live ranges rather than mapping both
+							// register components to one alias.
+							bool unsigned_value = movedIntegerAlias.find("_uint_") != string::npos;
+							emittedIntegerMove = emitIntegerAssignment(op1, movedIntegerAlias.c_str(), unsigned_value);
+						}
+						if (!emittedIntegerMove)
+						{
+							if (!instr->bSaturate)
+								sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(op2).c_str());
+							else
+								sprintf(buffer, "  %s = saturate(%s);\n", writeTarget(op1), ci(op2).c_str());
+							appendOutput(buffer);
+						}
 						if (op1[0] == 'o')
 						{
 							char *dotPos = strchr(op1, '.'); if (dotPos) *dotPos = 0;
@@ -4664,7 +5568,20 @@ public:
 								mOutputRegisterValues[op1] = op2;
 						}
 						removeBoolean(op1);
+						if (sourceIsBoolean)
+							addBoolean(op1);
+						if (!emittedIntegerMove && !movedIntegerAlias.empty())
+						{
+							string destination;
+							int register_number;
+							char component;
+							if (singleTempComponent(op1, destination, register_number, component))
+								mIntegerAliases[destination] = movedIntegerAlias;
+						}
+						if (movedIntegerBitPattern)
+							markIntegerBitPatternComponents(op1);
 						break;
+					}
 
 					case OPCODE_RCP:
 						remapTarget(op1);
@@ -4679,14 +5596,24 @@ public:
 					case OPCODE_NOT:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
-						sprintf(buffer, "  %s = ~%s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
-						appendOutput(buffer);
+						removeBoolean(op1);
+						bitcastToUInt(op2);
+						{
+							string expression = "~" + ci(op2);
+							if (!emitIntegerAssignment(op1, expression.c_str(), true))
+							{
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
+								appendOutput(buffer);
+							}
+						}
+						addBoolean(op1);
 						break;
 
 					case OPCODE_INEG:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
-						sprintf(buffer, "  %s = -%s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
+						bitcastToInt(op2);
+						sprintf(buffer, "  %s = asfloat(-%s);\n", writeTarget(op1), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -4735,10 +5662,18 @@ public:
 						remapTarget(op2);
 						applySwizzle(op2, op3, true);
 						applySwizzle(op2, op4, true);
+						bitcastToInt(op3);
+						bitcastToInt(op4);
 						mMulOperand = strncmp(op3, "int", 3) ? op3 : op4;
-						sprintf(buffer, "  %s = %s * %s;\n", writeTarget(op2), ci(convertToInt(op3)).c_str(), ci(convertToInt(op4)).c_str());
-						appendOutput(buffer);
-						removeBoolean(op1);
+						{
+							string expression = ci(op3) + " * " + ci(op4);
+							if (!emitIntegerAssignment(op2, expression.c_str(), false))
+							{
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op2), expression.c_str());
+								appendOutput(buffer);
+							}
+						}
+						removeBoolean(op2);
 						break;
 
 					case OPCODE_DIV:
@@ -4783,8 +5718,8 @@ public:
 							applySwizzle(divSwiz, divOut, true);
 							applySwizzle(divSwiz, fixImm(op13, instr->asOperands[2]), true);
 							applySwizzle(divSwiz, fixImm(op14, instr->asOperands[3]), true);
-							convertToUInt(op13);
-							convertToUInt(op14);
+							bitcastToUInt(op13);
+							bitcastToUInt(op14);
 
 							sprintf(buffer, "  %s = %s / %s;\n", divOut, ci(op13).c_str(), ci(op14).c_str());
 							appendOutput(buffer);
@@ -4793,15 +5728,15 @@ public:
 						{
 							applySwizzle(remSwiz, fixImm(op3, instr->asOperands[2]), true);
 							applySwizzle(remSwiz, fixImm(op4, instr->asOperands[3]), true);
-							convertToUInt(op3);
-							convertToUInt(op4);
+							bitcastToUInt(op3);
+							bitcastToUInt(op4);
 
-							sprintf(buffer, "  %s = %s %% %s;\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
+							sprintf(buffer, "  %s = asfloat(%s %% %s);\n", writeTarget(op2), ci(op3).c_str(), ci(op4).c_str());
 							appendOutput(buffer);
 						}
 						if (instr->asOperands[0].eType != OPERAND_TYPE_NULL)
 						{
-							sprintf(buffer, "  %s = %s;\n", writeTarget(op1), divOut);
+							sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), divOut);
 							appendOutput(buffer);
 						}
 						removeBoolean(op1);
@@ -4852,59 +5787,74 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = %s + %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-						appendOutput(buffer);
+						bitcastToInt(op2);
+						bitcastToInt(op3);
+						{
+							string expression = ci(op2) + " + " + ci(op3);
+							if (!emitIntegerAssignment(op1, expression.c_str(), false))
+							{
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
+								appendOutput(buffer);
+							}
+						}
 						removeBoolean(op1);
 						break;
 
-						// AND opcodes were generating bad code, as the hex constants were being converted badly.
-						// The most common case was 0x3f800000 being converted directly to integer decimal of 1065353216, instead
-						// of the most likely answer of floating point 1.0f.
-						// This also happened for conversion of Pi.
-						// There are bitmasks used for AND, and those need to stay as Hex constants.
-						// But anything used after IF statements/booleans, needs to be converted as float.
-						// Rather than modify applySwizzle for this single opcode, it makes more sense to convert them here,
-						// if they are to be used in boolean operations.  We make a copy of the incoming operands, so that we
-						// can applySwizzle in order to be able to look up isBoolean properly.  Can be r3.xxxy, and becomes r3.xy.
-						// That applySwizzle damages constants though, so if we are boolean, we'll use the original l() value.
+					// Bitwise instructions operate on the register bit pattern, not on
+					// the numeric float value.  In particular, comparison results are
+					// 0xffffffff/0 and must not be converted to 1.0/-1.0.
 					case OPCODE_AND:
 						remapTarget(op1);
-						strcpy(op12, op2);
-						strcpy(op13, op3);
+						removeBoolean(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						if (isBoolean(op2) || isBoolean(op3))
+						bitcastToUInt(op2);
+						bitcastToUInt(op3);
 						{
-							convertHexToFloat(op12);
-							convertHexToFloat(op13);
-							applySwizzle(op1, op12);
-							applySwizzle(op1, op13);
-							char *cmp = isBoolean(op2) ? op12 : op13;
-							char *arg = isBoolean(op2) ? op13 : op12;
-							sprintf(buffer, "  %s = %s ? %s : 0;\n", writeTarget(op1), ci(cmp).c_str(), ci(arg).c_str());
-							appendOutput(buffer);
+							string expression = ci(op2) + " & " + ci(op3);
+							if (!emitIntegerAssignment(op1, expression.c_str(), true))
+							{
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
+								appendOutput(buffer);
+							}
 						}
-						else
-						{
-							sprintf(buffer, "  %s = %s & %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-							appendOutput(buffer);
-						}
+						addBoolean(op1);
 						break;
 
 					case OPCODE_OR:
 						remapTarget(op1);
+						removeBoolean(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = %s | %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-						appendOutput(buffer);
+						bitcastToUInt(op2);
+						bitcastToUInt(op3);
+						{
+							string expression = ci(op2) + " | " + ci(op3);
+							if (!emitIntegerAssignment(op1, expression.c_str(), true))
+							{
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
+								appendOutput(buffer);
+							}
+						}
+						addBoolean(op1);
 						break;
 
 					case OPCODE_XOR:
 						remapTarget(op1);
+						removeBoolean(op1);
 						applySwizzle(op1, op2);
 						applySwizzle(op1, op3);
-						sprintf(buffer, "  %s = %s ^ %s;\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-						appendOutput(buffer);
+						bitcastToUInt(op2);
+						bitcastToUInt(op3);
+						{
+							string expression = ci(op2) + " ^ " + ci(op3);
+							if (!emitIntegerAssignment(op1, expression.c_str(), true))
+							{
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
+								appendOutput(buffer);
+							}
+						}
+						addBoolean(op1);
 						break;
 
 						// Curiously enough, the documentation for ISHR and ISHL is wrong, and documents the parameters backwards.
@@ -4916,8 +5866,16 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-						appendOutput(buffer);
+						bitcastToInt(op2);
+						bitcastToUInt(op3);
+						{
+							string expression = ci(op2) + " >> " + ci(op3);
+							if (!emitIntegerAssignment(op1, expression.c_str(), false))
+							{
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
+								appendOutput(buffer);
+							}
+						}
 						removeBoolean(op1);
 						break;
 
@@ -4925,8 +5883,16 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = %s << %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
-						appendOutput(buffer);
+						bitcastToInt(op2);
+						bitcastToUInt(op3);
+						{
+							string expression = ci(op2) + " << " + ci(op3);
+							if (!emitIntegerAssignment(op1, expression.c_str(), false))
+							{
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
+								appendOutput(buffer);
+							}
+						}
 						removeBoolean(op1);
 						break;
 
@@ -4936,8 +5902,16 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = %s >> %s;\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
-						appendOutput(buffer);
+						bitcastToUInt(op2);
+						bitcastToUInt(op3);
+						{
+							string expression = ci(op2) + " >> " + ci(op3);
+							if (!emitIntegerAssignment(op1, expression.c_str(), true))
+							{
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
+								appendOutput(buffer);
+							}
+						}
 						removeBoolean(op1);
 						break;
 
@@ -4945,8 +5919,15 @@ public:
 					case OPCODE_COUNTBITS:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
-						sprintf(buffer, "  %s = countbits(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
-						appendOutput(buffer);
+						bitcastToUInt(op2);
+						{
+							string expression = "countbits(" + ci(op2) + ")";
+							if (!emitIntegerAssignment(op1, expression.c_str(), true))
+							{
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
+								appendOutput(buffer);
+							}
+						}
 						removeBoolean(op1);
 						break;
 
@@ -4955,22 +5936,43 @@ public:
 					case OPCODE_FIRSTBIT_HI:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
-						sprintf(buffer, "  %s = firstbithigh(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
-						appendOutput(buffer);
+						bitcastToUInt(op2);
+					{
+						string expression = "firstbithigh(" + ci(op2) + ")";
+						if (!emitIntegerAssignment(op1, expression.c_str(), true))
+						{
+							sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
+							appendOutput(buffer);
+						}
+					}
 						removeBoolean(op1);
 						break;
 					case OPCODE_FIRSTBIT_LO:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
-						sprintf(buffer, "  %s = firstbitlow(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
-						appendOutput(buffer);
+						bitcastToUInt(op2);
+					{
+						string expression = "firstbitlow(" + ci(op2) + ")";
+						if (!emitIntegerAssignment(op1, expression.c_str(), true))
+						{
+							sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
+							appendOutput(buffer);
+						}
+					}
 						removeBoolean(op1);
 						break;
 					case OPCODE_FIRSTBIT_SHI:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
-						sprintf(buffer, "  %s = firstbithigh(%s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str());
-						appendOutput(buffer);
+						bitcastToInt(op2);
+					{
+						string expression = "firstbithigh(" + ci(op2) + ")";
+						if (!emitIntegerAssignment(op1, expression.c_str(), false))
+						{
+							sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
+							appendOutput(buffer);
+						}
+					}
 						removeBoolean(op1);
 						break;
 
@@ -4986,22 +5988,24 @@ public:
 						applySwizzle(op1, op2);	// width
 						applySwizzle(op1, op3); // offset
 						applySwizzle(op1, op4);
+						DeferredWrite result = deferWrite(op1, "uint4");
 						int idx = 0;
 						char *pop1 = strrchr(op1, '.'); *pop1 = 0;
 						while (*++pop1)
 						{
-							sprintf(op5, "%s.%c", op1, *pop1);
+							sprintf(op5, "%s.%c", result.temporary.c_str(), *pop1);
 							sprintf(buffer, "  if (%s == 0) %s = 0; else if (%s+%s < 32) { ",
 								ci(GetSuffix(op2, idx)).c_str(), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
 							appendOutput(buffer);
 							// FIXME: May need fixup for read from constant buffer of unidentified type?
-							sprintf(buffer, "%s = (uint)%s << (32-(%s + %s)); %s = (uint)%s >> (32-%s); ", writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str());
+							sprintf(buffer, "%s = (uint)%s << (32-((uint)%s + (uint)%s)); %s = (uint)%s >> (32-(uint)%s); ", writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), writeTarget(op5), writeTarget(op5), ci(GetSuffix(op2, idx)).c_str());
 							appendOutput(buffer);
-							sprintf(buffer, " } else %s = (uint)%s >> %s;\n",
+							sprintf(buffer, " } else %s = (uint)%s >> (uint)%s;\n",
 								writeTarget(op5), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str());
 							appendOutput(buffer);
 							++idx;
 						}
+						commitWrite(result);
 						break;
 					}
 
@@ -5014,12 +6018,12 @@ public:
 							applySwizzle(op1, op2, true);
 							applySwizzle(op1, op3, true);
 							applySwizzle(op1, op4);
-							sprintf(buffer, "  %s = (%s == 0 ? 0 : ("
+							sprintf(buffer, "  %s = asfloat((%s == 0 ? 0 : ("
 										"%s + %s < 32 ? ("
 											"((int%s)%s << (32 - %s - %s)) >> (32 - %s)"
 										") : ("
 											"(int%s)%s >> %s"
-									")));\n",
+									"))));\n",
 									writeTarget(op1), ci(op2).c_str(),
 										ci(op2).c_str(), ci(op3).c_str(),
 											swizCount(op4).c_str(), ci(op4).c_str(), ci(op2).c_str(), ci(op3).c_str(), ci(op2).c_str(),
@@ -5033,7 +6037,8 @@ public:
 					case OPCODE_BFREV:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
-						sprintf(buffer, "  %s = reversebits(%s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str());
+						bitcastToUInt(op2);
+						sprintf(buffer, "  %s = asfloat(reversebits(%s));\n", writeTarget(op1), ci(op2).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -5144,25 +6149,31 @@ public:
 						removeBoolean(op1);
 						break;
 
-						// Missing opcode for UMin, used in Dragon Age
+					// Missing opcode for UMin, used in Dragon Age
 					case OPCODE_UMIN:
+					{
 						remapTarget(op1);
-						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op2)).c_str());
+						char *source0 = integerImmediate(op2, instr->asOperands[1]);
+						char *source1 = integerImmediate(op3, instr->asOperands[2]);
+						string expression = integerMinMaxExpression(op1, source0, source1, true, false);
+						sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+					}
 
-						// Missing opcode for UMax, used in Witcher3
+					// Missing opcode for UMax, used in Witcher3
 					case OPCODE_UMAX:
+					{
 						remapTarget(op1);
-						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
-						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
-						sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op2)).c_str());
+						char *source0 = integerImmediate(op2, instr->asOperands[1]);
+						char *source1 = integerImmediate(op3, instr->asOperands[2]);
+						string expression = integerMinMaxExpression(op1, source0, source1, true, true);
+						sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+					}
 
 						// Add remaining atomic ops, we see atomic_or in Song of the Deep.
 						// Needs an unclear manual fix, but better than not generating any HLSL at all.
@@ -5411,27 +6422,31 @@ public:
 						break;
 					}
 					case OPCODE_IMIN:
+					{
 						remapTarget(op1);
-						applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
-						applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
-						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = min(%s, %s);\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToInt(op2)).c_str());
-						else
-							sprintf(buffer, "  %s = saturate(min(%s, %s));\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToInt(op2)).c_str());
+						char *source0 = integerImmediate(op2, instr->asOperands[1]);
+						char *source1 = integerImmediate(op3, instr->asOperands[2]);
+						string expression = integerMinMaxExpression(op1, source0, source1, false, false);
+						if (instr->bSaturate)
+							expression = "saturate(" + expression + ")";
+						sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+					}
 					case OPCODE_IMAX:
+					{
 						remapTarget(op1);
-						applySwizzle(op1, fixImm(op2, instr->asOperands[1]), true);
-						applySwizzle(op1, fixImm(op3, instr->asOperands[2]), true);
-						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = max(%s, %s);\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToInt(op2)).c_str());
-						else
-							sprintf(buffer, "  %s = saturate(max(%s, %s));\n", writeTarget(op1), ci(convertToInt(op3)).c_str(), ci(convertToInt(op2)).c_str());
+						char *source0 = integerImmediate(op2, instr->asOperands[1]);
+						char *source1 = integerImmediate(op3, instr->asOperands[2]);
+						string expression = integerMinMaxExpression(op1, source0, source1, false, true);
+						if (instr->bSaturate)
+							expression = "saturate(" + expression + ")";
+						sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), expression.c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
+					}
 
 					case OPCODE_MAD:
 						remapTarget(op1);
@@ -5458,7 +6473,10 @@ public:
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
 						applySwizzle(op1, op4, true);
-						sprintf(buffer, "  %s = mad(%s, %s, %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str(), ci(convertToInt(op4)).c_str());
+						bitcastToInt(op2);
+						bitcastToInt(op3);
+						bitcastToInt(op4);
+						sprintf(buffer, "  %s = asfloat(mad(%s, %s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -5467,7 +6485,10 @@ public:
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
 						applySwizzle(op1, op4, true);
-						sprintf(buffer, "  %s = mad(%s, %s, %s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str(), ci(convertToUInt(op4)).c_str());
+						bitcastToUInt(op2);
+						bitcastToUInt(op3);
+						bitcastToUInt(op4);
+						sprintf(buffer, "  %s = asfloat(mad(%s, %s, %s));\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
 						appendOutput(buffer);
 						removeBoolean(op1);
 						break;
@@ -5711,16 +6732,42 @@ public:
 					case OPCODE_FTOI:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
-						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(castToInt(op2)).c_str());
-						appendOutput(buffer);
+						{
+							string alias = declareIntegerAlias(op1, false);
+							if (!alias.empty())
+							{
+								sprintf(buffer, "  %s = %s;\n", alias.c_str(), ci(castToInt(op2)).c_str());
+								appendOutput(buffer);
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), alias.c_str());
+								appendOutput(buffer);
+							}
+							else
+							{
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), ci(castToInt(op2)).c_str());
+								appendOutput(buffer);
+							}
+						}
 						removeBoolean(op1);
 						break;
 
 					case OPCODE_FTOU:
 						remapTarget(op1);
 						applySwizzle(op1, op2);
-						sprintf(buffer, "  %s = %s;\n", writeTarget(op1), ci(castToUInt(op2)).c_str());
-						appendOutput(buffer);
+						{
+							string alias = declareIntegerAlias(op1, true);
+							if (!alias.empty())
+							{
+								sprintf(buffer, "  %s = %s;\n", alias.c_str(), ci(castToUInt(op2)).c_str());
+								appendOutput(buffer);
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), alias.c_str());
+								appendOutput(buffer);
+							}
+							else
+							{
+								sprintf(buffer, "  %s = asfloat(%s);\n", writeTarget(op1), ci(castToUInt(op2)).c_str());
+								appendOutput(buffer);
+							}
+						}
 						removeBoolean(op1);
 						break;
 
@@ -5757,10 +6804,11 @@ public:
 						applySwizzle(op1, fixImm(op2, instr->asOperands[1]));
 						applySwizzle(op1, fixImm(op3, instr->asOperands[2]));
 						applySwizzle(op1, fixImm(op4, instr->asOperands[3]));
+						string condition = isBoolean(op2) ? conditionExpression(op2, false) : ci(op2);
 						if (!instr->bSaturate)
-							sprintf(buffer, "  %s = %s ? %s : %s;\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
+							sprintf(buffer, "  %s = %s ? %s : %s;\n", writeTarget(op1), condition.c_str(), ci(op3).c_str(), ci(op4).c_str());
 						else
-							sprintf(buffer, "  %s = saturate(%s ? %s : %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str(), ci(op4).c_str());
+							sprintf(buffer, "  %s = saturate(%s ? %s : %s);\n", writeTarget(op1), condition.c_str(), ci(op3).c_str(), ci(op4).c_str());
 						appendOutput(buffer);
 
 						//int idx = 0;
@@ -5799,7 +6847,9 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = cmp(%s != %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						bitcastToInt(op2);
+						bitcastToInt(op3);
+						sprintf(buffer, "  %s = cmp(%s != %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -5819,7 +6869,9 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = cmp(%s == %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						bitcastToInt(op2);
+						bitcastToInt(op3);
+						sprintf(buffer, "  %s = cmp(%s == %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -5839,7 +6891,9 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = cmp(%s < %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						bitcastToInt(op2);
+						bitcastToInt(op3);
+						sprintf(buffer, "  %s = cmp(%s < %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -5849,7 +6903,9 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = cmp(%s < %s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
+						bitcastToUInt(op2);
+						bitcastToUInt(op3);
+						sprintf(buffer, "  %s = cmp(%s < %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -5869,7 +6925,9 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = cmp(%s >= %s);\n", writeTarget(op1), ci(convertToInt(op2)).c_str(), ci(convertToInt(op3)).c_str());
+						bitcastToInt(op2);
+						bitcastToInt(op3);
+						sprintf(buffer, "  %s = cmp(%s >= %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -5879,7 +6937,9 @@ public:
 						remapTarget(op1);
 						applySwizzle(op1, op2, true);
 						applySwizzle(op1, op3, true);
-						sprintf(buffer, "  %s = cmp(%s >= %s);\n", writeTarget(op1), ci(convertToUInt(op2)).c_str(), ci(convertToUInt(op3)).c_str());
+						bitcastToUInt(op2);
+						bitcastToUInt(op3);
+						sprintf(buffer, "  %s = cmp(%s >= %s);\n", writeTarget(op1), ci(op2).c_str(), ci(op3).c_str());
 						appendOutput(buffer);
 						addBoolean(op1);
 						break;
@@ -5887,40 +6947,53 @@ public:
 
 					// Switch statement in HLSL was missing. Added because AC4 uses it.
 					case OPCODE_SWITCH:
+						applySwizzle(".x", op1);
+						bitcastToUInt(op1);
 						sprintf(buffer, "  switch (%s) {\n", ci(op1).c_str());
 						appendOutput(buffer);
+						mIntegerAliases.clear();
 						break;
 					case OPCODE_CASE:
-						sprintf(buffer, "  case %s :", ci(op1).substr(2, 1).c_str());
+						mIntegerAliases.clear();
+						applySwizzle(".x", integerImmediate(op1, instr->asOperands[0]), true);
+						sprintf(buffer, "  case %s :", op1);
 						appendOutput(buffer);
 						break;
 					case OPCODE_ENDSWITCH:
+						mIntegerAliases.clear();
 						sprintf(buffer, "  }\n");
 						appendOutput(buffer);
 						break;
 					case OPCODE_DEFAULT:
+						mIntegerAliases.clear();
 						sprintf(buffer, "  default :\n");
 						appendOutput(buffer);
 						break;
 
 					case OPCODE_IF:
 						applySwizzle(".x", op1);
-						if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
-							sprintf(buffer, "  if (%s == 0) {\n", ci(op1).c_str());
-						else
-							sprintf(buffer, "  if (%s != 0) {\n", ci(op1).c_str());
+						{
+							string condition = conditionExpression(op1, instr->eBooleanTestType == INSTRUCTION_TEST_ZERO);
+							sprintf(buffer, "  if %s {\n", condition.c_str());
+						}
 						appendOutput(buffer);
 						break;
 					case OPCODE_ELSE:
+						mIntegerAliases.clear();
 						sprintf(buffer, "  } else {\n");
 						appendOutput(buffer);
 						break;
 					case OPCODE_ENDIF:
+						mIntegerAliases.clear();
 						sprintf(buffer, "  }\n");
 						appendOutput(buffer);
 						break;
 
 					case OPCODE_LOOP:
+						// A preheader alias does not describe later iterations.
+						// Use the register copy at joins until loop-carried values
+						// have a proper reaching-definition analysis.
+						mIntegerAliases.clear();
 						sprintf(buffer, "  while (true) {\n");
 						appendOutput(buffer);
 						break;
@@ -5930,10 +7003,10 @@ public:
 						break;
 					case OPCODE_BREAKC:
 						applySwizzle(".x", op1);
-						if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
-							sprintf(buffer, "  if (%s == 0) break;\n", ci(op1).c_str());
-						else
-							sprintf(buffer, "  if (%s != 0) break;\n", ci(op1).c_str());
+						{
+							string condition = conditionExpression(op1, instr->eBooleanTestType == INSTRUCTION_TEST_ZERO);
+							sprintf(buffer, "  if %s break;\n", condition.c_str());
+						}
 						appendOutput(buffer);
 						break;
 					case OPCODE_CONTINUE:
@@ -5942,13 +7015,14 @@ public:
 						break;
 					case OPCODE_CONTINUEC:
 						applySwizzle(".x", op1);
-						if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
-							sprintf(buffer, "  if (%s == 0) continue;\n", ci(op1).c_str());
-						else
-							sprintf(buffer, "  if (%s != 0) continue;\n", ci(op1).c_str());
+						{
+							string condition = conditionExpression(op1, instr->eBooleanTestType == INSTRUCTION_TEST_ZERO);
+							sprintf(buffer, "  if %s continue;\n", condition.c_str());
+						}
 						appendOutput(buffer);
 						break;
 					case OPCODE_ENDLOOP:
+						mIntegerAliases.clear();
 						sprintf(buffer, "  }\n");
 						appendOutput(buffer);
 						break;
@@ -5971,14 +7045,16 @@ public:
 						applySwizzle(op1, op3);
 						applySwizzle(op1, op4);
 						applySwizzle(op1, op5);
+						DeferredWrite first = deferWrite(op1);
+						DeferredWrite second = deferWrite(op2);
 						int idx = 0;
 						char *pop1 = strrchr(op1, '.'); *pop1 = 0;
 						char *pop2 = strrchr(op2, '.'); if (pop2) *pop2 = 0;
 						char *pop3 = strrchr(op3, '.'); if (pop3) *pop3 = 0;
 						while (*++pop1)
 						{
-							sprintf(op6, "%s.%c", op1, *pop1);
-							if (pop2) sprintf(op7, "%s.%c", op2, *++pop2); else sprintf(op7, "%s", op2);
+							sprintf(op6, "%s.%c", first.temporary.c_str(), *pop1);
+							if (pop2) sprintf(op7, "%s.%c", second.temporary.c_str(), *++pop2); else sprintf(op7, "%s", op2);
 							if (pop3) sprintf(op8, "%s.%c", op3, *++pop3); else sprintf(op8, "%s", op3);
 							// FIXME: May need fixup for read from constant buffer of unidentified type
 							sprintf(buffer, "  %s = (int)%s ? %s : %s; %s = (int)%s ? %s : %s;\n",
@@ -5987,6 +7063,8 @@ public:
 							appendOutput(buffer);
 							++idx;
 						}
+						commitWrite(first);
+						commitWrite(second);
 						break;
 					}
 
@@ -6003,22 +7081,24 @@ public:
 						applySwizzle(op1, op3);
 						applySwizzle(op1, op4);
 						applySwizzle(op1, op5);
+						DeferredWrite result = deferWrite(op1, "uint4");
 						int idx = 0;
 						char *pop1 = strrchr(op1, '.'); *pop1 = 0;
 						while (*++pop1)
 						{
-							sprintf(op6, "%s.%c", op1, *pop1);
+							sprintf(op6, "%s.%c", result.temporary.c_str(), *pop1);
 
 							// Fails: bitmask.%c = (((1 << %s) - 1) << %s) & 0xffffffff;
 
 							// FIXME: May need fixup for read from constant buffer of unidentified type
-							sprintf(buffer, "  bitmask.%c = ((~(-1 << %s)) << %s) & 0xffffffff;"
-								"  %s = (((uint)%s << %s) & bitmask.%c) | ((uint)%s & ~bitmask.%c);\n",
+							sprintf(buffer, "  bitmask.%c = ((~(-1 << (uint)%s)) << (uint)%s) & 0xffffffff;"
+								"  %s = (((uint)%s << (uint)%s) & bitmask.%c) | ((uint)%s & ~bitmask.%c);\n",
 								*pop1, ci(GetSuffix(op2, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(),
 								writeTarget(op6), ci(GetSuffix(op4, idx)).c_str(), ci(GetSuffix(op3, idx)).c_str(), *pop1, ci(GetSuffix(op5, idx)).c_str(), *pop1);
 							appendOutput(buffer);
 							++idx;
 						}
+						commitWrite(result);
 						break;
 					}
 
@@ -6348,17 +7428,18 @@ public:
 						int textureId;
 						sscanf_s(op3, "t%d.", &textureId);
 						truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
+						integerLoadCoordinate(op2);
 						truncateTextureSwiz(op1, mTextureType[textureId].c_str());
 						truncateTextureSwiz(op3, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
-							sprintf(buffer, "  %s = %s.Load(%s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
+							sprintf(buffer, "%s.Load(%s)%s", mTextureNames[textureId].c_str(), ci(op2).c_str(), strrchr(op3, '.'));
 						else {
 							int offsetU = 0, offsetV = 0, offsetW = 0;
 							sscanf_s(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
-							sprintf(buffer, "  %s = %s.Load(%s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(),
+							sprintf(buffer, "%s.Load(%s, int3(%d, %d, %d))%s", mTextureNames[textureId].c_str(), ci(op2).c_str(),
 								offsetU, offsetV, offsetW, strrchr(op3, '.'));
 						}
-						appendOutput(buffer);
+						emitTextureLoad(op1, textureId, buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -6371,17 +7452,18 @@ public:
 						int textureId;
 						sscanf_s(op3, "t%d.", &textureId);
 						truncateTextureLoadPos(op2, mTextureType[textureId].c_str());
+						integerLoadCoordinate(op2);
 						truncateTextureSwiz(op1, mTextureType[textureId].c_str());
 						truncateTextureSwiz(op3, mTextureType[textureId].c_str());
 						if (!instr->bAddressOffset)
-							sprintf(buffer, "  %s = %s.Load(%s, %s)%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(), strrchr(op3, '.'));
+							sprintf(buffer, "%s.Load(%s, %s)%s", mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(), strrchr(op3, '.'));
 						else{
 							int offsetU = 0, offsetV = 0, offsetW = 0;
 							sscanf_s(statement, "ld_aoffimmi(%d,%d,%d", &offsetU, &offsetV, &offsetW);
-							sprintf(buffer, "  %s = %s.Load(%s, %s, int3(%d, %d, %d))%s;\n", writeTarget(op1), mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(),
+							sprintf(buffer, "%s.Load(%s, %s, int3(%d, %d, %d))%s", mTextureNames[textureId].c_str(), ci(op2).c_str(), ci(op4).c_str(),
 								offsetU, offsetV, offsetW, strrchr(op3, '.'));
 						}
-						appendOutput(buffer);
+						emitTextureLoad(op1, textureId, buffer);
 						removeBoolean(op1);
 						break;
 					}
@@ -6427,10 +7509,10 @@ public:
 
 					case OPCODE_DISCARD:
 						applySwizzle(".x", op1);
-						if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
-							sprintf(buffer, "  if (%s == 0) discard;\n", ci(op1).c_str());
-						else
-							sprintf(buffer, "  if (%s != 0) discard;\n", ci(op1).c_str());
+						{
+							string condition = conditionExpression(op1, instr->eBooleanTestType == INSTRUCTION_TEST_ZERO);
+							sprintf(buffer, "  if %s discard;\n", condition.c_str());
+						}
 						appendOutput(buffer);
 						break;
 
@@ -6543,18 +7625,26 @@ public:
 							if (bindInfoPtr->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2D)
 							{
 								if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
-									sprintf(buffer, "  %s.GetDimensions(0, uiDest.x, uiDest.y, uiDest.z);\n", bindInfoPtr->Name.c_str());
+								{
+									sprintf(buffer, "  uiDest = 0; %s.GetDimensions(0, uiDest.x, uiDest.y, uiDest.w);\n", bindInfoPtr->Name.c_str());
+								}
 								else
-									sprintf(buffer, "  %s.GetDimensions(0, fDest.x, fDest.y, fDest.z);\n", bindInfoPtr->Name.c_str());
+								{
+									sprintf(buffer, "  fDest = 0; %s.GetDimensions(0, fDest.x, fDest.y, fDest.w);\n", bindInfoPtr->Name.c_str());
+								}
 								appendOutput(buffer);
 								unknownVariant = false;
 							}
 							else if (bindInfoPtr->eDimension == REFLECT_RESOURCE_DIMENSION_TEXTURE2DMS)
 							{
 								if (returnType == RESINFO_INSTRUCTION_RETURN_UINT)
-									sprintf(buffer, "  %s.GetDimensions(uiDest.x, uiDest.y, uiDest.z);\n", bindInfoPtr->Name.c_str());
+								{
+									sprintf(buffer, "  uiDest = 0; %s.GetDimensions(uiDest.x, uiDest.y, uiDest.z);\n", bindInfoPtr->Name.c_str());
+								}
 								else
-									sprintf(buffer, "  %s.GetDimensions(fDest.x, fDest.y, fDest.z);\n", bindInfoPtr->Name.c_str());
+								{
+									sprintf(buffer, "  fDest = 0; %s.GetDimensions(fDest.x, fDest.y, fDest.z);\n", bindInfoPtr->Name.c_str());
+								}
 								appendOutput(buffer);
 								unknownVariant = false;
 							}
@@ -6578,8 +7668,9 @@ public:
 								char dest[opcodeSize] = "uiDest.xyzw";
 								applySwizzle(op3, dest);
 								applySwizzle(op1, dest);
-								sprintf(buffer, "  %s = %s;\n", op1, dest);
+								sprintf(buffer, "  %s = asfloat(%s);\n", op1, dest);
 								appendOutput(buffer);
+								markIntegerBitPatternComponents(op1);
 							}
 							else
 							{
@@ -6686,10 +7777,10 @@ public:
 						// Missing opcode needed for WatchDogs. Used as "retc_nz r0.x"
 					case OPCODE_RETC:
 						applySwizzle(".x", op1);
-						if (instr->eBooleanTestType == INSTRUCTION_TEST_ZERO)
-							sprintf(buffer, "  if (%s == 0) return;\n", ci(op1).c_str());
-						else
-							sprintf(buffer, "  if (%s != 0) return;\n", ci(op1).c_str());
+						{
+							string condition = conditionExpression(op1, instr->eBooleanTestType == INSTRUCTION_TEST_ZERO);
+							sprintf(buffer, "  if %s return;\n", condition.c_str());
+						}
 						appendOutput(buffer);
 						break;
 
@@ -6779,16 +7870,16 @@ public:
 			"\n\n"
 			"// 3Dmigoto declarations\n";
 
-		// Also inject the helper macro of 'cmp' to fix any boolean comparisons.
-		// This is a bit of a hack, but simply adds a "-" in front of the comparison,
-		// which negates the bool comparison from 1:0 to -1:0. 
-		//    r0.y = cmp(0 < r0.x);   becomes
-		//    r0.y = -(0 < r0.x);
-		// This allows us to avoid having helper routines, and needing different
-		// variants for different swizzle sizes, like .xy or .xyz.
-
+		// DXBC comparisons produce an all-bits mask (0xffffffff or 0), not the
+		// HLSL numeric values 1 and 0.  Keep that mask when it is stored in the
+		// float-shaped temporary registers.  The overloads avoid relying on an
+		// implicit bool-to-float conversion, which would lose the mask bits.
 		declaration +=
-			"#define cmp -\n";
+			"uint cmp_mask(bool v) { return v ? 0xffffffffu : 0u; }\n"
+			"uint2 cmp_mask(bool2 v) { return uint2(v.x ? 0xffffffffu : 0u, v.y ? 0xffffffffu : 0u); }\n"
+			"uint3 cmp_mask(bool3 v) { return uint3(v.x ? 0xffffffffu : 0u, v.y ? 0xffffffffu : 0u, v.z ? 0xffffffffu : 0u); }\n"
+			"uint4 cmp_mask(bool4 v) { return uint4(v.x ? 0xffffffffu : 0u, v.y ? 0xffffffffu : 0u, v.z ? 0xffffffffu : 0u, v.w ? 0xffffffffu : 0u); }\n"
+			"#define cmp(x) asfloat(cmp_mask(x))\n";
 
 		if (G->IniParamsReg >= 0) {
 			declaration +=
@@ -6861,6 +7952,8 @@ const string DecompileBinaryHLSL(ParseParameters &params, bool &patched, std::st
 		{
 			d.ParseStructureDefinitions(shader, params.decompiled, params.decompiledSize);
 			d.ReadResourceBindings(params.decompiled, params.decompiledSize);
+			d.InferStructuredBufferIntegerTypes(shader);
+			d.WriteStructureDefinitions();
 		}
 
 		d.ParseBufferDefinitions(shader, params.decompiled, params.decompiledSize);
