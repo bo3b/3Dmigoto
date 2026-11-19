@@ -98,7 +98,7 @@ private:
     void SaveState();
     void RestoreState();
     HRESULT InitDrawState();
-    void DrawShaderInfoLine(char *type, UINT64 selectedShader, float *y, bool shader);
+    void    DrawShaderInfoLine(char* type, UINT64 selected_shader, float* y, bool shader);
     void DrawShaderInfoLines(float *y);
     void DrawNotices(float *y);
     void DrawProfiling(float *y);
@@ -110,12 +110,12 @@ public:
     std::unique_ptr<DirectX::SpriteFont> fontNotifications;
     std::unique_ptr<DirectX::SpriteFont> fontProfiling;
 
-    Overlay(HackerDevice *pDevice, HackerContext *pContext, IDXGISwapChain *pSwapChain);
+    Overlay(HackerDevice* device, HackerContext* context, IDXGISwapChain* swap_chain);
     ~Overlay();
 
-    void DrawOverlay(void);
+    void DrawOverlay();
 };
 
-void ClearNotices();
-void LogOverlayW(Log_Level level, wchar_t *fmt, ...);
-void LogOverlay(Log_Level level, char *fmt, ...);
+void clear_notices();
+void log_overlay_w(Log_Level level, wchar_t* fmt, ...);
+void log_overlay(Log_Level level, char* fmt, ...);
