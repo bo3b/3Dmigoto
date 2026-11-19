@@ -654,11 +654,11 @@ void HackerContext::DeferredShaderReplacement(
                     // creation time replacement and ShaderRegex for backwards
                     // compatibility (live shader reload is fatal).
                     for (auto& parse_error : parse_errors)
-                        LogOverlay(Log_Level::notice, "%016I64x-%S %S: %s\n", hash, shader_type, tagline.c_str(), parse_error.what());
+                        log_overlay(Log_Level::notice, "%016I64x-%S %S: %s\n", hash, shader_type, tagline.c_str(), parse_error.what());
                 }
                 catch (const exception& e)
                 {
-                    LogOverlay(Log_Level::warning, "Error assembling ShaderRegex patched %016I64x-%S\n%S\n%s\n", hash, shader_type, tagline.c_str(), e.what());
+                    log_overlay(Log_Level::warning, "Error assembling ShaderRegex patched %016I64x-%S\n%S\n%s\n", hash, shader_type, tagline.c_str(), e.what());
                     goto out_drop;
                 }
 
