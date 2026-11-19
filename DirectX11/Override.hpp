@@ -8,7 +8,8 @@
 #include <vector>
 
 // We only need forward declaration here instead of including the
-// HackerDevice.hpp file, which brings in a lot of other includes.
+// HackerDevice.hpp file, which brings in a lot of other includes
+// and sets up circular dependencies.
 class HackerDevice;
 
 enum class KeyOverrideType {
@@ -23,7 +24,7 @@ static Enum_Name_t<const wchar_t *, KeyOverrideType> KeyOverrideTypeNames[] = {
     {L"hold", KeyOverrideType::HOLD},
     {L"toggle", KeyOverrideType::TOGGLE},
     {L"cycle", KeyOverrideType::CYCLE},
-    {NULL, KeyOverrideType::INVALID} // End of list marker
+    { nullptr, KeyOverrideType::INVALID }  // End of list marker
 };
 
 enum class TransitionType {
@@ -34,12 +35,13 @@ enum class TransitionType {
 static Enum_Name_t<const char *, TransitionType> TransitionTypeNames[] = {
     {"linear", TransitionType::LINEAR},
     {"cosine", TransitionType::COSINE},
-    {NULL, TransitionType::INVALID} // End of list marker
+    { nullptr, TransitionType::INVALID }  // End of list marker
 };
 
-struct OverrideParam
+class OverrideParam
 {
-    int idx;
+public:
+    int   idx;
     float DirectX::XMFLOAT4::*component;
 
     OverrideParam(int idx, float DirectX::XMFLOAT4::*component)
@@ -62,14 +64,14 @@ struct OverrideParam
             return 'w';
 
         return '?';
+    }
     };
-};
+
 static inline bool operator<(const OverrideParam &lhs, const OverrideParam &rhs)
 {
     if (lhs.idx != rhs.idx)
         return (lhs.idx < rhs.idx);
-    return ((uintptr_t)&((DirectX::XMFLOAT4*)(NULL)->*(lhs.component)) <
-            (uintptr_t)&((DirectX::XMFLOAT4*)(NULL)->*(rhs.component)));
+    return (reinterpret_cast<uintptr_t>(&(static_cast<DirectX::XMFLOAT4*>(nullptr)->*(lhs.component))) < reinterpret_cast<uintptr_t>(&(static_cast<DirectX::XMFLOAT4*>(nullptr)->*(rhs.component))));
 }
 typedef std::map<OverrideParam, float> OverrideParams;
 typedef std::map<CommandListVariable*, float> OverrideVars;
@@ -122,7 +124,12 @@ public:
         isConditional(is_conditional),
         condition(condition),
         activateCommandList(activate_command_list),
-        deactivateCommandList(deactivate_command_list)
+        deactivateCommandList(deactivate_command_list),
+        active(false),
+        overrideSeparation(separation),
+        overrideConvergence(convergence),
+        userSeparation(0),
+        userConvergence(0)
     {
         overrideParams = *params;
         overrideVars = *vars;
@@ -257,7 +264,6 @@ public:
             OverrideParams *targets, OverrideVars *var_targets,
             int time, TransitionType transition_type);
     void UpdatePresets(HackerDevice *wrapper);
-    void OverrideTransition::UpdateTransitions(HackerDevice *wrapper);
     void Stop();
 };
 
