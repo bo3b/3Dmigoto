@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 struct dxbc_header {
     char signature[4]; // DXCB
     uint32_t hash[4]; // Not quite MD5
