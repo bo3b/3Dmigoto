@@ -12,16 +12,14 @@
 #include "Globals.h"
 
 // {A3046B1E-336B-4D90-9FD6-234BC09B8687}
-DEFINE_GUID(IID_HackerContext,
-0xa3046b1e, 0x336b, 0x4d90, 0x9f, 0xd6, 0x23, 0x4b, 0xc0, 0x9b, 0x86, 0x87);
-
+DEFINE_GUID(IID_HackerContext, 0xa3046b1e, 0x336b, 0x4d90, 0x9f, 0xd6, 0x23, 0x4b, 0xc0, 0x9b, 0x86, 0x87);
 
 // Self forward reference for the factory interface.
 class HackerContext;
 
-HackerContext* HackerContextFactory(ID3D11Device1 *device1, ID3D11DeviceContext1 *context1);
+HackerContext* HackerContextFactory(ID3D11Device1* device1, ID3D11DeviceContext1* context1);
 
-// Forward declaration to allow circular reference between HackerContext and HackerDevice. 
+// Forward declaration to allow circular reference between HackerContext and HackerDevice.
 // We need this to allow each to reference the other as needed.
 
 class HackerDevice;
@@ -29,24 +27,19 @@ class HackerDevice;
 enum class FrameAnalysisOptions;
 struct ShaderOverride;
 
-
 struct draw_context
 {
-    float old_separation;
-    ID3D11PixelShader *old_pixel_shader;
-    ID3D11VertexShader *old_vertex_shader;
-    CommandList *post_commands[5];
-    DrawCallInfo call_info;
+    float               old_separation;
+    ID3D11PixelShader*  old_pixel_shader;
+    ID3D11VertexShader* old_vertex_shader;
+    CommandList*        post_commands[5];
+    DrawCallInfo        call_info;
 
-    draw_context(DrawCall type,
-            UINT vertex_count, UINT index_count, UINT instance_count,
-            UINT first_vertex, UINT first_index, UINT first_instance,
-            ID3D11Buffer **indirect_buffer, UINT args_offset) :
+    draw_context(DrawCall type, UINT vertex_count, UINT index_count, UINT instance_count, UINT first_vertex, UINT first_index, UINT first_instance, ID3D11Buffer** indirect_buffer, UINT args_offset) :
         old_separation(FLT_MAX),
         old_pixel_shader(nullptr),
         old_vertex_shader(nullptr),
-        call_info(type, vertex_count, index_count, instance_count, first_vertex, first_index, first_instance,
-                  indirect_buffer, args_offset)
+        call_info(type, vertex_count, index_count, instance_count, first_vertex, first_index, first_instance, indirect_buffer, args_offset)
     {
         memset(post_commands, 0, sizeof(post_commands));
     }
@@ -54,7 +47,7 @@ struct draw_context
 
 struct dispatch_context
 {
-    CommandList *post_commands;
+    CommandList* post_commands;
     DrawCallInfo call_info;
 
     dispatch_context(UINT ThreadGroupCountX, UINT ThreadGroupCountY, UINT ThreadGroupCountZ) :
@@ -62,42 +55,40 @@ struct dispatch_context
         call_info(DrawCall::Dispatch, 0, 0, 0, 0, 0, 0, nullptr, 0, ThreadGroupCountX, ThreadGroupCountY, ThreadGroupCountZ)
     {}
 
-    dispatch_context(ID3D11Buffer **indirect_buffer, UINT args_offset) :
+    dispatch_context(ID3D11Buffer** indirect_buffer, UINT args_offset) :
         post_commands(nullptr),
         call_info(DrawCall::DispatchIndirect, 0, 0, 0, 0, 0, 0, indirect_buffer, args_offset)
     {}
 };
 
-
-
 // These are per-context so we shouldn't need locks
-struct mapped_resource_info {
+struct mapped_resource_info
+{
     D3D11_MAPPED_SUBRESOURCE map;
-    bool mapped_writable;
-    void *orig_pData;
-    size_t size;
+    bool                     mapped_writable;
+    void*                    orig_pData;
+    size_t                   size;
 
     mapped_resource_info() :
-          map(),
-          mapped_writable(false),
-          orig_pData(nullptr),
-          size(0)
+        map(),
+        mapped_writable(false),
+        orig_pData(nullptr),
+        size(0)
     {}
 };
-
 
 // 1-6-18:  Current approach will be to only create one level of wrapping,
 // specifically HackerDevice and HackerContext, based on the ID3D11Device1,
 // and ID3D11DeviceContext1.  ID3D11Device1/ID3D11DeviceContext1 is supported
 // on Win7+platform_update, and thus is a superset of what we need.  By
 // using the highest level object supported, we can kill off a lot of conditional
-// code that just complicates things. 
+// code that just complicates things.
 //
-// The ID3D11DeviceContext1 will be supported on all OS except Win7 minus the 
-// platform_update.  In that scenario, we will save a reference to the 
+// The ID3D11DeviceContext1 will be supported on all OS except Win7 minus the
+// platform_update.  In that scenario, we will save a reference to the
 // ID3D11DeviceContext object instead, but store it and wrap it in HackerContext.
-// 
-// Specifically decided to not name everything *1, because frankly that is 
+//
+// Specifically decided to not name everything *1, because frankly that is
 // was an awful choice on Microsoft's part to begin with.  Meaningless number
 // completely unrelated to version/revision or functionality.  Bad.
 // We will use the *1 notation for object names that are specific types,
@@ -112,73 +103,65 @@ struct mapped_resource_info {
 class HackerContext : public ID3D11DeviceContext1
 {
 private:
-    ID3D11Device1 *origDevice1;
-    ID3D11DeviceContext1 *origContext1;
-    ID3D11DeviceContext1 *realOrigContext1;
-    HackerDevice *hackerDevice;
+    ID3D11Device1*        origDevice1;
+    ID3D11DeviceContext1* origContext1;
+    ID3D11DeviceContext1* realOrigContext1;
+    HackerDevice*         hackerDevice;
 
     // These are per-context, moved from globals.h:
-    uint32_t currentVertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-    uint32_t currentIndexBuffer; // Only valid while hunting=1
-    std::vector<ID3D11Resource *> currentRenderTargets;
-    ID3D11Resource *currentDepthTarget;
-    UINT currentPSUAVStartSlot;
-    UINT currentPSNumUAVs;
+    uint32_t                     currentVertexBuffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+    uint32_t                     currentIndexBuffer;  // Only valid while hunting=1
+    std::vector<ID3D11Resource*> currentRenderTargets;
+    ID3D11Resource*              currentDepthTarget;
+    UINT                         currentPSUAVStartSlot;
+    UINT                         currentPSNumUAVs;
 
     // Used for deny_cpu_read, track_texture_updates and constant buffer matching
     typedef std::unordered_map<ID3D11Resource*, mapped_resource_info> MappedResources;
-    MappedResources mappedResources;
+    MappedResources                                                   mappedResources;
 
     // These private methods are utility routines for HackerContext.
-    void BeforeDraw(draw_context &data);
-    void AfterDraw(draw_context &data);
-    bool BeforeDispatch(dispatch_context *context);
-    void AfterDispatch(dispatch_context *context);
+    void BeforeDraw(draw_context& data);
+    void AfterDraw(draw_context& data);
+    bool BeforeDispatch(dispatch_context* context);
+    void AfterDispatch(dispatch_context* context);
 
     template <
         class ID3D11Shader,
         void (__stdcall ID3D11DeviceContext::*GetShaderVS2013BUGWORKAROUND)(ID3D11Shader**, ID3D11ClassInstance**, UINT*),
-        void (__stdcall ID3D11DeviceContext::*SetShaderVS2013BUGWORKAROUND)(ID3D11Shader*, ID3D11ClassInstance*const*, UINT),
+        void (__stdcall ID3D11DeviceContext::*SetShaderVS2013BUGWORKAROUND)(ID3D11Shader*, ID3D11ClassInstance* const*, UINT),
         HRESULT (__stdcall ID3D11Device::*CreateShader)(const void*, SIZE_T, ID3D11ClassLinkage*, ID3D11Shader**)>
-    void DeferredShaderReplacement(ID3D11DeviceChild *shader, UINT64 hash, wchar_t *shader_type);
+    void DeferredShaderReplacement(ID3D11DeviceChild* shader, UINT64 hash, wchar_t* shader_type);
 
     void DeferredShaderReplacementBeforeDraw();
     void DeferredShaderReplacementBeforeDispatch();
 
-    bool ExpandRegionCopy(ID3D11Resource *dst_resource, UINT DstX,
-        UINT DstY, ID3D11Resource *src_resource, const D3D11_BOX *src_box,
-        UINT *replace_DstX, D3D11_BOX *replace_box);
-    bool MapDenyCPURead(ID3D11Resource *pResource, UINT Subresource,
-            D3D11_MAP MapType, UINT MapFlags,
-            D3D11_MAPPED_SUBRESOURCE *pMappedResource);
-    void TrackAndDivertMap(HRESULT map_hr, ID3D11Resource *pResource,
-        UINT Subresource, D3D11_MAP MapType, UINT MapFlags,
-        D3D11_MAPPED_SUBRESOURCE *pMappedResource);
-    void TrackAndDivertUnmap(ID3D11Resource *pResource, UINT Subresource);
+    bool ExpandRegionCopy(ID3D11Resource* dst_resource, UINT DstX, UINT DstY, ID3D11Resource* src_resource, const D3D11_BOX* src_box, UINT* replace_DstX, D3D11_BOX* replace_box);
+    bool MapDenyCPURead(ID3D11Resource* pResource, UINT Subresource, D3D11_MAP MapType, UINT MapFlags, D3D11_MAPPED_SUBRESOURCE* pMappedResource);
+    void TrackAndDivertMap(HRESULT map_hr, ID3D11Resource* pResource, UINT Subresource, D3D11_MAP MapType, UINT MapFlags, D3D11_MAPPED_SUBRESOURCE* pMappedResource);
+    void TrackAndDivertUnmap(ID3D11Resource* pResource, UINT Subresource);
 
-    void ProcessShaderOverride(ShaderOverride *shader_override, bool is_pixel_shader, draw_context *data);
-    ID3D11PixelShader* SwitchPSShader(ID3D11PixelShader *shader);
-    ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader *shader);
-    void RecordDepthStencil(ID3D11DepthStencilView *target);
+    void                ProcessShaderOverride(ShaderOverride* shader_override, bool is_pixel_shader, draw_context* data);
+    ID3D11PixelShader*  SwitchPSShader(ID3D11PixelShader* shader);
+    ID3D11VertexShader* SwitchVSShader(ID3D11VertexShader* shader);
+    void                RecordDepthStencil(ID3D11DepthStencilView* target);
 
     template <
         void (__stdcall ID3D11DeviceContext::*GetShaderResources)(UINT StartSlot, UINT NumViews, ID3D11ShaderResourceView** ppShaderResourceViews)>
     void RecordShaderResourceUsage(std::map<UINT64, ShaderInfoData>& shader_info, UINT64 current_shader);
 
-    void _RecordShaderResourceUsage(ShaderInfoData *shader_info,
-            ID3D11ShaderResourceView *views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
-    void RecordGraphicsShaderStats();
-    void RecordComputeShaderStats();
-    void RecordPeerShaders(std::set<UINT64> *peer_shaders, UINT64 shader_hash);
-    void RecordRenderTargetInfo(ID3D11RenderTargetView *target, UINT view_num);
-    ID3D11Resource* RecordResourceViewStats(ID3D11View *view, std::set<uint32_t> *resource_info);
+    void            _RecordShaderResourceUsage(ShaderInfoData* shader_info, ID3D11ShaderResourceView* views[D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT]);
+    void            RecordGraphicsShaderStats();
+    void            RecordComputeShaderStats();
+    void            RecordPeerShaders(std::set<UINT64>* peer_shaders, UINT64 shader_hash);
+    void            RecordRenderTargetInfo(ID3D11RenderTargetView* target, UINT view_num);
+    ID3D11Resource* RecordResourceViewStats(ID3D11View* view, std::set<uint32_t>* resource_info);
 
     // Templates to reduce duplicated code:
     template <
         class ID3D11Shader,
         void (__stdcall ID3D11DeviceContext::*OrigSetShader)(ID3D11Shader* pShader, ID3D11ClassInstance* const* ppClassInstances, UINT NumClassInstances)>
-    STDMETHODIMP_(void)
-    SetShader(
+    void STDMETHODCALLTYPE SetShader(
         _In_opt_ ID3D11Shader*                                        pShader,
         _In_reads_opt_(NumClassInstances) ID3D11ClassInstance* const* ppClassInstances,
         UINT                                                          NumClassInstances,
@@ -208,30 +191,33 @@ protected:
     UINT64 currentComputeShader;
 
 public:
-    HackerContext(ID3D11Device1 *device1, ID3D11DeviceContext1 *context1);
+    HackerContext(ID3D11Device1* device1, ID3D11DeviceContext1* context1);
 
-    void SetHackerDevice(HackerDevice *hacker_device);
-    HackerDevice* GetHackerDevice();
-    void Bind3DMigotoResources();
-    void InitIniParams();
+    void                  SetHackerDevice(HackerDevice* hacker_device);
+    HackerDevice*         GetHackerDevice();
+    void                  Bind3DMigotoResources();
+    void                  InitIniParams();
     ID3D11DeviceContext1* GetPossiblyHookedOrigContext1();
     ID3D11DeviceContext1* GetPassThroughOrigContext1();
-    void HookContext();
+    void                  HookContext();
 
     // public to allow CommandList access
-    virtual void FrameAnalysisLog(char *fmt, ...) {};
+    virtual void FrameAnalysisLog(char* fmt, ...) {};
     virtual void FrameAnalysisTrigger(FrameAnalysisOptions new_options) {};
-    virtual void FrameAnalysisDump(ID3D11Resource *resource, FrameAnalysisOptions options,
-        const wchar_t *target, DXGI_FORMAT format, UINT stride, UINT offset) {};
+    virtual void FrameAnalysisDump(ID3D11Resource* resource, FrameAnalysisOptions options, const wchar_t* target, DXGI_FORMAT format, UINT stride, UINT offset) {};
 
     // These are the shaders the game has set, which may be different from
     // the ones we have bound to the pipeline:
-    ID3D11VertexShader *currentVertexShaderHandle;
-    ID3D11PixelShader *currentPixelShaderHandle;
-    ID3D11ComputeShader *currentComputeShaderHandle;
-    ID3D11GeometryShader *currentGeometryShaderHandle;
-    ID3D11DomainShader *currentDomainShaderHandle;
-    ID3D11HullShader *currentHullShaderHandle;
+    ID3D11VertexShader*   currentVertexShaderHandle;
+    ID3D11PixelShader*    currentPixelShaderHandle;
+    ID3D11ComputeShader*  currentComputeShaderHandle;
+    ID3D11GeometryShader* currentGeometryShaderHandle;
+    ID3D11DomainShader*   currentDomainShaderHandle;
+    ID3D11HullShader*     currentHullShaderHandle;
+
+    // clang-format off
+    // For all the override function definitions, let's disable the clang-format, in order to keep the
+    // original formatting from the original Microsoft DX11 functions.
 
     /*** IUnknown methods ***/
 
@@ -1289,3 +1275,5 @@ public:
         _In_reads_opt_(NumRects)  const D3D11_RECT *pRects,
         UINT NumRects);
 };
+
+// clang-format on
