@@ -99,7 +99,7 @@ static bool initialize_dll()
 
 	G->bIntendedTargetExe = verify_intended_target_late();
 	if (!G->bIntendedTargetExe) {
-		LogInfo("Executable does not match [Loader]Target setting, disabling core functionality\n");
+        LOG_INFO("Executable does not match [Loader]Target setting, disabling core functionality\n");
 		return false;
 	}
 
@@ -428,8 +428,6 @@ PFN_D3D11_CREATE_DEVICE_AND_SWAP_CHAIN _D3D11CreateDeviceAndSwapChain;
 PFN_D3D11ON12_CREATE_DEVICE _D3D11On12CreateDevice;
 #endif
 
-
-
 void init_d3d11()
 {
     UINT ret;
@@ -536,16 +534,16 @@ void init_d3d11()
 }
 
 HRESULT WINAPI D3D11On12CreateDevice(
-	_In_ IUnknown* pDevice,
+	IUnknown* pDevice,
 	UINT Flags,
-	_In_reads_opt_(FeatureLevels) CONST D3D_FEATURE_LEVEL* pFeatureLevels,
+	const D3D_FEATURE_LEVEL* pFeatureLevels,
 	UINT FeatureLevels,
-	_In_reads_opt_(NumQueues) IUnknown* CONST* ppCommandQueues,
+    IUnknown* const* ppCommandQueues,
 	UINT NumQueues,
 	UINT NodeMask,
-	_COM_Outptr_opt_ ID3D11Device** ppDevice,
-	_COM_Outptr_opt_ ID3D11DeviceContext** ppImmediateContext,
-	_Out_opt_ D3D_FEATURE_LEVEL* pChosenFeatureLevel)
+	ID3D11Device** ppDevice,
+	ID3D11DeviceContext** ppImmediateContext,
+	D3D_FEATURE_LEVEL* pChosenFeatureLevel)
 {
     init_d3d11();
     LOG_INFO("D3D11On12CreateDevice called.\n");
@@ -879,16 +877,17 @@ static HackerDevice* wrap_d3d11_device_and_context(ID3D11Device **ppDevice, ID3D
 //    external tool (DLL exports or public COM methods).
 
 HRESULT WINAPI D3D11CreateDevice(
-    _In_opt_        IDXGIAdapter        *pAdapter,
-    D3D_DRIVER_TYPE     DriverType,
-    HMODULE             Software,
-    UINT                Flags,
-    _In_reads_opt_(FeatureLevels) const D3D_FEATURE_LEVEL   *pFeatureLevels,
-    UINT                FeatureLevels,
-    UINT                SDKVersion,
-    _Out_opt_       ID3D11Device        **ppDevice,
-    _Out_opt_       D3D_FEATURE_LEVEL   *pFeatureLevel,
-    _Out_opt_       ID3D11DeviceContext **ppImmediateContext)
+    IDXGIAdapter*            pAdapter,
+    D3D_DRIVER_TYPE          DriverType,
+    HMODULE                  Software,
+    UINT                     Flags,
+    const D3D_FEATURE_LEVEL* pFeatureLevels,
+    UINT                     FeatureLevels,
+    UINT                     SDKVersion,
+    ID3D11Device**           ppDevice,
+    D3D_FEATURE_LEVEL*       pFeatureLevel,
+    ID3D11DeviceContext**    ppImmediateContext)
+{
 {
 	if (get_tls()->hooking_quirk_protection) {
         LOG_INFO("Hooking Quirk: Unexpected call back into D3D11CreateDevice, passing through\n");
@@ -999,18 +998,19 @@ HRESULT WINAPI D3D11CreateDevice(
 // call would usually do, and we instead wrap the swap chain from here.
 
 HRESULT WINAPI D3D11CreateDeviceAndSwapChain(
-    _In_opt_            IDXGIAdapter         *pAdapter,
-                        D3D_DRIVER_TYPE      DriverType,
-                        HMODULE              Software,
-                        UINT                 Flags,
-    _In_opt_ const        D3D_FEATURE_LEVEL    *pFeatureLevels,
-                        UINT                 FeatureLevels,
-                        UINT                 SDKVersion,
-    _In_opt_            DXGI_SWAP_CHAIN_DESC *pSwapChainDesc,
-    _Out_opt_            IDXGISwapChain         **ppSwapChain,
-    _Out_opt_            ID3D11Device         **ppDevice,
-    _Out_opt_            D3D_FEATURE_LEVEL    *pFeatureLevel,
-    _Out_opt_            ID3D11DeviceContext  **ppImmediateContext)
+    IDXGIAdapter*            pAdapter,
+    D3D_DRIVER_TYPE          DriverType,
+    HMODULE                  Software,
+    UINT                     Flags,
+    const D3D_FEATURE_LEVEL* pFeatureLevels,
+    UINT                     FeatureLevels,
+    UINT                     SDKVersion,
+    DXGI_SWAP_CHAIN_DESC*    pSwapChainDesc,
+    IDXGISwapChain**         ppSwapChain,
+    ID3D11Device**           ppDevice,
+    D3D_FEATURE_LEVEL*       pFeatureLevel,
+    ID3D11DeviceContext**    ppImmediateContext)
+{
 {
     if (get_tls()->hooking_quirk_protection) {
         LOG_INFO("Hooking Quirk: Unexpected call back into D3D11CreateDeviceAndSwapChain, passing through\n");
@@ -1152,7 +1152,6 @@ void nvapi_override()
     }
 }
 
-
 // -----------------------------------------------------------------------------------------------
 // This is our hook for LoadLibraryExW, handling the loading of our original_* libraries.
 //
@@ -1259,13 +1258,12 @@ static HMODULE replace_on_match(LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFla
 
 // The storage for the original routine so we can call through.
 
-HMODULE(__stdcall *fnOrigLoadLibraryExW)(
-    _In_       LPCWSTR lpLibFileName,
-    _Reserved_ HANDLE  hFile,
-    _In_       DWORD   dwFlags
-    ) = LoadLibraryExW;
+HMODULE(__stdcall* fnOrigLoadLibraryExW) (LPCWSTR lpLibFileName, HANDLE hFile, DWORD dwFlags) = LoadLibraryExW;
 
-HMODULE __stdcall hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ HANDLE hFile, _In_ DWORD dwFlags)
+HMODULE __stdcall hooked_LoadLibraryExW(
+    LPCWSTR lpLibFileName,
+    HANDLE  hFile,
+    DWORD   dwFlags)
 {
     HMODULE module;
     static bool hook_enabled = true;
@@ -1335,7 +1333,10 @@ HMODULE __stdcall hooked_LoadLibraryExW(_In_ LPCWSTR lpLibFileName, _Reserved_ H
 // app - we don't automatically intercept the real d3d11.dll, and any attempt
 // to breach the container (say, by accessing one of our files outside of where
 // the container allows) may result in us being mercilessly killed.
-LRESULT CALLBACK CBTProc(_In_ int nCode, _In_ WPARAM wParam, _In_ LPARAM lParam)
+LRESULT CALLBACK CBTProc(
+    int    nCode,
+    WPARAM wParam,
+    LPARAM lParam)
 {
     return CallNextHookEx(0, nCode, wParam, lParam);
 }
