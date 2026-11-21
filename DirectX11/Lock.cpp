@@ -85,25 +85,25 @@ static const char* lock_name(CRITICAL_SECTION *lock, char buf[20])
 
 static void dump_stack_trace()
 {
-    uintptr_t trace[62];
+    uintptr_t  trace[62] = {};
     USHORT frames;
     HMODULE module;
     wchar_t path[MAX_PATH];
     MODULEINFO mod_info;
 
     LOG_INFO("%04x call stack:\n", GetCurrentThreadId());
-    frames = CaptureStackBackTrace(0, 62, (void**)trace, NULL);
-    for (USHORT i = 0; i < frames; i++) {
-        if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)trace[i], &module)
-         && GetModuleFileName(module, path, MAX_PATH)
-         && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
-            LOG_INFO("%04x: %S+0x%" PRIxPTR"\n",
-                    GetCurrentThreadId(), path, trace[i] - (uintptr_t)mod_info.lpBaseOfDll);
-        } else {
-            LOG_INFO("%04x: 0x%" PRIxPTR"\n",
-                    GetCurrentThreadId(), trace[i]);
+    frames = CaptureStackBackTrace(0, 62, reinterpret_cast<void**>(trace), nullptr);
+    for (USHORT i = 0; i < frames; i++)
+    {
+        if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCWSTR>(trace[i]), &module) && GetModuleFileName(module, path, MAX_PATH) && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO)))
+        {
+            LOG_INFO("%04x: %S+0x%" PRIxPTR "\n", GetCurrentThreadId(), path, trace[i] - reinterpret_cast<uintptr_t>(mod_info.lpBaseOfDll));
         }
+        else
+        {
+            LOG_INFO("%04x: 0x%" PRIxPTR "\n", GetCurrentThreadId(), trace[i]);
     }
+}
 }
 
 static void log_held_locks(LockStack &held_locks, std::vector<LockStack> &other_sides)
@@ -120,11 +120,9 @@ static void log_held_locks(LockStack &held_locks, std::vector<LockStack> &other_
             LOG_INFO("%04x: EnterCriticalSection(%s) %s(%d)\n",
                     GetCurrentThreadId(), lock_name(info->lock, buf), info->function, info->line);
         } else {
-            if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)info->ret, &module)
-             && GetModuleFileName(module, path, MAX_PATH)
-             && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
-                LOG_INFO("%04x: EnterCriticalSection(%s) %S+0x%" PRIxPTR"\n",
-                        GetCurrentThreadId(), lock_name(info->lock, buf), path, info->ret - (uintptr_t)mod_info.lpBaseOfDll);
+            if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCWSTR>(info->ret), &module) && GetModuleFileName(module, path, MAX_PATH) && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO)))
+            {
+                LOG_INFO("%04x: EnterCriticalSection(%s) %S+0x%" PRIxPTR "\n", GetCurrentThreadId(), lock_name(info->lock, buf), path, info->ret - reinterpret_cast<uintptr_t>(mod_info.lpBaseOfDll));
             } else {
                 LOG_INFO("%04x: EnterCriticalSection(%s) 0x%" PRIxPTR"\n",
                         GetCurrentThreadId(), lock_name(info->lock, buf), info->ret);
@@ -142,11 +140,9 @@ static void log_held_locks(LockStack &held_locks, std::vector<LockStack> &other_
                 LOG_INFO("      EnterCriticalSection(%s) %s(%d)\n",
                         lock_name(info->lock, buf), info->function, info->line);
             } else {
-                if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)info->ret, &module)
-                 && GetModuleFileName(module, path, MAX_PATH)
-                 && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO))) {
-                    LOG_INFO("      EnterCriticalSection(%s) %S+0x%" PRIxPTR"\n",
-                            lock_name(info->lock, buf), path, info->ret - (uintptr_t)mod_info.lpBaseOfDll);
+                if (GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, reinterpret_cast<LPCWSTR>(info->ret), &module) && GetModuleFileName(module, path, MAX_PATH) && GetModuleInformation(GetCurrentProcess(), module, &mod_info, sizeof(MODULEINFO)))
+                {
+                    LOG_INFO("      EnterCriticalSection(%s) %S+0x%" PRIxPTR "\n", lock_name(info->lock, buf), path, info->ret - reinterpret_cast<uintptr_t>(mod_info.lpBaseOfDll));
                 } else {
                     LOG_INFO("      EnterCriticalSection(%s) 0x%" PRIxPTR"\n",
                             lock_name(info->lock, buf), info->ret);
@@ -333,7 +329,7 @@ static bool ignore_caller(uintptr_t ret)
 
 static void EnterCriticalSectionHook(CRITICAL_SECTION *lock)
 {
-    if (ignore_caller((uintptr_t)_ReturnAddress()))
+    if (ignore_caller(reinterpret_cast<uintptr_t>(_ReturnAddress())))
         return _EnterCriticalSection(lock);
 
     // If a tls structure hasn't been allocated yet for this thread, we
@@ -347,7 +343,7 @@ static void EnterCriticalSectionHook(CRITICAL_SECTION *lock)
     get_tls()->hooking_quirk_protection = true;
 
     LockStack &locks_held = get_tls()->locks_held;
-    push_lock(locks_held, lock, (uintptr_t)_ReturnAddress());
+    push_lock(locks_held, lock, reinterpret_cast<uintptr_t>(_ReturnAddress()));
     validate_lock(locks_held, lock);
 
     _EnterCriticalSection(lock);
@@ -366,7 +362,7 @@ void _EnterCriticalSectionPretty(CRITICAL_SECTION *lock, const char *function, i
     get_tls()->hooking_quirk_protection = true;
 
     LockStack &locks_held = get_tls()->locks_held;
-    push_lock(locks_held, lock, (uintptr_t)_ReturnAddress(), const_cast<char*>(function), line);
+    push_lock(locks_held, lock, reinterpret_cast<uintptr_t>(_ReturnAddress()), const_cast<char*>(function), line);
     validate_lock(locks_held, lock);
 
     _EnterCriticalSection(lock);
@@ -380,7 +376,7 @@ static BOOL TryEnterCriticalSectionHook(CRITICAL_SECTION *lock)
     if (!ret)
         return ret;
 
-    if (ignore_caller((uintptr_t)_ReturnAddress()))
+    if (ignore_caller(reinterpret_cast<uintptr_t>(_ReturnAddress())))
         return ret;
 
     // If a tls structure hasn't been allocated yet for this thread, we
@@ -396,7 +392,7 @@ static BOOL TryEnterCriticalSectionHook(CRITICAL_SECTION *lock)
     // Updating the lock stack, but not the dependency list since the try
     // lock is optional. TODO: Still check for applicable deadlocks
     LockStack &locks_held = get_tls()->locks_held;
-    push_lock(locks_held, lock, (uintptr_t)_ReturnAddress());
+    push_lock(locks_held, lock, reinterpret_cast<uintptr_t>(_ReturnAddress()));
 
     get_tls()->hooking_quirk_protection = false;
     return ret;
@@ -406,7 +402,7 @@ static void LeaveCriticalSectionHook(CRITICAL_SECTION *lock)
 {
     _LeaveCriticalSection(lock);
 
-    if (ignore_caller((uintptr_t)_ReturnAddress()))
+    if (ignore_caller(reinterpret_cast<uintptr_t>(_ReturnAddress())))
         return;
 
     // If a tls structure hasn't been allocated yet for this thread, we
@@ -497,7 +493,7 @@ void enable_lock_dependency_checks()
 
 	if ((mod_handle = GetModuleHandleA("ntdll.dll"))
 	  && GetModuleInformation(GetCurrentProcess(), mod_handle, &mod_info, sizeof(MODULEINFO))) {
-		ntdll_base = (uintptr_t)mod_info.lpBaseOfDll;
+        ntdll_base = reinterpret_cast<uintptr_t>(mod_info.lpBaseOfDll);
 		ntdll_end = ntdll_base + mod_info.SizeOfImage;
 	}
 
@@ -510,10 +506,10 @@ void enable_lock_dependency_checks()
 	// Deviare will itself take locks while we are hooking, so protect against re-entrancy:
 	get_tls()->hooking_quirk_protection = true;
 
-    cHookMgr.Hook(&hook_id, (void**)&_LeaveCriticalSection, LeaveCriticalSection, LeaveCriticalSectionHook);
-    cHookMgr.Hook(&hook_id, (void**)&_EnterCriticalSection, EnterCriticalSection, EnterCriticalSectionHook);
-    cHookMgr.Hook(&hook_id, (void**)&_TryEnterCriticalSection, TryEnterCriticalSection, TryEnterCriticalSectionHook);
-    cHookMgr.Hook(&hook_id, (void**)&_DeleteCriticalSection, DeleteCriticalSection, DeleteCriticalSectionHook);
+    cHookMgr.Hook(&hook_id, reinterpret_cast<void**>(&_LeaveCriticalSection), LeaveCriticalSection, LeaveCriticalSectionHook);
+    cHookMgr.Hook(&hook_id, reinterpret_cast<void**>(&_EnterCriticalSection), EnterCriticalSection, EnterCriticalSectionHook);
+    cHookMgr.Hook(&hook_id, reinterpret_cast<void**>(&_TryEnterCriticalSection), TryEnterCriticalSection, TryEnterCriticalSectionHook);
+    cHookMgr.Hook(&hook_id, reinterpret_cast<void**>(&_DeleteCriticalSection), DeleteCriticalSection, DeleteCriticalSectionHook);
 
     get_tls()->hooking_quirk_protection = false;
 }

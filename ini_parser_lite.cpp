@@ -32,15 +32,18 @@ const char* find_ini_section_lite(const char *buf, const char *section_name)
 {
     const char *p;
 
-    for (buf = skip_space(buf); *buf; buf = next_line(buf)) {
-        if (*buf == '[') {
-            for (buf++, p = section_name; *p && (tolower((unsigned char)*buf) == *p); buf++, p++) {}
+    for (buf = skip_space(buf); *buf; buf = next_line(buf))
+    {
+        if (*buf == '[')
+        {
+            for (buf++, p = section_name; *p && (tolower(static_cast<unsigned char>(*buf)) == *p); buf++, p++)
+            {}
             if (*buf == ']' && *p == '\0')
                 return next_line(buf);
         }
     }
 
-    return 0;
+    return nullptr;
 }
 
 // Searches for the setting. If found in the current section, copies the value
@@ -58,7 +61,8 @@ bool find_ini_setting_lite(const char *buf, const char *setting, char *ret, size
             return false;
 
         // Check if line matches setting
-        for (p = setting; *p && tolower((unsigned char)*buf) == *p; buf++, p++) {}
+        for (p = setting; *p && tolower(static_cast<unsigned char>(*buf)) == *p; buf++, p++)
+        {}
         buf = skip_space(buf);
         if (*buf != '=' || *p != '\0')
             continue;

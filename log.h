@@ -44,7 +44,7 @@ static std::string log_time()
     char cTime[32];
     tm timestruct;
 
-    time_t ltime = time(0);
+    time_t ltime = time(nullptr);
     localtime_s(&timestruct, &ltime);
     asctime_s(cTime, sizeof(cTime), &timestruct);
 
