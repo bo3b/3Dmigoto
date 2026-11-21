@@ -47,6 +47,11 @@
 // The upstream version of this file can be found in the NVIDIA SDK 11:
 // http://developer.nvidia.com/sites/default/files/akamai/gamedev/files/sdk/11/NVIDIA_SDK11_Direct3D_11.00.0328.2105.exe
 
+// This file doesn't really make any sense.  It has actual code in a .h file, with some C++ objects
+// defined.  It was originally based on an nvidia file that should have been left unmodified, but
+// has a lot of code added.  I'd really like to clean this up, but since 3D Vision is dead, it
+// won't really matter, so leaving as is, with minor editing for style.
+
 // vvvvv 3DMIGOTO ADDITION vvvvv
 #ifdef MIGOTO_DX
 #if MIGOTO_DX != 9
@@ -99,17 +104,17 @@ namespace nv {
 
         // First retrieve the display path count
         NvU32 pathCount = 0;
-        NV_DISPLAYCONFIG_PATH_INFO *pathInfo = NULL;
+    NV_DISPLAYCONFIG_PATH_INFO* pathInfo  = nullptr;
 
         // Pass 1: Fetch pathCount, # of displays
-        ret = Profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, NULL);
+    ret = Profiling::NvAPI_DISP_GetDisplayConfig(&pathCount, nullptr);
         if (ret != NVAPI_OK)
         {
             LOG_INFO(" *** NvAPI_DISP_GetDisplayConfig failed: %d  ***\n", ret);
             return;
         }
 
-        pathInfo = (NV_DISPLAYCONFIG_PATH_INFO*)malloc(pathCount * sizeof(NV_DISPLAYCONFIG_PATH_INFO));
+    pathInfo = static_cast<NV_DISPLAYCONFIG_PATH_INFO*>(malloc(pathCount * sizeof(NV_DISPLAYCONFIG_PATH_INFO)));
         if (!pathInfo)
         {
             LOG_INFO(" *** NvAPI_DISP_GetDisplayConfig failed: Out of memory  ***\n");
@@ -123,8 +128,8 @@ namespace nv {
             pathInfo[i].version = NV_DISPLAYCONFIG_PATH_INFO_VER;
 
             // Allocation for the source mode info.
-            pathInfo[i].sourceModeInfo = (NV_DISPLAYCONFIG_SOURCE_MODE_INFO*)malloc(sizeof(NV_DISPLAYCONFIG_SOURCE_MODE_INFO));
-            if (pathInfo[i].sourceModeInfo == NULL)
+        pathInfo[i].sourceModeInfo = static_cast<NV_DISPLAYCONFIG_SOURCE_MODE_INFO*>(malloc(sizeof(NV_DISPLAYCONFIG_SOURCE_MODE_INFO)));
+        if (pathInfo[i].sourceModeInfo == nullptr)
             {
                 LOG_INFO(" *** NvAPI_DISP_GetDisplayConfig failed: Out of memory  ***\n");
                 return;
@@ -185,8 +190,8 @@ namespace nv {
         {
             if (pathInfo[i].sourceModeInfo->bGDIPrimary)
             {
-                pWidth = (float)pathInfo[i].sourceModeInfo->resolution.width;
-                pHeight = (float)pathInfo[i].sourceModeInfo->resolution.height;
+            pWidth  = static_cast<float>(pathInfo[i].sourceModeInfo->resolution.width);
+            pHeight = static_cast<float>(pathInfo[i].sourceModeInfo->resolution.height);
             }
             free(pathInfo[i].sourceModeInfo);
         }
@@ -414,13 +419,13 @@ namespace nv {
             typedef ID3D11Texture2D StagingResource;
             typedef ID3D11DeviceContext Context;
 
-            static const NV_STEREO_REGISTRY_PROFILE_TYPE RegistryProfileType = NVAPI_STEREO_DX10_REGISTRY_PROFILE;
+    static constexpr NV_STEREO_REGISTRY_PROFILE_TYPE RegistryProfileType = NVAPI_STEREO_DX10_REGISTRY_PROFILE;
 
             // Note that the texture must be at least 20 bytes wide to handle the stereo header.
-            static const int StereoTexWidth = 8;
-            static const int StereoTexHeight = 1;
-            static const DXGI_FORMAT StereoTexFormat = DXGI_FORMAT_R32G32B32A32_FLOAT;
-            static const int StereoBytesPerPixel = 16;
+    static constexpr int         StereoTexWidth      = 8;
+    static constexpr int         StereoTexHeight     = 1;
+    static constexpr DXGI_FORMAT StereoTexFormat     = DXGI_FORMAT_R32G32B32A32_FLOAT;
+    static constexpr int         StereoBytesPerPixel = 16;
 
             static StagingResource* CreateStagingResource(Device* pDevice, float eyeSep, float sep, float conv,
                 float tuneValue1, float tuneValue2, float tuneValue3, float tuneValue4)
@@ -431,23 +436,23 @@ namespace nv {
                 // This was previously fetched from the swap chain.
                 GetPrimaryDisplayResolution(screenWidth, screenHeight);
 
-                StagingResource* staging = 0;
+        StagingResource* staging       = nullptr;
                 unsigned int stagingWidth = StereoTexWidth * 2;
                 unsigned int stagingHeight = StereoTexHeight + 1;
 
                 // Allocate the buffer sys mem data to write the stereo tag and stereo params
-                D3D11_SUBRESOURCE_DATA sysData;
+        D3D11_SUBRESOURCE_DATA sysData = {};
                 sysData.SysMemPitch = StereoBytesPerPixel * stagingWidth;
                 sysData.pSysMem = new unsigned char[sysData.SysMemPitch * stagingHeight];
 
-                float* leftEyePtr = (float*)sysData.pSysMem;
+        float*                leftEyePtr  = static_cast<float*>(const_cast<void*>(sysData.pSysMem));
                 float* rightEyePtr = leftEyePtr + StereoTexWidth * StereoBytesPerPixel / sizeof(float);
-                LPNVSTEREOIMAGEHEADER header = (LPNVSTEREOIMAGEHEADER)((unsigned char*)sysData.pSysMem + sysData.SysMemPitch * StereoTexHeight);
+        LPNVSTEREOIMAGEHEADER header      = reinterpret_cast<LPNVSTEREOIMAGEHEADER>(static_cast<unsigned char*>(const_cast<void*>(sysData.pSysMem)) + sysData.SysMemPitch * StereoTexHeight);
                 PopulateTextureData(leftEyePtr, rightEyePtr, header, stagingWidth, stagingHeight, StereoBytesPerPixel, eyeSep, sep, conv,
                     tuneValue1, tuneValue2, tuneValue3, tuneValue4,
                     screenWidth, screenHeight);
 
-                D3D11_TEXTURE2D_DESC desc;
+        D3D11_TEXTURE2D_DESC desc = {};
                 memset(&desc, 0, sizeof(D3D11_TEXTURE2D_DESC));
                 desc.Width = stagingWidth;
                 desc.Height = stagingHeight;
@@ -468,14 +473,14 @@ namespace nv {
                 if (ret != S_OK)
                 {
                     LOG_INFO("    error during creation of stereo staging texture. result = %x.\n", ret);
-                    return NULL;
+            return nullptr;
                 }
                 return staging;
             }
 
             static void UpdateTextureFromStaging(Context* context, Texture* tex, StagingResource* staging)
             {
-                D3D11_BOX stereoSrcBox;
+        D3D11_BOX stereoSrcBox = {};
                 stereoSrcBox.front = 0;
                 stereoSrcBox.back = 1;
                 stereoSrcBox.top = 0;
@@ -510,7 +515,7 @@ namespace nv {
                 mForceUpdate(false),
                 // ^^^^^ 3DMIGOTO ADDITION ^^^^^
                 mConvergence(0),
-                mStereoHandle(0),
+        mStereoHandle(nullptr),
                 mActive(false),
                 mDeviceLost(true)
             {
