@@ -96,7 +96,7 @@ namespace nv {
     // - It does not vary by eye and so is not appropriate to place in the stereo texture
     // - If stereo is disabled the stereo texture won't be updated and this will be invalid
 
-    static void GetPrimaryDisplayResolution(float &pWidth, float &pHeight)
+static void get_primary_display_resolution(float &pWidth, float &pHeight)
     {
         NvAPI_Status ret;
         pWidth = 0;
@@ -206,7 +206,7 @@ namespace nv {
     // ^^^^^ 3DMIGOTO ADDITION ^^^^^
 
     namespace stereo {
-        typedef struct  _Nv_Stereo_Image_Header
+typedef struct nv_stereo_image_header
         {
             unsigned int    dwSignature;
             unsigned int    dwWidth;
@@ -412,7 +412,7 @@ namespace nv {
 #endif // NO_STEREO_D3D10
 
 #ifndef NO_STEREO_D3D11 // 3DMIGOTO ADDITION
-        struct D3D11Type
+struct d3d11_type
         {
             typedef ID3D11Device Device;
             typedef ID3D11Texture2D Texture;
@@ -434,7 +434,7 @@ namespace nv {
 
                 // Get screen resolution here, since it becomes part of the stereo texture structure.
                 // This was previously fetched from the swap chain.
-                GetPrimaryDisplayResolution(screenWidth, screenHeight);
+        get_primary_display_resolution(screenWidth, screenHeight);
 
         StagingResource* staging       = nullptr;
                 unsigned int stagingWidth = StereoTexWidth * 2;
@@ -689,7 +689,7 @@ namespace nv {
 #endif
 
 #ifndef NO_STEREO_D3D11 // 3DMIGOTO ADDITION
-        typedef ParamTextureManager<D3D11Type> ParamTextureManagerD3D11;
+typedef ParamTextureManager<d3d11_type> ParamTextureManagerD3D11;
 #endif
     };
 };
