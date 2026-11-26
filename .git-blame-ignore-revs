@@ -1,0 +1,194 @@
+# Blame-ignore audit for 1.4.10..Rename_Reformat
+# Merge base: b52b13041207cc334445ae49b04ee3fb5706840c
+# Audited branch tip: bb574dd9852f157f06f8540758c77bde12ee5e64
+#
+# Active entries below are mechanical changes that obscure useful line history.
+# Reviewed exclusions are documented at the end with their hashes commented out.
+# Likely low value, but can keep the git Blame more usable.
+
+# -----------------------------------------------------------------------------
+# Formatting, identifier renames, and mechanical reference updates
+# -----------------------------------------------------------------------------
+
+# Rename .h files to .hpp
+a927c80908d8ca7e12282859fcd8de7d72b78036
+# Switch all tabs to 4 spaces
+116c9222733db3f38ecc26ce3b17c48459bfcda1
+# Second stage of convert tab to 4 spaces
+1c1b74ec342434836bd8565104c3deab59b29375
+# Fix log macros in nvapi dllmain LOG_CALL style
+ebd2f5d0eee97356e53aff3cd76abb838fcece13
+# Change UCOUNTOF to U_COUNT_OF
+5a7fb644b1b42a70072afcefe7738ca6b7ab20ec
+# Rename HookDebug to HOOK_DEBUG
+6f79e1b1d6126b3f380b70a57069bfb4225052d3
+# Change critical-section initialization to macro style
+09785b39db7c41ee9b91c37632b1e5d35b776ab4
+# Rename FrameAnalysisLogNoNL
+6b191c11885293f30a59914cd3cb9072a3db450d
+# Rename IniWarning to INI_WARNING
+d992c7fe2ee1c38c1b4d8f4487d931b63c5607b0
+# Rename CommandList function parameters
+1f815b81096819180837d1547a8a75f72010d86f
+# Rename HackerDevice member variables
+499ec7f538152f04c4a785cb28cb16ce171221fb
+# Rename HackerContext member variables
+e34eba94085b816d1d0ec06dcf326a563f0fa3d5
+# Rename HackerDXGI member variables
+17039ee731c25a06d4830677ab0a4fcceaf542b7
+# Rename Overlay member variables
+5129c29dbe4214962ce0937b2d308a695202064d
+# Rename Override member variables
+ca8449de0ea73eba59c3581c209beee98ffdd58a
+# Mechanical CommandList renaming
+b01ba5f5cd16328e63c382f728a7286403d720dc
+# Complete mStereoHandle renaming
+e2323037f11ede0e38f8e086853392ae1f045ea8
+# Mechanical DX9 renaming
+018c55e812f62d7d0e065f718a31df6b708bd4b2
+# Mechanical D3D11Wrapper style renaming
+b5dc7f15ea90aaa69f890ada754a50939d02517f
+# Mechanical DLLMainHook style renaming
+6520def578d271c0853d84d5eb9049863a6863dd
+# Mechanical FrameAnalysis renaming
+f59be45ae8ed1b68195ebc99235fe6bdd68a019a
+# Token-equivalent reformat of Util.h and Util.cpp
+3c4182f8ced4b08e367dbc6d2a043364c1f63053
+# Rename Hunting parameters with clang-tidy
+4de971304a73389fb3a8d03461a62a9500ce0d48
+# Rename Hunting local variables with clang-tidy
+fb5f1d2ef688be95673b4e63c9c5afefa3a12aa9
+# Rename HackerContext local variables
+f8e82095360525d56e1cdc00bf70ed1738af20a6
+# Rename HackerContext global functions
+2cb9f8e9c8783ca1f2d8c559f33095218e0ae296
+# Make declaration and definition parameter names consistent
+8d1501456734596fa4f28831bc0e3908790f52b3
+# Rename HackerDevice method parameters
+aa016c48ed0400054b3ad7179b92c9e9934546fb
+# Rename HackerDXGI functions and variables
+ca919859fbb979f44eb31acb6974f8da3658a976
+# Rename HookedDevice trampoline functions
+c18c75212fc4e367f90fd5d042a78d31bc174154
+# Rename HookedContext functions
+3e54351688ea665afa54a6dd3fda76bddd5ca656
+# Mechanical HookedDXGI.hpp cleanup
+14e0b17db7829b1e2037a115c2d588f634f31abf
+# Rename HookedDXGI variables and functions
+b0d6a77c09db08073929aa67efc06a291db67e93
+# Rename lowercase filenames and update references
+82b06bc8421f6228376669b60fab70d8e275ed94
+# Rename Assembler functions
+ea76c0cac7fdc20b38ef95e379b54ec53999c8e1
+# Token-equivalent reformat of shader.h
+854bdb58e6a56911ebf78a17f229a93b2de1c55b
+# Rename Cursor functions and remove redundant void parameters
+a731b9c6bee765315fc3d1d2777ccdf0b84abe22
+# Rename nvstereo.h functions
+a54f59c3be1777d612f6180fd440464f29588d87
+# Mechanical vkeys.h naming and formatting controls
+d4e7eea7019812b0996e69491a6d6ee7f978552b
+# Rename EnumName_t to Enum_Name_t
+d1dc5428a8537f2a2d72c4efb04bfca4e47bc143
+# Rename Hunting functions
+515e4f3b5a22833287ac32663f59f4afd511317d
+# Rename IniHandler routines
+510e480373effb61f7a9589140cc445671471027
+# Rename IniHandler functions and variables
+2a1f61185c5e29f77a03f38dcd4bc8e4928f562a
+# Token-equivalent reformat of Overlay.hpp
+78845c477997320516453c364292cdc5233fb655
+# Rename Override.cpp functions
+606f24ca72e446c1ebe81607922cf2ae48a64d3f
+# Rename Profiling Mode enum
+093c8f3bf3e2364758403f2d932a3530f11501a1
+# Rename Profiling namespace
+e8c2544d840320a39d9601246a146ddb0f588c48
+
+# -----------------------------------------------------------------------------
+# Broader mechanical cleanups
+#
+# These change syntax, annotations, or declarations without intended runtime
+# behavior changes: SAL cleanup, equivalent macro expansion, redundant
+# qualification removal, and closely related formatting.
+# -----------------------------------------------------------------------------
+
+# Mechanical NULL to nullptr conversion
+19431477b4552f50f1ae39b4783c8ec2b5241dd6
+# Update and remove source annotations
+1ea8e828bb9f0bac2342f4394f738703737eb56b
+# Expand STDMETHODIMP_(X) to equivalent explicit declarations
+ea155c1132d2f4205f22a246eb7f57b93fea8451
+# Adjust template SAL annotations for formatting
+a22551363f79103c58490065caeff33c47b4f91a
+# Reformat HackerContext; equivalent declaration cleanup
+086363226e0a613eabc6f9380c676ef9fcf345c0
+# Remove HackerDevice annotations and expand macros
+bfe465c5b7af13cd33caa909525e7ddb850e4e8e
+# Reformat HackerDevice and normalize annotations
+8bd15afa5b35e175ef8677f80c1a2cbc7ef0e4cd
+# Remove SAL annotations from HackerContext.cpp
+c7d4d8a8b3dfa631cd5d647a83114062b27e1398
+# Remove SAL macros from HackerDevice
+94ee063785a4755b450ac7ae1353f7b9becc119a
+# Expand STDMETHODIMP in HackerDevice
+82b9eb07dc4811ceb9845fd9b9a72f8d67506d35
+# Reformat HackerDXGI and remove annotations
+d62417e03e27184a9393423368dd91a7425f9688
+# Rename D3D11Wrapper variables and remove SAL annotations
+e78b8bbe910e60b1643e4736d04dd7f049bec8db
+# Reformat HookedDXGI and remove annotations
+9035998e8fe0bb3393b0c5afb929b087ca881ac8
+# Reformat D3D11Wrapper and remove a redundant scope
+33517fe4d634c9be8384fe2e8a932a91a9618a4c
+# Reformat Cursor.cpp and remove annotations
+445c1dffab5bb1dac1cdd5905d9b09dd8b6b3b62
+# Reformat iid.cpp, including macro continuations
+b01487acb65a9fa4fa9df54ef5e9c70e7f1f48a7
+# Reformat Hunting.cpp and move SAL annotations into comments
+abc425b0012aaa102d3d42c6c0b43ae665202f02
+# Remove redundant std:: qualifications
+d4636da4e1c106fba71d5123538449207a083a4b
+# Reformat Override.cpp and remove redundant std:: qualifications
+996308245ef30f09b8d2fc80def6388706b89e68
+
+# -----------------------------------------------------------------------------
+# Mechanical brace and scope visualization changes
+#
+# These make existing control flow or lock boundaries explicit without moving
+# the protected statements or changing else association.
+# -----------------------------------------------------------------------------
+
+# Reformat locking/log code and correct dangling-else indentation; no control-flow change
+e2ffb47604cd64a0de4c55c749bd4f9e0827cf8d
+# Add explicit blocks around existing HackerContext critical sections
+7d84192b4a6813ab698011e3d588f5363816f5c8
+# Add explicit blocks around existing HackerDevice critical sections
+747796863dd836856131ba5ca696da4d6e601aaa
+# Reformat IniHandler and add explicit critical-section blocks
+d4f8f24c53c61a90ffa7870c8e1a1c07d845f17a
+# Reformat Overlay and add explicit critical-section blocks
+4224512492b403a594ffd2465c23a04e81385277
+
+# -----------------------------------------------------------------------------
+# Reviewed exclusions - DO NOT IGNORE
+#
+# These hashes are commented out intentionally. They document commits that
+# looked like candidates by subject but contain meaningful or structural changes.
+# -----------------------------------------------------------------------------
+
+# 3bfd410527376366660d081aa431a8e96f3fd424 - Mostly mechanical logging macro renames, but also adds a new log statement in DirectX11/IniHandler.cpp.
+# 1d04de551b36f056c91aef1e614d35e32bff102d - Not just formatting: removes Override constructor initializers and adds an UpdateTransitions declaration.
+# c207fff827b374829e7bf056a498515c5c85d14b - Mostly Assembler renaming, but also changes a C cast to reinterpret_cast in SignatureParser.cpp.
+# a28225b7e1a575b19122f80a5f088ff472e0f6f1 - Includes DX9 header renames, but also changes build flags and removes the post-build copy command.
+# 3a5eab0c8f3c72da2f90b89e43f0b6e71014220b - Introduces a scoped Hunting_Mode enum and changes comparisons, not just names.
+# 0f58ffbec8c6fa066045b8457ee5d9834954a97f - Introduces a scoped Log_Level enum and associated casts, not just names.
+# 8c2f0654263d18aa6e88d0f84f2d0f4b5a397a4e - Moves logging types and functions into namespaces; a structural refactor rather than blame noise.
+# 4d81c514ee22db1de7f9b308e186ef2c960e4f84 - Pure folder rename with unchanged contents; no ignore entry is needed because blame already follows it.
+# f5df77e14a149dcb0aa5b7530af3dcbcf1a11cbb - Includes project renames, but also removes and re-adds solution project configuration.
+# 7603db96cdf4772bb2f0d6e8d43fb73137966fd7 - Includes the stdafx.h rename, but also adds new util.h header dependencies.
+# cb7909a7ed5a258f8e99ac89b9b9078a2fe2109b - Changes the logging function identifier back to __FUNCTION__, affecting log output rather than only naming style.
+
+# Other commits in the audited range remain unignored because they contain
+# functional fixes, build-setting changes, dependency redesigns, code movement,
+# initializer or cast changes, control-flow edits, or other mixed changes.
